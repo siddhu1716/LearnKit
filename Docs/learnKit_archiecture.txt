@@ -1,0 +1,72 @@
+flowchart TD
+    USER([User submits a task]):::io
+    USER --> DEC["lk.agent decorator<br/>core.py orchestrates the loop"]
+
+    %% ===================== INFERENCE PATH =====================
+    subgraph QUERY["INFERENCE PATH · runs BEFORE the agent · LLM Wiki: QUERY"]
+        direction TB
+        DEC --> CLS["1 · Task Classifier<br/>classifier.py · DSPy TypedPredictor · Haiku<br/>task to multilabel domain vector + task_type"]
+        CLS --> ROUTER["2 · Memory Router<br/>router.py<br/>builds retrieval plan<br/>hard cap: 8 records / 1200 tokens"]
+        ROUTER --> RETR["3 · Semantic Retriever<br/>retriever.py · SQLite FTS5 BM25 + dense<br/>score = sim x confidence x recency x reuse"]
+        RETR --> MODE{"4 · Inference Mode<br/>inference_mode.py<br/>best skill confidence?"}
+        MODE -->|conf >= 0.90| PRESC["PRESCRIPTIVE<br/>follow skill, minimal reasoning"]
+        MODE -->|conf >= 0.70| GUID["GUIDED<br/>skill as scaffold, LLM fills gaps"]
+        MODE -->|no match| EXPL["EXPLORATORY<br/>full reasoning, capture trace"]
+        PRESC --> COMP
+        GUID --> COMP
+        EXPL --> COMP
+        COMP["5 · Context Composer<br/>composer.py · layered per type block<br/>1200 token hard cap<br/>skills, failures, facts, prefs, heuristics"]
+    end
+
+    COMP -->|context injected into system prompt| LLM
+
+    %% ===================== AGENT =====================
+    LLM["6 · LLM Agent · any framework<br/>LangChain · LangGraph · AutoGen · raw API<br/>weights unchanged, only context is richer"]
+    LLM --> RESP([Response returned to user]):::io
+    LLM --> TRAJ["Trajectory Capture<br/>trajectory.py · JSONL<br/>tool calls + CoT reasoning (mandatory)"]
+
+    %% ===================== LEARNING PATH =====================
+    subgraph INGEST["LEARNING PATH · runs AFTER the agent, async · LLM Wiki: INGEST"]
+        direction TB
+        TRAJ --> EVAL["7 · Evaluator · the quality gate<br/>evaluator.py<br/>user feedback or LLM judge to score 0 to 5<br/>never trust 'agent responded = success'"]
+        EVAL --> GATE{"quality >= 3.5 ?"}
+        GATE -->|YES| DIST["Memory Distiller<br/>distiller.py · DSPy · Haiku<br/>trace + reasoning to typed records"]
+        GATE -->|NO| FQUICK["Failure Record<br/>stored ACTIVE immediately<br/>no quarantine"]
+        DIST --> RSKILL["Skill record<br/>quarantine 24h"]
+        DIST --> RFACT["Fact record<br/>quarantine 24h"]
+        DIST --> RFAIL["Failure record<br/>ACTIVE immediately"]
+    end
+
+    RSKILL --> STORE
+    RFACT --> STORE
+    RFAIL --> STORE
+    FQUICK --> STORE
+
+    %% ===================== MEMORY STORE =====================
+    subgraph WIKI["MEMORY STORE · the compounding wiki"]
+        direction TB
+        STORE[("Backend via registry.py<br/>SQLite + FTS5 default<br/>or mem0 / zep / qdrant")]
+        STORE --- T1["7 typed records<br/>skill · fact · failure · strategy<br/>preference · trace · heuristic"]
+        STORE --- T2["per record<br/>confidence weighted · TTL bound<br/>scope: user / team / public"]
+    end
+
+    RETR -. reads relevant records .-> STORE
+
+    %% ===================== MAINTENANCE =====================
+    subgraph MAINTAIN["MAINTENANCE · weekly background job · LLM Wiki: MAINTAIN"]
+        direction TB
+        REINF["Reinforcement<br/>successful reuse raises confidence toward 0.95"]
+        DECAY["Confidence Decay<br/>drops 2% per week if not reinforced"]
+        GEPA["GEPA Evolution<br/>evolution/gepa.py · MIT<br/>3+ parallel trials then ensemble<br/>variants get evolution_gen + 1, quarantine"]
+    end
+
+    STORE <--> REINF
+    STORE <--> DECAY
+    STORE <--> GEPA
+
+    classDef io fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#f1f5f9;
+
+    style QUERY fill:#e0f2fe,stroke:#0284c7,stroke-width:2px
+    style INGEST fill:#dcfce7,stroke:#16a34a,stroke-width:2px
+    style WIKI fill:#f3e8ff,stroke:#9333ea,stroke-width:2px
+    style MAINTAIN fill:#ffedd5,stroke:#ea580c,stroke-width:2px
