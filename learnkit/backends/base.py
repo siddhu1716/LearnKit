@@ -29,6 +29,7 @@ class BaseBackend(ABC):
         query: str,
         record_type: Optional[MemoryType] = None,
         domain: Optional[str] = None,
+        scope: Optional[str] = None,
         min_confidence: float = 0.0,
         limit: int = 8,
         exclude_stale: bool = True

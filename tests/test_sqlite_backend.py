@@ -12,6 +12,7 @@ from learnkit.schemas.fact import FactRecord
 from learnkit.schemas.failure import FailureRecord
 from learnkit.backends.sqlite import SQLiteBackend
 from learnkit.composer import compose_context
+from learnkit.compressor import compress_context
 from learnkit.inference_mode import InferenceMode
 
 
@@ -123,6 +124,94 @@ def test_sqlite_backend_operations(tmp_path):
     assert backend.read(skill_id) is None
 
 
+def test_sqlite_memory_backend_operations():
+    """Verify documented ':memory:' backend usage keeps data for the backend lifetime."""
+    backend = SQLiteBackend(db_path=":memory:")
+    skill = SkillRecord(
+        domains={"legal": 0.9},
+        task_type="contract_summarization",
+        content={"steps": ["extract obligations"]},
+    )
+
+    backend.add(skill)
+    results = backend.search("contract summarization", domain="legal")
+
+    assert len(results) == 1
+    assert results[0].id == skill.id
+
+
+def test_update_confidence_persists_full_record(tmp_path):
+    """Confidence updates must round-trip through full_record, not only SQL columns."""
+    backend = SQLiteBackend(db_path=str(tmp_path / "memory.db"))
+    skill = SkillRecord(
+        domains={"coding": 0.9},
+        task_type="debug_python_error",
+        content={"steps": ["inspect traceback"]},
+        confidence=0.8,
+    )
+
+    backend.add(skill)
+    backend.update_confidence(skill.id, 0.42)
+
+    read_rec = backend.read(skill.id)
+    assert read_rec.confidence == 0.42
+
+
+def test_sqlite_confidence_decay(tmp_path):
+    """Verify Phase 3 maintenance: confidence decays 2 percent per week."""
+    backend = SQLiteBackend(db_path=str(tmp_path / "memory.db"))
+    active = SkillRecord(
+        domains={"coding": 0.9},
+        task_type="debug_python_error",
+        content={"steps": ["inspect traceback"]},
+        confidence=0.5,
+    )
+    quarantined = SkillRecord(
+        domains={"coding": 0.9},
+        task_type="draft_skill",
+        content={"steps": ["wait for review"]},
+        confidence=0.5,
+        status="quarantine",
+    )
+
+    backend.add(active)
+    backend.add(quarantined)
+
+    count = backend.decay_confidence(weeks=2)
+
+    assert count == 1
+    assert backend.read(active.id).confidence == pytest.approx(0.46)
+    assert backend.read(quarantined.id).confidence == 0.5
+
+
+def test_sqlite_scope_filtering(tmp_path):
+    """Verify team registry records can be queried separately from user records."""
+    backend = SQLiteBackend(db_path=str(tmp_path / "memory.db"))
+    team_skill = SkillRecord(
+        domains={"coding": 0.9},
+        task_type="debug_python_error",
+        content={"steps": ["team pattern"]},
+        confidence=0.8,
+        scope="team",
+    )
+    user_skill = SkillRecord(
+        domains={"coding": 0.9},
+        task_type="debug_python_error",
+        content={"steps": ["personal pattern"]},
+        confidence=0.9,
+        scope="user",
+    )
+
+    backend.add(team_skill)
+    backend.add(user_skill)
+
+    team_results = backend.search("debug python error", domain="coding", scope="team")
+    team_list = backend.list_by_scope("team")
+
+    assert [r.id for r in team_results] == [team_skill.id]
+    assert [r.id for r in team_list] == [team_skill.id]
+
+
 def test_context_composer():
     """Verify Task 1.5: Context Composer formats typed records and obeys hard token limit."""
     # Compose with various record types
@@ -176,3 +265,13 @@ def test_context_composer():
     
     assert len(compressed_context) <= 4800
     assert "[Context truncated — additional records available in memory store]" in compressed_context
+
+
+def test_context_compressor_direct_use():
+    text = "header\n" + "\n".join("line " + str(i) for i in range(100))
+
+    compressed = compress_context(text, max_tokens=20, chars_per_token=4)
+
+    assert len(compressed) <= 80
+    assert compressed.startswith("header")
+    assert "[Context truncated — additional records available in memory store]" in compressed

@@ -52,3 +52,16 @@ This document outlines structural, performance, and cognitive improvements that 
   - Compounding skill graphs (showing how skills inherit/evolve from each other).
   - Trace playback (a time-series visualizer of the agent's reasoning).
   - Direct wiki editor to manually clean up or reinforce stored memories.
+
+---
+
+## 4. Current Repo Hardening Items
+
+### Public API Stability
+- Keep `learnkit.__all__` aligned with README examples so `import learnkit as lk` exposes the documented integration surface.
+
+### Test Environment Pinning
+- The project currently verifies cleanly with `python3.11`; add a short contributor note or tooling config so `pytest` does not accidentally run under a Python without project dependencies installed.
+
+### Background Processing Controls
+- The `LearnKit.agent` decorator starts post-processing in a daemon thread. Add a test-friendly synchronous mode before expanding integration adapters.

@@ -4,11 +4,9 @@ Formats retrieved memory records into a structured context block for prompt inje
 Bounded memory enforcement (1,200 tokens cap) — Hermes principle.
 """
 
-from .schemas.base import MemoryRecord
+from .compressor import CHARS_PER_TOKEN, MAX_CONTEXT_TOKENS, compress_context
 from .inference_mode import InferenceMode
-
-MAX_CONTEXT_TOKENS = 1200   # hard cap — Hermes bounded memory principle
-CHARS_PER_TOKEN = 4         # rough estimate
+from .schemas.base import MemoryRecord
 
 
 def compose_context(
@@ -87,25 +85,6 @@ def compose_context(
 
     # Enforce hard token cap (Hermes bounded memory principle)
     if len(full) > MAX_CONTEXT_TOKENS * CHARS_PER_TOKEN:
-        full = _compress_context(full, MAX_CONTEXT_TOKENS * CHARS_PER_TOKEN)
+        full = compress_context(full, max_tokens=MAX_CONTEXT_TOKENS)
 
     return full
-
-
-def _compress_context(text: str, max_chars: int) -> str:
-    """
-    Truncate context to hard cap.
-    """
-    if len(text) <= max_chars:
-        return text
-    # Keep header + first skill/items + truncation notice
-    lines = text.split("\n")
-    result = []
-    char_count = 0
-    for line in lines:
-        if char_count + len(line) > max_chars - 60:
-            result.append("\n[Context truncated — additional records available in memory store]")
-            break
-        result.append(line)
-        char_count += len(line) + 1
-    return "\n".join(result)

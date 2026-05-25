@@ -27,9 +27,12 @@ from .schemas.trace import TraceRecord
 from .schemas.heuristic import HeuristicRecord
 from .backends.sqlite import SQLiteBackend
 from .composer import compose_context
+from .compressor import compress_context
 from .inference_mode import InferenceMode, determine_inference_mode
+from .core import LearnKit
 
 __all__ = [
+    "LearnKit",
     "Trajectory",
     "TrajectoryStep",
     "MemoryRecord",
@@ -42,6 +45,7 @@ __all__ = [
     "HeuristicRecord",
     "SQLiteBackend",
     "compose_context",
+    "compress_context",
     "InferenceMode",
     "determine_inference_mode",
 ]

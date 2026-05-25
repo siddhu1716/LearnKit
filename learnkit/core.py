@@ -51,6 +51,7 @@ class LearnKit:
                 records = self.retriever.retrieve(
                     task=task,
                     domain_vector=domain_vector,
+                    scope=self.scope,
                     router=self.router
                 )
 

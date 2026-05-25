@@ -12,6 +12,7 @@ class SemanticRetriever:
         self,
         task: str,
         domain_vector: dict[str, float],
+        scope: str | None = None,
         router=None
     ) -> list:
         # Get top domains (confidence > 0.5)
@@ -22,6 +23,7 @@ class SemanticRetriever:
         results = self.backend.search(
             query=task,
             domain=domain,
+            scope=scope,
             limit=20  # Retrieve more, let router filter down
         )
         

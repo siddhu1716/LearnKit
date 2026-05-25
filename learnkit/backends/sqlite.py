@@ -43,8 +43,11 @@ class SQLiteBackend(BaseBackend):
     """
 
     def __init__(self, db_path: str = "~/.learnkit/memory.db"):
-        self.db_path = Path(db_path).expanduser()
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._is_memory = db_path == ":memory:"
+        self._memory_conn: Optional[sqlite3.Connection] = None
+        self.db_path = db_path if self._is_memory else Path(db_path).expanduser()
+        if not self._is_memory:
+            self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
 
     def _init_db(self) -> None:
@@ -89,12 +92,21 @@ class SQLiteBackend(BaseBackend):
                 )
             """)
         conn.commit()
-        conn.close()
+        self._close(conn)
 
     def _conn(self) -> sqlite3.Connection:
+        if self._is_memory:
+            if self._memory_conn is None:
+                self._memory_conn = sqlite3.connect(":memory:")
+                self._memory_conn.row_factory = sqlite3.Row
+            return self._memory_conn
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         return conn
+
+    def _close(self, conn: sqlite3.Connection) -> None:
+        if not self._is_memory:
+            conn.close()
 
     def add(self, record: MemoryRecord) -> str:
         conn = self._conn()
@@ -132,13 +144,13 @@ class SQLiteBackend(BaseBackend):
         """, (record.id, record.task_type or "", content_text, domains_text))
         
         conn.commit()
-        conn.close()
+        self._close(conn)
         return record.id
 
     def read(self, id: str) -> Optional[MemoryRecord]:
         conn = self._conn()
         row = conn.execute("SELECT full_record FROM records WHERE id=?", (id,)).fetchone()
-        conn.close()
+        self._close(conn)
         if row is None:
             return None
         return parse_record(row["full_record"])
@@ -148,13 +160,14 @@ class SQLiteBackend(BaseBackend):
         conn.execute("DELETE FROM records WHERE id=?", (id,))
         conn.execute("DELETE FROM records_fts WHERE id=?", (id,))
         conn.commit()
-        conn.close()
+        self._close(conn)
 
     def search(
         self,
         query: str,
         record_type: Optional[MemoryType] = None,
         domain: Optional[str] = None,
+        scope: Optional[str] = None,
         min_confidence: float = 0.0,
         limit: int = 8,
         exclude_stale: bool = True
@@ -203,6 +216,9 @@ class SQLiteBackend(BaseBackend):
         if domain:
             sql += " AND r.domains LIKE ?"
             params.append(f'%"{domain}"%')
+        if scope:
+            sql += " AND r.scope = ?"
+            params.append(scope)
         if exclude_stale:
             sql += " AND r.status != 'stale'"
 
@@ -218,7 +234,7 @@ class SQLiteBackend(BaseBackend):
         except sqlite3.OperationalError:
             # If MATCH fails for whatever syntax reason, fallback to query without match
             rows = []
-        conn.close()
+        self._close(conn)
 
         results = []
         for row in rows:
@@ -237,14 +253,40 @@ class SQLiteBackend(BaseBackend):
             WHERE domains LIKE ? AND status = 'active'
             ORDER BY confidence DESC LIMIT ?
         """, (f'%"{domain}"%', limit)).fetchall()
-        conn.close()
+        self._close(conn)
+        return [parse_record(r["full_record"]) for r in rows]
+
+    def list_by_scope(self, scope: str = "team", limit: int = 20) -> list[MemoryRecord]:
+        conn = self._conn()
+        rows = conn.execute("""
+            SELECT full_record FROM records
+            WHERE scope = ? AND status = 'active'
+            ORDER BY confidence DESC LIMIT ?
+        """, (scope, limit)).fetchall()
+        self._close(conn)
         return [parse_record(r["full_record"]) for r in rows]
 
     def update_confidence(self, id: str, new_confidence: float) -> None:
+        record = self.read(id)
+        if record is None:
+            return
+        record.confidence = new_confidence
+        self.add(record)
+
+    def decay_confidence(self, weeks: int = 1, decay_rate: float = 0.02) -> int:
+        """Apply weekly confidence decay to active or stale records."""
         conn = self._conn()
-        conn.execute(
-            "UPDATE records SET confidence=? WHERE id=?",
-            (new_confidence, id)
-        )
-        conn.commit()
-        conn.close()
+        rows = conn.execute("""
+            SELECT full_record FROM records
+            WHERE status IN ('active', 'stale')
+        """).fetchall()
+        self._close(conn)
+
+        decayed = 0
+        for row in rows:
+            record = parse_record(row["full_record"])
+            for _ in range(weeks):
+                record.decay(decay_rate)
+            self.add(record)
+            decayed += 1
+        return decayed

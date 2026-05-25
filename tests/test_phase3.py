@@ -64,3 +64,9 @@ def test_learnkit_agent():
     # We won't actually run this in the test because it spins a thread for distiller,
     # and requires full LM mocking for classifier and distiller. But we can check if it initializes.
     assert hasattr(lk, "agent")
+
+
+def test_public_api_exports_learnkit():
+    import learnkit as lk
+
+    assert lk.LearnKit is LearnKit
