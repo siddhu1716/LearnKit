@@ -1,0 +1,85 @@
+# .github/workflows/ci.yml
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatchling
+
+      - name: Install project in editable mode with dev dependencies
+        run: |
+          pip install -e .[dev]
+
+      - name: Run lint (ruff)
+        continue-on-error: true
+        run: |
+          pip install ruff
+          ruff check .
+
+      - name: Run type checking (mypy)
+        continue-on-error: true
+        run: |
+          pip install mypy
+          mypy learnkit
+
+      - name: Run tests
+        env:
+          PYTHONPATH: .
+        run: |
+          pytest -q
+
+      - name: Build package (wheel)
+        run: |
+          python -m build
+
+  publish:
+    needs: build-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Build distribution files
+        run: |
+          python -m build --sdist --wheel
+
+      - name: Publish to Test PyPI (optional)
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
+        run: |
+          twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+        # Remove this step or replace with real PyPI config when ready.
