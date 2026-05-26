@@ -1,20 +1,18 @@
 """Unit tests for LearnKit Phase 1 components."""
 
-import os
 from datetime import datetime, timedelta
-from pathlib import Path
+
 import pytest
 
-from learnkit.trajectory import Trajectory
-from learnkit.schemas.base import MemoryRecord
-from learnkit.schemas.skill import SkillRecord
-from learnkit.schemas.fact import FactRecord
-from learnkit.schemas.failure import FailureRecord
-from learnkit.backends.sqlite import SQLiteBackend
 from learnkit.backends.registry import get_backend
+from learnkit.backends.sqlite import SQLiteBackend
 from learnkit.composer import compose_context
 from learnkit.compressor import compress_context
 from learnkit.inference_mode import InferenceMode
+from learnkit.schemas.fact import FactRecord
+from learnkit.schemas.failure import FailureRecord
+from learnkit.schemas.skill import SkillRecord
+from learnkit.trajectory import Trajectory
 
 
 def test_trajectory_roundtrip(tmp_path):
@@ -29,14 +27,17 @@ def test_trajectory_roundtrip(tmp_path):
         content="Use spawn start method",
         reasoning="CoT reasoning trace here is mandatory per ReaComp.",
     )
-    
+
     file_path = tmp_path / "trajectory.jsonl"
     t.save(file_path)
-    
+
     loaded = Trajectory.load(file_path)
     assert loaded.task == "Multiprocessing debug"
     assert len(loaded.steps) == 2
-    assert loaded.steps[1].reasoning == "CoT reasoning trace here is mandatory per ReaComp."
+    assert (
+        loaded.steps[1].reasoning
+        == "CoT reasoning trace here is mandatory per ReaComp."
+    )
     assert loaded.steps[0].role == "user"
 
 
@@ -75,7 +76,7 @@ def test_skill_to_md():
             "examples": {
                 "good": "Use spawn",
                 "bad": "Use fork",
-            }
+            },
         },
     )
     md = rec.to_skill_md()
@@ -283,11 +284,17 @@ def test_context_composer():
         ),
         FailureRecord(
             domains={"coding": 0.9},
-            content={"description": "fork context hanging", "what_to_avoid": "avoid fork on macos"},
+            content={
+                "description": "fork context hanging",
+                "what_to_avoid": "avoid fork on macos",
+            },
         ),
         FactRecord(
             domains={"coding": 0.9},
-            content={"statement": "macOS default start method is spawn since python 3.8", "source": "docs"},
+            content={
+                "statement": "macOS default start method is spawn since python 3.8",
+                "source": "docs",
+            },
         ),
     ]
 
@@ -314,15 +321,18 @@ def test_context_composer():
                 confidence=0.8,
             )
         )
-    
+
     compressed_context = compose_context(
         records=many_records,
         task="some general task",
         inference_mode=InferenceMode.GUIDED,
     )
-    
+
     assert len(compressed_context) <= 4800
-    assert "[Context truncated — additional records available in memory store]" in compressed_context
+    assert (
+        "[Context truncated — additional records available in memory store]"
+        in compressed_context
+    )
 
 
 def test_context_compressor_direct_use():
@@ -332,7 +342,10 @@ def test_context_compressor_direct_use():
 
     assert len(compressed) <= 80
     assert compressed.startswith("header")
-    assert "[Context truncated — additional records available in memory store]" in compressed
+    assert (
+        "[Context truncated — additional records available in memory store]"
+        in compressed
+    )
 
 
 def test_sqlite_native_hybrid_search():
@@ -344,7 +357,7 @@ def test_sqlite_native_hybrid_search():
         return [0.0, 0.0, 1.0]
 
     backend = SQLiteBackend(db_path=":memory:", embedder=embedder)
-    
+
     target = SkillRecord(
         domains={"coding": 0.9},
         task_type="multiprocessing_fix",
@@ -369,7 +382,6 @@ def test_sqlite_native_hybrid_search():
 def test_sqlite_passes_contract(tmp_path):
     """Verify that SQLiteBackend satisfies the BaseBackend contract."""
     from tests.test_backend_contract import run_backend_contract_suite
+
     backend = SQLiteBackend(db_path=str(tmp_path / "contract_memory.db"))
     run_backend_contract_suite(backend, tmp_path)
-
-

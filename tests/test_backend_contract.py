@@ -1,16 +1,17 @@
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional, List
+from typing import List, Optional
 
 from learnkit.backends.base import BaseBackend
 from learnkit.schemas.base import MemoryRecord, MemoryType
-from learnkit.schemas.skill import SkillRecord
 from learnkit.schemas.fact import FactRecord
+from learnkit.schemas.skill import SkillRecord
 
 
 class DictBackend(BaseBackend):
     """A simple in-memory dict backend for testing the backend contract."""
+
     def __init__(self):
         self.records: dict[str, MemoryRecord] = {}
 
@@ -32,7 +33,7 @@ class DictBackend(BaseBackend):
         scope: Optional[str] = None,
         min_confidence: float = 0.0,
         limit: int = 8,
-        exclude_stale: bool = True
+        exclude_stale: bool = True,
     ) -> List[MemoryRecord]:
         results = []
         for r in self.records.values():
@@ -50,19 +51,20 @@ class DictBackend(BaseBackend):
                 continue
             if r.is_expired():
                 continue
-            
+
             # Simple substring matching for dict search
             content_str = str(r.content) + (r.task_type or "")
             if query.lower() in content_str.lower():
                 results.append(r)
-        
+
         # Sort by confidence descending
         results.sort(key=lambda x: x.confidence, reverse=True)
         return results[:limit]
 
     def list_by_domain(self, domain: str, limit: int = 20) -> List[MemoryRecord]:
         results = [
-            r for r in self.records.values()
+            r
+            for r in self.records.values()
             if domain in r.domains and r.status == "active"
         ]
         results.sort(key=lambda x: x.confidence, reverse=True)
@@ -70,7 +72,8 @@ class DictBackend(BaseBackend):
 
     def list_by_scope(self, scope: str = "team", limit: int = 20) -> List[MemoryRecord]:
         results = [
-            r for r in self.records.values()
+            r
+            for r in self.records.values()
             if r.scope == scope and r.status == "active"
         ]
         results.sort(key=lambda x: x.confidence, reverse=True)
@@ -147,13 +150,13 @@ def run_backend_contract_suite(backend: BaseBackend, tmp_path: Path):
         confidence=0.85,
     )
     backend.add(skill)
-    
+
     retrieved = backend.read(skill.id)
     assert retrieved is not None
     assert isinstance(retrieved, SkillRecord)
     assert retrieved.task_type == "nda_review"
     assert retrieved.confidence == 0.85
-    
+
     # 2. Search filtering
     results = backend.search("NDA", domain="legal")
     assert len(results) == 1
@@ -169,10 +172,10 @@ def run_backend_contract_suite(backend: BaseBackend, tmp_path: Path):
         expires_at=(datetime.utcnow() - timedelta(days=1)).isoformat(),
     )
     backend.add(expired)
-    
+
     # expired record excluded from standard search
     assert len(backend.search("document")) == 0
-    
+
     # stale marking works
     stale_count = backend.mark_expired_stale()
     assert stale_count >= 1
@@ -187,10 +190,10 @@ def run_backend_contract_suite(backend: BaseBackend, tmp_path: Path):
         created_at=(datetime.utcnow() - timedelta(hours=25)).isoformat(),
     )
     backend.add(quarantined)
-    
+
     # quarantined is not returned in search
     assert len(backend.search("draft")) == 0
-    
+
     # promotion works
     promoted = backend.promote_quarantined(min_age_hours=24)
     assert promoted >= 1
@@ -205,7 +208,7 @@ def run_backend_contract_suite(backend: BaseBackend, tmp_path: Path):
     export_file = tmp_path / "export_contract.json"
     exported_count = backend.export_json(export_file)
     assert exported_count >= 2
-    
+
     # Import into a fresh backend (we can use DictBackend for safety or a fresh sqlite)
     fresh_backend = DictBackend()
     imported_count = fresh_backend.import_json(export_file)
@@ -216,7 +219,7 @@ def run_backend_contract_suite(backend: BaseBackend, tmp_path: Path):
     # 7. update & decay confidence
     backend.update_confidence(skill.id, 0.5)
     assert backend.read(skill.id).confidence == 0.5
-    
+
     decayed_count = backend.decay_confidence(weeks=2, decay_rate=0.05)
     assert decayed_count >= 1
     # skill confidence was 0.5, decayed 5% twice: 0.5 - 2*0.025 (actually skill confidence decay is 0.5 * 0.95 * 0.95 = 0.45125 or simple 0.5 - 2*0.05*0.5)

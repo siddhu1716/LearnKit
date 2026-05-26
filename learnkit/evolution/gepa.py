@@ -11,11 +11,13 @@ Key changes from original:
 - Outputs to LearnKit memory backend, not ~/.hermes/skills/
 """
 
-import dspy
 from concurrent.futures import ThreadPoolExecutor
+
+import dspy
+
 from ..backends.base import BaseBackend
-from ..schemas.skill import SkillRecord
 from ..evaluator import Evaluator
+from ..schemas.skill import SkillRecord
 
 GEPA_SYSTEM = """
 You are evolving an AI agent skill to improve its success rate.
@@ -34,6 +36,7 @@ Each mutation should target a different failure pattern observed in the traces.
 Respond with JSON: {{"mutations": [{{ "steps": [...], "constraints": [...], "failure_modes": [...] }}]}}
 """
 
+
 class GEPAEvolver:
 
     def __init__(self, backend: BaseBackend, evaluator: Evaluator, lm=None):
@@ -45,7 +48,7 @@ class GEPAEvolver:
         self,
         skill: SkillRecord,
         traces: list,
-        n_trials: int = 3  # ReaComp: ensemble diversity — minimum 3 runs
+        n_trials: int = 3,  # ReaComp: ensemble diversity — minimum 3 runs
     ) -> list[SkillRecord]:
         """
         Runs n_trials parallel evolution trials and returns all variants.
@@ -55,30 +58,32 @@ class GEPAEvolver:
         import json
         import uuid
 
-        traces_summary = "\n".join([
-            f"- Task: {t.task[:100]}, Quality: {t.quality_score}/5"
-            for t in traces[:10]
-        ])
+        traces_summary = "\n".join(
+            [
+                f"- Task: {t.task[:100]}, Quality: {t.quality_score}/5"
+                for t in traces[:10]
+            ]
+        )
 
         prompt = GEPA_SYSTEM.format(
             skill_json=skill.model_dump_json(indent=2),
             traces_summary=traces_summary,
-            success_rate=skill.success_rate or 0.5
+            success_rate=skill.success_rate or 0.5,
         )
 
         def run_trial(_):
             with dspy.context(lm=self.lm):
                 # DSPy 3.x LM returns a list
                 raw = self.lm(prompt)[0]
-                
+
             if raw.startswith("```json"):
                 raw = raw[7:-3]
-                
+
             try:
                 data = json.loads(raw)
             except Exception:
                 data = {}
-                
+
             variants = []
             for mutation in data.get("mutations", [])[:3]:
                 new_skill = skill.model_copy(deep=True)

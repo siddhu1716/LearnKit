@@ -17,7 +17,7 @@ from typing import Optional
 @dataclass
 class TrajectoryStep:
     step: int
-    role: str                        # "user" | "assistant" | "tool"
+    role: str  # "user" | "assistant" | "tool"
     content: str
     tool_name: Optional[str] = None
     tool_input: Optional[dict] = None
@@ -31,30 +31,37 @@ class Trajectory:
     task: str = ""
     domain_hint: Optional[str] = None
     steps: list = field(default_factory=list)
-    outcome: Optional[str] = None          # "success" | "failure" | "partial"
+    outcome: Optional[str] = None  # "success" | "failure" | "partial"
     quality_score: Optional[float] = None  # 0–5, set by Evaluator
     created_at: str = field(default_factory=lambda: time.strftime("%Y-%m-%dT%H:%M:%SZ"))
 
     def add_step(self, role: str, content: str, **kwargs) -> None:
-        self.steps.append(TrajectoryStep(
-            step=len(self.steps) + 1,
-            role=role,
-            content=content,
-            **kwargs,
-        ))
+        self.steps.append(
+            TrajectoryStep(
+                step=len(self.steps) + 1,
+                role=role,
+                content=content,
+                **kwargs,
+            )
+        )
 
     def save(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w") as f:
             for step in self.steps:
                 f.write(json.dumps(asdict(step)) + "\n")
-            f.write(json.dumps({
-                "id": self.id,
-                "task": self.task,
-                "outcome": self.outcome,
-                "quality_score": self.quality_score,
-                "created_at": self.created_at,
-            }) + "\n")
+            f.write(
+                json.dumps(
+                    {
+                        "id": self.id,
+                        "task": self.task,
+                        "outcome": self.outcome,
+                        "quality_score": self.quality_score,
+                        "created_at": self.created_at,
+                    }
+                )
+                + "\n"
+            )
 
     @classmethod
     def load(cls, path: Path) -> "Trajectory":

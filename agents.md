@@ -82,7 +82,7 @@ Files to study before Phase 3:
 - `toolsets.py` + `tools/registry.py` — backend registration pattern
 - `hermes-agent-self-evolution/` — GEPA MIT-licensed evolution loop
 
-Key principle borrowed: 
+Key principle borrowed:
 
 **bounded memory**. Hermes intentionally limits memory size to avoid "memory soup." We enforce this with a hard token cap (1,200 tokens / 8 records maximum per retrieval). This is non-negotiable.
 - **Layered memory** — working memory (hot, in-session), semantic memory (warm, extracted facts), episodic memory (cold, full history). We adopt this tier model.
@@ -350,7 +350,7 @@ class TrajectoryStep:
     timestamp: str = field(default_factory=lambda: time.strftime("%Y-%m-%dT%H:%M:%SZ"))
 
 
-@dataclass  
+@dataclass
 class Trajectory:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     task: str = ""
@@ -576,9 +576,9 @@ class SQLiteBackend:
         content_text = " ".join(str(v) for v in record.content.values() if isinstance(v, (str, list)))
         if isinstance(content_text, list):
             content_text = " ".join(content_text)
-        
+
         conn.execute("""
-            INSERT OR REPLACE INTO records 
+            INSERT OR REPLACE INTO records
             (id, type, domains, task_type, content, confidence, reuse_count,
              success_rate, scope, status, created_at, expires_at, full_record)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
@@ -737,7 +737,7 @@ def compose_context(
         failures = skill.content.get("failure_modes", [])
         confidence_pct = int(skill.confidence * 100)
         reuses = skill.reuse_count
-        
+
         block = f"SKILL — {skill.task_type} (confidence {confidence_pct}%, used {reuses} times):"
         if steps:
             block += "\n" + "\n".join(f"  {i+1}. {s}" for i, s in enumerate(steps))
@@ -950,12 +950,12 @@ class EvaluationResult:
 class Evaluator:
     """
     Quality gate before any record enters the memory store.
-    
+
     Priority order (most reliable first):
     1. USER_FEEDBACK — explicit thumbs up/down or rating
     2. LLM_JUDGE — separate model reads task + response, scores 0-5
     3. NLI_CONSISTENCY — factual consistency check (cheapest, least reliable)
-    
+
     Failure records skip this gate entirely (they already failed — store immediately).
     """
 
@@ -1079,7 +1079,7 @@ Focus on the APPROACH, not the specific content. The skill must generalize.
 class MemoryDistiller:
     """
     Converts successful execution traces into typed memory records.
-    
+
     Key insight from ReaComp: the reasoning trace (CoT) is the learning signal.
     Removing it collapses distillation quality dramatically.
     Without the reasoning trace, the distiller can only see inputs and outputs,
@@ -1325,7 +1325,7 @@ class LearnKit:
     def agent(self, domain: Optional[str] = None, task_type: Optional[str] = None):
         """
         Decorator that wraps any agent function with the full LearnKit loop.
-        
+
         Usage:
             @lk.agent(domain="legal")
             def my_agent(task: str) -> str:

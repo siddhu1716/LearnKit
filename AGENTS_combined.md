@@ -30,14 +30,14 @@ State a plan for multi‑step tasks. Loop until verified. Don't ship until the v
 
 **LearnKit** is an agent‑agnostic SDK that gives any AI agent a self‑improving memory layer.
 
-*The core loop, in plain English:*  
-1. User asks an agent a task  
-2. LearnKit classifies the task  
-3. LearnKit retrieves relevant past experience from memory  
-4. That experience is injected into the agent's context  
-5. Agent runs and produces a response  
-6. LearnKit evaluates quality of the response  
-7. If quality is good enough, the trace is distilled into typed memory records  
+*The core loop, in plain English:*
+1. User asks an agent a task
+2. LearnKit classifies the task
+3. LearnKit retrieves relevant past experience from memory
+4. That experience is injected into the agent's context
+5. Agent runs and produces a response
+6. LearnKit evaluates quality of the response
+7. If quality is good enough, the trace is distilled into typed memory records
 8. Those records improve every future run on similar tasks
 
 *This is fine‑tuning without fine‑tuning.* Every "learned" pattern is an auditable, deletable JSON record.

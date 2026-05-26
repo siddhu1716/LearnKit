@@ -11,17 +11,17 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
-from .base import BaseBackend
+from ..errors import BackendError
+from ..logging import get_logger
 from ..schemas.base import MemoryRecord, MemoryType
-from ..schemas.skill import SkillRecord
 from ..schemas.fact import FactRecord
 from ..schemas.failure import FailureRecord
-from ..schemas.strategy import StrategyRecord
-from ..schemas.preference import PreferenceRecord
-from ..schemas.trace import TraceRecord
 from ..schemas.heuristic import HeuristicRecord
-from ..logging import get_logger
-from ..errors import BackendError
+from ..schemas.preference import PreferenceRecord
+from ..schemas.skill import SkillRecord
+from ..schemas.strategy import StrategyRecord
+from ..schemas.trace import TraceRecord
+from .base import BaseBackend
 
 logger = get_logger("sqlite_backend")
 
@@ -35,11 +35,13 @@ RECORD_TYPES = {
     "heuristic": HeuristicRecord,
 }
 
+
 def parse_record(data_json: str) -> MemoryRecord:
     data = json.loads(data_json)
     rec_type = data.get("type")
     cls = RECORD_TYPES.get(rec_type, MemoryRecord)
     return cls.model_validate_json(data_json)
+
 
 def escape_fts(query: str) -> str:
     """Escapes special characters in FTS5 queries."""
@@ -52,10 +54,12 @@ def escape_fts(query: str) -> str:
         return " OR ".join(words)
     return safe
 
+
 class SQLiteBackend(BaseBackend):
     """
     SQLite memory backend. Uses SQLite FTS5 for BM25 full-text search.
     """
+
     def __init__(self, db_path: str = "~/.learnkit/memory.db", embedder=None):
         self._is_memory = db_path == ":memory:"
         self._memory_conn: Optional[sqlite3.Connection] = None
@@ -63,14 +67,15 @@ class SQLiteBackend(BaseBackend):
         if not self._is_memory:
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.embedder = embedder
-        
+
         self._vec_enabled = False
         self._vec_initialized = False
         self._vec_warned = False
         self._lock = threading.Lock()
-        
+
         try:
             import sqlite_vec
+
             self._sqlite_vec = sqlite_vec
             self._vec_available = True
         except ImportError:
@@ -87,15 +92,20 @@ class SQLiteBackend(BaseBackend):
                 conn.execute("PRAGMA synchronous=NORMAL;")
 
             with conn:
-                conn.execute("""
+                conn.execute(
+                    """
                     CREATE TABLE IF NOT EXISTS metadata (
                         key TEXT PRIMARY KEY,
                         value TEXT
                     )
-                """)
-                conn.execute("INSERT OR IGNORE INTO metadata (key, value) VALUES ('schema_version', '1')")
+                """
+                )
+                conn.execute(
+                    "INSERT OR IGNORE INTO metadata (key, value) VALUES ('schema_version', '1')"
+                )
 
-                conn.execute("""
+                conn.execute(
+                    """
                     CREATE TABLE IF NOT EXISTS records (
                         id TEXT PRIMARY KEY,
                         type TEXT NOT NULL,
@@ -112,22 +122,29 @@ class SQLiteBackend(BaseBackend):
                         last_reinforced TEXT,
                         full_record TEXT
                     )
-                """)
+                """
+                )
 
                 try:
-                    conn.execute("""
+                    conn.execute(
+                        """
                         CREATE VIRTUAL TABLE IF NOT EXISTS records_fts USING fts5(
                             id, task_type, content_text, domains_text
                         )
-                    """)
+                    """
+                    )
                 except sqlite3.OperationalError:
-                    conn.execute("""
+                    conn.execute(
+                        """
                         CREATE TABLE IF NOT EXISTS records_fts (
                             id TEXT PRIMARY KEY, task_type TEXT, content_text TEXT, domains_text TEXT
                         )
-                    """)
+                    """
+                    )
         except sqlite3.Error as e:
-            logger.error("Database initialization failed", extra={"error_type": type(e).__name__})
+            logger.error(
+                "Database initialization failed", extra={"error_type": type(e).__name__}
+            )
             raise BackendError(f"Database init failed: {e}") from e
         finally:
             self._close(conn)
@@ -141,7 +158,7 @@ class SQLiteBackend(BaseBackend):
                     self._memory_conn.enable_load_extension(True)
                     self._sqlite_vec.load(self._memory_conn)
             return self._memory_conn
-        
+
         conn = sqlite3.connect(self.db_path, timeout=10.0)
         conn.row_factory = sqlite3.Row
         if self._vec_available:
@@ -159,20 +176,27 @@ class SQLiteBackend(BaseBackend):
                 if not self._vec_initialized:
                     try:
                         with conn:
-                            conn.execute("""
+                            conn.execute(
+                                """
                                 CREATE TABLE IF NOT EXISTS vec_mapping (
                                     id TEXT PRIMARY KEY
                                 )
-                            """)
-                            conn.execute(f"""
+                            """
+                            )
+                            conn.execute(
+                                f"""
                                 CREATE VIRTUAL TABLE IF NOT EXISTS records_vec USING vec0(
                                     rowid INTEGER PRIMARY KEY,
                                     embedding float[{dim}]
                                 )
-                            """)
+                            """
+                            )
                         self._vec_enabled = True
                     except sqlite3.Error as e:
-                        logger.warning("Failed to initialize sqlite-vec table", extra={"error_type": type(e).__name__})
+                        logger.warning(
+                            "Failed to initialize sqlite-vec table",
+                            extra={"error_type": type(e).__name__},
+                        )
                         self._vec_enabled = False
                     self._vec_initialized = True
 
@@ -191,7 +215,7 @@ class SQLiteBackend(BaseBackend):
         conn = self._conn()
         domains_text = " ".join(record.domains.keys())
         content_text = self._get_record_text(record)
-        
+
         embedding = None
         if self.embedder:
             if self._vec_available:
@@ -199,48 +223,79 @@ class SQLiteBackend(BaseBackend):
                     embedding = self.embedder(content_text)
                     self._ensure_vec_table(conn, len(embedding))
                 except Exception as e:
-                    logger.warning("Embedding generation failed", extra={"event": "embed_fail", "error_type": type(e).__name__})
+                    logger.warning(
+                        "Embedding generation failed",
+                        extra={"event": "embed_fail", "error_type": type(e).__name__},
+                    )
             elif not self._vec_warned:
-                logger.warning("Embedder provided but sqlite-vec is not installed. Falling back to BM25.")
+                logger.warning(
+                    "Embedder provided but sqlite-vec is not installed. Falling back to BM25."
+                )
                 self._vec_warned = True
 
         try:
             with conn:
-                conn.execute("""
-                    INSERT OR REPLACE INTO records 
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO records
                     (id, type, domains, task_type, content, confidence, reuse_count,
                      success_rate, scope, status, created_at, expires_at, full_record)
                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
-                """, (
-                    record.id, record.type, json.dumps(record.domains),
-                    record.task_type, json.dumps(record.content),
-                    record.confidence, record.reuse_count, record.success_rate,
-                    record.scope, record.status, record.created_at, record.expires_at,
-                    record.model_dump_json()
-                ))
-                
+                """,
+                    (
+                        record.id,
+                        record.type,
+                        json.dumps(record.domains),
+                        record.task_type,
+                        json.dumps(record.content),
+                        record.confidence,
+                        record.reuse_count,
+                        record.success_rate,
+                        record.scope,
+                        record.status,
+                        record.created_at,
+                        record.expires_at,
+                        record.model_dump_json(),
+                    ),
+                )
+
                 conn.execute("DELETE FROM records_fts WHERE id=?", (record.id,))
-                conn.execute("""
+                conn.execute(
+                    """
                     INSERT INTO records_fts (id, task_type, content_text, domains_text)
                     VALUES (?,?,?,?)
-                """, (record.id, record.task_type or "", content_text, domains_text))
+                """,
+                    (record.id, record.task_type or "", content_text, domains_text),
+                )
 
                 if self._vec_enabled and embedding is not None:
                     # Manually handle rowid mapping
-                    conn.execute("INSERT OR IGNORE INTO vec_mapping (id) VALUES (?)", (record.id,))
-                    cursor = conn.execute("SELECT rowid FROM vec_mapping WHERE id=?", (record.id,))
+                    conn.execute(
+                        "INSERT OR IGNORE INTO vec_mapping (id) VALUES (?)",
+                        (record.id,),
+                    )
+                    cursor = conn.execute(
+                        "SELECT rowid FROM vec_mapping WHERE id=?", (record.id,)
+                    )
                     rowid = cursor.fetchone()[0]
                     import struct
+
                     embed_bytes = struct.pack(f"{len(embedding)}f", *embedding)
                     conn.execute("DELETE FROM records_vec WHERE rowid=?", (rowid,))
-                    conn.execute("INSERT INTO records_vec (rowid, embedding) VALUES (?, ?)", (rowid, embed_bytes))
+                    conn.execute(
+                        "INSERT INTO records_vec (rowid, embedding) VALUES (?, ?)",
+                        (rowid, embed_bytes),
+                    )
 
         except sqlite3.Error as e:
-            logger.error("Failed to add record", extra={"event": "db_write_fail", "error_type": type(e).__name__})
+            logger.error(
+                "Failed to add record",
+                extra={"event": "db_write_fail", "error_type": type(e).__name__},
+            )
             raise BackendError(f"Add failed: {e}") from e
         finally:
             self._close(conn)
-            
+
         return record.id
 
     def replace(self, record: MemoryRecord) -> str:
@@ -249,12 +304,17 @@ class SQLiteBackend(BaseBackend):
     def read(self, id: str) -> Optional[MemoryRecord]:
         conn = self._conn()
         try:
-            row = conn.execute("SELECT full_record FROM records WHERE id=?", (id,)).fetchone()
+            row = conn.execute(
+                "SELECT full_record FROM records WHERE id=?", (id,)
+            ).fetchone()
             if row is None:
                 return None
             return parse_record(row["full_record"])
         except sqlite3.Error as e:
-            logger.warning("Read failed", extra={"event": "db_read_fail", "error_type": type(e).__name__})
+            logger.warning(
+                "Read failed",
+                extra={"event": "db_read_fail", "error_type": type(e).__name__},
+            )
             raise BackendError(f"Read failed: {e}") from e
         finally:
             self._close(conn)
@@ -266,13 +326,18 @@ class SQLiteBackend(BaseBackend):
                 conn.execute("DELETE FROM records WHERE id=?", (id,))
                 conn.execute("DELETE FROM records_fts WHERE id=?", (id,))
                 if self._vec_enabled:
-                    cursor = conn.execute("SELECT rowid FROM vec_mapping WHERE id=?", (id,))
+                    cursor = conn.execute(
+                        "SELECT rowid FROM vec_mapping WHERE id=?", (id,)
+                    )
                     row = cursor.fetchone()
                     if row:
                         conn.execute("DELETE FROM records_vec WHERE rowid=?", (row[0],))
                         conn.execute("DELETE FROM vec_mapping WHERE id=?", (id,))
         except sqlite3.Error as e:
-            logger.error("Remove failed", extra={"event": "db_remove_fail", "error_type": type(e).__name__})
+            logger.error(
+                "Remove failed",
+                extra={"event": "db_remove_fail", "error_type": type(e).__name__},
+            )
             raise BackendError(f"Remove failed: {e}") from e
         finally:
             self._close(conn)
@@ -285,17 +350,19 @@ class SQLiteBackend(BaseBackend):
         scope: Optional[str] = None,
         min_confidence: float = 0.0,
         limit: int = 8,
-        exclude_stale: bool = True
+        exclude_stale: bool = True,
     ) -> list[MemoryRecord]:
         conn = self._conn()
         results = []
         try:
-            cursor = conn.execute("SELECT sql FROM sqlite_master WHERE name='records_fts'")
+            cursor = conn.execute(
+                "SELECT sql FROM sqlite_master WHERE name='records_fts'"
+            )
             sql_def = cursor.fetchone()
             is_fts5 = sql_def and "using fts5" in sql_def["sql"].lower()
 
             fts_query = escape_fts(query)
-            
+
             if is_fts5 and fts_query:
                 sql = """
                     SELECT r.full_record, r.confidence, r.created_at,
@@ -336,24 +403,29 @@ class SQLiteBackend(BaseBackend):
                 sql += " ORDER BY (bm25_score * r.confidence) DESC LIMIT ?"
             else:
                 sql += " ORDER BY r.confidence DESC LIMIT ?"
-            
+
             params.append(limit)
             rows = conn.execute(sql, params).fetchall()
 
             for row in rows:
                 try:
                     rec = parse_record(row["full_record"])
-                    rec._bm25_score = row["bm25_score"] if (is_fts5 and fts_query) else 1.0
+                    rec._bm25_score = (
+                        row["bm25_score"] if (is_fts5 and fts_query) else 1.0
+                    )
                     if not rec.is_expired():
                         results.append(rec)
                 except Exception:
                     pass
 
         except sqlite3.OperationalError as e:
-            logger.warning("Search query failed, falling back to empty", extra={"event": "db_search_fail", "error_type": type(e).__name__})
+            logger.warning(
+                "Search query failed, falling back to empty",
+                extra={"event": "db_search_fail", "error_type": type(e).__name__},
+            )
         finally:
             self._close(conn)
-            
+
         return results
 
     def hybrid_search(
@@ -365,20 +437,23 @@ class SQLiteBackend(BaseBackend):
         min_confidence: float = 0.0,
         limit: int = 8,
         exclude_stale: bool = True,
-        alpha: float = 0.5
+        alpha: float = 0.5,
     ) -> list[MemoryRecord]:
         if not self._vec_enabled or not self.embedder:
-            return self.search(query, record_type, domain, scope, min_confidence, limit, exclude_stale)
-            
+            return self.search(
+                query, record_type, domain, scope, min_confidence, limit, exclude_stale
+            )
+
         conn = self._conn()
         results = []
         try:
             query_embedding = self.embedder(query)
             import struct
+
             embed_bytes = struct.pack(f"{len(query_embedding)}f", *query_embedding)
-            
+
             fts_query = escape_fts(query)
-            
+
             sql = """
                 SELECT r.full_record, r.confidence,
                        COALESCE(bm25(records_fts), 0.0) as bm25_score,
@@ -391,9 +466,12 @@ class SQLiteBackend(BaseBackend):
                   AND r.status != 'quarantine'
             """
             if fts_query:
-                sql = sql.replace("COALESCE(bm25(records_fts), 0.0) as bm25_score", "COALESCE(bm25(records_fts), 0.0) as bm25_score")
+                sql = sql.replace(
+                    "COALESCE(bm25(records_fts), 0.0) as bm25_score",
+                    "COALESCE(bm25(records_fts), 0.0) as bm25_score",
+                )
             params = [embed_bytes, min_confidence]
-            
+
             if record_type:
                 sql += " AND r.type = ?"
                 params.append(record_type)
@@ -405,44 +483,54 @@ class SQLiteBackend(BaseBackend):
                 params.append(scope)
             if exclude_stale:
                 sql += " AND r.status != 'stale'"
-            
+
             rows = conn.execute(sql, params).fetchall()
-            
+
             scored = []
             for row in rows:
                 try:
                     rec = parse_record(row["full_record"])
                     if rec.is_expired():
                         continue
-                        
+
                     bm25_score = row["bm25_score"] or 0.0
-                    dense_dist = row["dense_dist"] if row["dense_dist"] is not None else 2.0
+                    dense_dist = (
+                        row["dense_dist"] if row["dense_dist"] is not None else 2.0
+                    )
                     dense_sim = 1.0 - (dense_dist / 2.0)
-                    
+
                     final_score = (alpha * dense_sim) + ((1 - alpha) * bm25_score)
                     scored.append((final_score, rec.confidence, rec))
                 except Exception:
                     pass
-                    
+
             scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
             results = [rec for _, _, rec in scored[:limit]]
-            
+
         except sqlite3.Error as e:
-            logger.warning("Hybrid search failed, falling back to BM25", extra={"event": "hybrid_fail", "error_type": type(e).__name__})
+            logger.warning(
+                "Hybrid search failed, falling back to BM25",
+                extra={"event": "hybrid_fail", "error_type": type(e).__name__},
+            )
             self._close(conn)
-            return self.search(query, record_type, domain, scope, min_confidence, limit, exclude_stale)
-            
+            return self.search(
+                query, record_type, domain, scope, min_confidence, limit, exclude_stale
+            )
+
         self._close(conn)
         return results
 
     def list_by_domain(self, domain: str, limit: int = 20) -> list[MemoryRecord]:
         conn = self._conn()
         try:
-            rows = conn.execute("""
+            rows = conn.execute(
+                """
                 SELECT full_record FROM records
                 WHERE domains LIKE ? AND status = 'active'
                 ORDER BY confidence DESC LIMIT ?
-            """, (f'%"{domain}"%', limit)).fetchall()
+            """,
+                (f'%"{domain}"%', limit),
+            ).fetchall()
             return [parse_record(r["full_record"]) for r in rows]
         finally:
             self._close(conn)
@@ -450,11 +538,14 @@ class SQLiteBackend(BaseBackend):
     def list_by_scope(self, scope: str = "team", limit: int = 20) -> list[MemoryRecord]:
         conn = self._conn()
         try:
-            rows = conn.execute("""
+            rows = conn.execute(
+                """
                 SELECT full_record FROM records
                 WHERE scope = ? AND status = 'active'
                 ORDER BY confidence DESC LIMIT ?
-            """, (scope, limit)).fetchall()
+            """,
+                (scope, limit),
+            ).fetchall()
             return [parse_record(r["full_record"]) for r in rows]
         finally:
             self._close(conn)
@@ -482,10 +573,12 @@ class SQLiteBackend(BaseBackend):
     def decay_confidence(self, weeks: int = 1, decay_rate: float = 0.02) -> int:
         conn = self._conn()
         try:
-            rows = conn.execute("""
+            rows = conn.execute(
+                """
                 SELECT full_record FROM records
                 WHERE status IN ('active', 'stale')
-            """).fetchall()
+            """
+            ).fetchall()
         finally:
             self._close(conn)
 
@@ -535,7 +628,9 @@ class SQLiteBackend(BaseBackend):
 
         imported = 0
         for item in payload:
-            record = RECORD_TYPES.get(item.get("type"), MemoryRecord).model_validate(item)
+            record = RECORD_TYPES.get(item.get("type"), MemoryRecord).model_validate(
+                item
+            )
             self.add(record)
             imported += 1
         return imported
@@ -543,10 +638,13 @@ class SQLiteBackend(BaseBackend):
     def _records_with_status(self, status: str) -> list[MemoryRecord]:
         conn = self._conn()
         try:
-            rows = conn.execute("""
+            rows = conn.execute(
+                """
                 SELECT full_record FROM records
                 WHERE status = ?
-            """, (status,)).fetchall()
+            """,
+                (status,),
+            ).fetchall()
             return [parse_record(r["full_record"]) for r in rows]
         finally:
             self._close(conn)

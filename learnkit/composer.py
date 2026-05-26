@@ -30,7 +30,7 @@ def compose_context(
         failures = skill.content.get("failure_modes", [])
         confidence_pct = int(skill.confidence * 100)
         reuses = skill.reuse_count
-        
+
         block = f"SKILL — {skill.task_type} (confidence {confidence_pct}%, used {reuses} times):"
         if steps:
             block += "\n" + "\n".join(f"  {i+1}. {s}" for i, s in enumerate(steps))
@@ -45,7 +45,9 @@ def compose_context(
     for f in failures:
         desc = f.content.get("description", "")
         what_to_avoid = f.content.get("what_to_avoid", "")
-        sections.append(f"KNOWN FAILURE in this domain:\n  {desc}\n  Avoid: {what_to_avoid}")
+        sections.append(
+            f"KNOWN FAILURE in this domain:\n  {desc}\n  Avoid: {what_to_avoid}"
+        )
 
     # 3. Facts — grounding information
     facts = [r for r in records if r.type == "fact"]
@@ -53,7 +55,9 @@ def compose_context(
         statement = fact.content.get("statement", "")
         source = fact.content.get("source", "unknown")
         is_stale = fact.status == "stale"
-        staleness = " ⚠️ (may be outdated — verify before relying on)" if is_stale else ""
+        staleness = (
+            " ⚠️ (may be outdated — verify before relying on)" if is_stale else ""
+        )
         sections.append(f"FACT (verified {source}){staleness}:\n  {statement}")
 
     # 4. Preferences

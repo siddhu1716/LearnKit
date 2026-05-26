@@ -1,22 +1,22 @@
 import functools
 import threading
-from typing import Optional, Callable, Dict
 from concurrent.futures import ThreadPoolExecutor
+from typing import Callable, Dict, Optional
 
-from .classifier import classify_task
-from .router import MemoryRouter
-from .retriever import SemanticRetriever
-from .composer import compose_context
-from .evaluator import Evaluator
-from .distiller import MemoryDistiller
-from .trajectory import Trajectory
-from .inference_mode import determine_inference_mode
-from .backends.sqlite import SQLiteBackend
 from .backends.registry import get_backend
-from .logging import get_logger
+from .classifier import classify_task
+from .composer import compose_context
+from .distiller import MemoryDistiller
 from .errors import PostProcessError
+from .evaluator import Evaluator
+from .inference_mode import determine_inference_mode
+from .logging import get_logger
+from .retriever import SemanticRetriever
+from .router import MemoryRouter
+from .trajectory import Trajectory
 
 logger = get_logger("core")
+
 
 class LearnKit:
     def __init__(
@@ -24,7 +24,7 @@ class LearnKit:
         memory_backend: str = "sqlite",
         evaluation: str = "llm_judge",
         scope: str = "team",
-        capture_reasoning: bool = True,    # ReaComp: mandatory CoT capture
+        capture_reasoning: bool = True,  # ReaComp: mandatory CoT capture
         quality_threshold: float = 3.5,
         classifier: Optional[Callable] = None,
         evaluator: Optional[Evaluator] = None,
@@ -32,7 +32,7 @@ class LearnKit:
         embedder: Optional[Callable] = None,
         background_postprocess: bool = True,
         max_workers: int = 4,
-        **backend_kwargs
+        **backend_kwargs,
     ):
         self.backend = get_backend(memory_backend, **backend_kwargs)
         self.router = MemoryRouter(max_records=8, max_tokens=1200)
@@ -45,7 +45,7 @@ class LearnKit:
         self.quality_threshold = quality_threshold
         self.evaluation_mode = evaluation
         self.background_postprocess = background_postprocess
-        
+
         # Concurrency safety: trajectory registry and bounded worker pool
         self._trajectories: Dict[str, Trajectory] = {}
         self._trajectory_lock = threading.Lock()
@@ -71,6 +71,7 @@ class LearnKit:
         """
         Decorator that wraps any agent function with the full LearnKit loop.
         """
+
         def decorator(fn: Callable) -> Callable:
             @functools.wraps(fn)
             def wrapper(task: str, *args, **kwargs) -> str:
@@ -82,11 +83,16 @@ class LearnKit:
                     result = fn(task, *args, **enriched_kwargs)
                 except Exception as e:
                     # Capture failure if the agent crashes
-                    logger.warning("Agent execution failed", extra={"event": "agent_crash", "error_type": type(e).__name__})
+                    logger.warning(
+                        "Agent execution failed",
+                        extra={"event": "agent_crash", "error_type": type(e).__name__},
+                    )
                     raise e
 
                 return self.finalize_run(run, result)
+
             return wrapper
+
         return decorator
 
     def prepare_run(self, task: str) -> dict:
@@ -94,9 +100,15 @@ class LearnKit:
             classification = self.classifier(task)
             domain_vector = classification.domains
         except Exception as e:
-            logger.warning("Classification failed, falling back to empty domains", extra={"event": "classifier_fallback", "error_type": type(e).__name__})
+            logger.warning(
+                "Classification failed, falling back to empty domains",
+                extra={"event": "classifier_fallback", "error_type": type(e).__name__},
+            )
             from .classifier import ClassificationOutput
-            classification = ClassificationOutput(task_type="unknown", domains={}, complexity="medium")
+
+            classification = ClassificationOutput(
+                task_type="unknown", domains={}, complexity="medium"
+            )
             domain_vector = {}
 
         try:
@@ -104,22 +116,25 @@ class LearnKit:
                 task=task,
                 domain_vector=domain_vector,
                 scope=self.scope,
-                router=self.router
+                router=self.router,
             )
         except Exception as e:
-            logger.warning("Retrieval failed, returning empty context", extra={"event": "retrieval_fallback", "error_type": type(e).__name__})
+            logger.warning(
+                "Retrieval failed, returning empty context",
+                extra={"event": "retrieval_fallback", "error_type": type(e).__name__},
+            )
             records = []
 
         mode = determine_inference_mode(records)
         context_block = compose_context(records, task, mode)
-        
+
         traj = Trajectory(task=task)
         traj.add_step("user", task)
-        
+
         with self._trajectory_lock:
             self._trajectories[traj.id] = traj
             self._last_run_id = traj.id
-            
+
         return {
             "classification": classification,
             "domain_vector": domain_vector,
@@ -132,7 +147,7 @@ class LearnKit:
     def finalize_run(self, run: dict, response: str) -> str:
         traj = run["trajectory"]
         traj.add_step("assistant", response)
-        
+
         self._post_process(traj, run["domain_vector"])
         return response
 
@@ -148,33 +163,37 @@ class LearnKit:
         Uses a bounded thread pool to avoid unbound thread growth and logs exceptions.
         """
         future = self._worker_pool.submit(self._post_process_now, traj, domain_vector)
-        
+
         # Add a done callback to catch and log silent failures in the thread
         def _handle_result(fut):
             try:
                 fut.result()
             except Exception as e:
-                logger.error("Background post-processing failed", extra={
-                    "event": "post_process_crash",
-                    "error_type": type(e).__name__
-                })
-        
+                logger.error(
+                    "Background post-processing failed",
+                    extra={
+                        "event": "post_process_crash",
+                        "error_type": type(e).__name__,
+                    },
+                )
+
         future.add_done_callback(_handle_result)
 
     def _post_process_now(self, traj: Trajectory, domain_vector: dict) -> None:
         try:
             eval_result = self.evaluator.evaluate_with_llm_judge(
-                task=traj.task,
-                response=traj.steps[-1].content if traj.steps else ""
+                task=traj.task, response=traj.steps[-1].content if traj.steps else ""
             )
             traj.quality_score = eval_result.score
-            traj.outcome = "success" if eval_result.score >= self.quality_threshold else "failure"
+            traj.outcome = (
+                "success" if eval_result.score >= self.quality_threshold else "failure"
+            )
 
             if eval_result.score >= self.quality_threshold:
                 skill, facts, failures, trace_record = self.distiller.distill(
                     trajectory=traj,
                     domain_vector=domain_vector,
-                    quality_score=eval_result.score
+                    quality_score=eval_result.score,
                 )
                 if skill:
                     self.backend.add(skill)
@@ -187,13 +206,14 @@ class LearnKit:
             else:
                 # Low quality — store as failure record immediately
                 from .schemas.failure import FailureRecord
+
                 failure = FailureRecord(
                     domains=domain_vector,
                     content={
                         "description": f"Failed task: {traj.task[:100]}",
-                        "what_to_avoid": "Approach used in this trace"
+                        "what_to_avoid": "Approach used in this trace",
                     },
-                    status="active"
+                    status="active",
                 )
                 self.backend.add(failure)
         except Exception as e:
@@ -207,7 +227,11 @@ class LearnKit:
     ) -> dict[str, int]:
         """Run the local maintenance loop: decay, stale marking, quarantine promotion."""
         return {
-            "decayed": self.backend.decay_confidence(weeks=weeks, decay_rate=decay_rate),
+            "decayed": self.backend.decay_confidence(
+                weeks=weeks, decay_rate=decay_rate
+            ),
             "stale": self.backend.mark_expired_stale(),
-            "promoted": self.backend.promote_quarantined(min_age_hours=quarantine_hours),
+            "promoted": self.backend.promote_quarantined(
+                min_age_hours=quarantine_hours
+            ),
         }

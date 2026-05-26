@@ -144,11 +144,11 @@ SKILL — contract_summarization (used 14 times, success rate 91%):
   5. Structure as bullet summary under 500 words
 
 FAILURE — known risk in this domain:
-  Hallucinated clause references in NDAs. Always cite clause numbers 
+  Hallucinated clause references in NDAs. Always cite clause numbers
   from source document only.
 
 FACT — verified 2026-03-10:
-  EU GDPR fines cap at 4% of global annual revenue or €20M, 
+  EU GDPR fines cap at 4% of global annual revenue or €20M,
   whichever is higher.
 === End Context ===
 ```

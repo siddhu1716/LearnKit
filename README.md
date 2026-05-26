@@ -1,6 +1,6 @@
 # LearnKit
 
-> **Work In Progress: Pre-Release Concept**  
+> **Work In Progress: Pre-Release Concept**
 > LearnKit is currently in active development. This repository serves as the architectural blueprint and conceptual overview of what we are building. The code is not yet released for production use.
 
 ---

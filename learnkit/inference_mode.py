@@ -4,13 +4,14 @@ ReaComp two-stage inference mode classification.
 """
 
 from enum import Enum
+
 from .schemas.base import MemoryRecord
 
 
 class InferenceMode(Enum):
-    PRESCRIPTIVE = "prescriptive"   # skill confidence >= 0.90 — follow closely
-    GUIDED = "guided"               # skill confidence >= 0.70 — use as scaffold
-    EXPLORATORY = "exploratory"     # no match — full LLM reasoning, capture trace
+    PRESCRIPTIVE = "prescriptive"  # skill confidence >= 0.90 — follow closely
+    GUIDED = "guided"  # skill confidence >= 0.70 — use as scaffold
+    EXPLORATORY = "exploratory"  # no match — full LLM reasoning, capture trace
 
 
 def determine_inference_mode(records: list[MemoryRecord]) -> InferenceMode:

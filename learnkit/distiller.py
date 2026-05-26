@@ -4,15 +4,16 @@ Schema validation, TraceRecord emission, and contrastive failure extraction.
 """
 
 import json
-import dspy
-from typing import Optional, Tuple, List
+from typing import List, Optional, Tuple
 
-from .trajectory import Trajectory
-from .schemas.skill import SkillRecord
-from .schemas.failure import FailureRecord
-from .schemas.fact import FactRecord
-from .schemas.trace import TraceRecord
+import dspy
+
 from .logging import get_logger
+from .schemas.fact import FactRecord
+from .schemas.failure import FailureRecord
+from .schemas.skill import SkillRecord
+from .schemas.trace import TraceRecord
+from .trajectory import Trajectory
 
 logger = get_logger("distiller")
 
@@ -52,6 +53,7 @@ If no reusable skill can be extracted (task was one-off), set skill to null.
 Focus on the APPROACH, not the specific content. The skill must generalize.
 """
 
+
 class MemoryDistiller:
     """
     Converts successful execution traces into typed memory records.
@@ -64,13 +66,20 @@ class MemoryDistiller:
         self,
         trajectory: Trajectory,
         domain_vector: dict[str, float],
-        quality_score: float
-    ) -> Tuple[Optional[SkillRecord], List[FactRecord], List[FailureRecord], Optional[TraceRecord]]:
+        quality_score: float,
+    ) -> Tuple[
+        Optional[SkillRecord],
+        List[FactRecord],
+        List[FailureRecord],
+        Optional[TraceRecord],
+    ]:
         """
         Distill trajectory into Skill, Fact, Failure, and Trace records.
         """
         if quality_score < 3.5:
-            raise ValueError("Distillation called on low-quality trace. Evaluator should have gated this.")
+            raise ValueError(
+                "Distillation called on low-quality trace. Evaluator should have gated this."
+            )
 
         # Flatten trajectory for the prompt
         reasoning_steps = []
@@ -92,7 +101,7 @@ class MemoryDistiller:
             quality=quality_score,
             reasoning="\n".join(reasoning_steps) or "No reasoning trace captured",
             steps="\n".join(execution_steps),
-            output=final_output[:500]
+            output=final_output[:500],
         )
 
         try:
@@ -101,7 +110,7 @@ class MemoryDistiller:
         except Exception as e:
             logger.warning(
                 "Distillation model call failed",
-                extra={"event": "distill_model_fail", "error": str(e)}
+                extra={"event": "distill_model_fail", "error": str(e)},
             )
             # Safe degradation: don't pollute memory, return empty tuple
             return None, [], [], None
@@ -113,7 +122,7 @@ class MemoryDistiller:
             if lines[0].startswith("```json") or lines[0] == "```":
                 cleaned = "\n".join(lines[1:-1])
         cleaned = cleaned.strip()
-        
+
         try:
             data = json.loads(cleaned)
         except json.JSONDecodeError:
@@ -122,12 +131,18 @@ class MemoryDistiller:
             except json.JSONDecodeError as e:
                 logger.warning(
                     "Distillation JSON parsing failed, returning empty records",
-                    extra={"event": "distillation_parse_fail", "error_type": type(e).__name__, "error": str(e)}
+                    extra={
+                        "event": "distillation_parse_fail",
+                        "error_type": type(e).__name__,
+                        "error": str(e),
+                    },
                 )
                 data = {"skill": None, "facts": [], "failures": []}
 
         if not isinstance(data, dict):
-            logger.warning("Distillation output is not a JSON object, returning empty records")
+            logger.warning(
+                "Distillation output is not a JSON object, returning empty records"
+            )
             data = {"skill": None, "facts": [], "failures": []}
 
         # Build records
@@ -138,48 +153,66 @@ class MemoryDistiller:
                     domains=domain_vector,
                     task_type=trajectory.task[:80],
                     content=data["skill"],
-                    status="quarantine"   # 24h quarantine before becoming active
+                    status="quarantine",  # 24h quarantine before becoming active
                 )
             except Exception as e:
-                logger.warning("Failed to validate skill schema", extra={"error": str(e)})
+                logger.warning(
+                    "Failed to validate skill schema", extra={"error": str(e)}
+                )
 
         facts = []
         for f in data.get("facts", []):
             if isinstance(f, dict) and "statement" in f:
                 try:
-                    facts.append(FactRecord(
-                        domains=domain_vector,
-                        content={"statement": f["statement"], "source": f.get("source", "agent trace")},
-                        status="quarantine"
-                    ))
+                    facts.append(
+                        FactRecord(
+                            domains=domain_vector,
+                            content={
+                                "statement": f["statement"],
+                                "source": f.get("source", "agent trace"),
+                            },
+                            status="quarantine",
+                        )
+                    )
                 except Exception as e:
-                    logger.warning("Failed to validate fact schema", extra={"error": str(e)})
+                    logger.warning(
+                        "Failed to validate fact schema", extra={"error": str(e)}
+                    )
 
         # Failure records activate IMMEDIATELY — no quarantine
         failures = []
         for f in data.get("failures", []):
             if isinstance(f, dict):
                 try:
-                    failures.append(FailureRecord(
-                        domains=domain_vector,
-                        content={"description": f.get("description", ""), "what_to_avoid": f.get("what_to_avoid", "")},
-                        status="active"   # immediately active
-                    ))
+                    failures.append(
+                        FailureRecord(
+                            domains=domain_vector,
+                            content={
+                                "description": f.get("description", ""),
+                                "what_to_avoid": f.get("what_to_avoid", ""),
+                            },
+                            status="active",  # immediately active
+                        )
+                    )
                 except Exception as e:
-                    logger.warning("Failed to validate failure schema", extra={"error": str(e)})
+                    logger.warning(
+                        "Failed to validate failure schema", extra={"error": str(e)}
+                    )
 
         # TraceRecord emission (active immediately)
         trace_steps = []
         for step in trajectory.steps:
-            trace_steps.append({
-                "step": step.step,
-                "role": step.role,
-                "content": step.content,
-                "tool_name": step.tool_name,
-                "tool_input": step.tool_input,
-                "reasoning": step.reasoning,
-                "timestamp": step.timestamp
-            })
+            trace_steps.append(
+                {
+                    "step": step.step,
+                    "role": step.role,
+                    "content": step.content,
+                    "tool_name": step.tool_name,
+                    "tool_input": step.tool_input,
+                    "reasoning": step.reasoning,
+                    "timestamp": step.timestamp,
+                }
+            )
 
         try:
             trace_record = TraceRecord(
@@ -189,12 +222,14 @@ class MemoryDistiller:
                     "trajectory_id": trajectory.id,
                     "task": trajectory.task,
                     "summary": f"Distilled trace of {trajectory.task} with quality {quality_score}",
-                    "steps": trace_steps
+                    "steps": trace_steps,
                 },
-                status="active"
+                status="active",
             )
         except Exception as e:
-            logger.warning("Failed to validate trace record schema", extra={"error": str(e)})
+            logger.warning(
+                "Failed to validate trace record schema", extra={"error": str(e)}
+            )
             trace_record = None
 
         return skill, facts, failures, trace_record

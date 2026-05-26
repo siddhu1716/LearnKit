@@ -1,10 +1,10 @@
 from learnkit.adapters import LangChainAdapter, LangGraphAdapter, OpenAIRawAdapter
+from learnkit.backends.sqlite import SQLiteBackend
 from learnkit.classifier import ClassificationOutput
 from learnkit.core import LearnKit
 from learnkit.evaluator import EvaluationResult, EvaluationSignal
 from learnkit.retriever import SemanticRetriever
 from learnkit.schemas.skill import SkillRecord
-from learnkit.backends.sqlite import SQLiteBackend
 
 
 class FakeEvaluator:
@@ -34,12 +34,14 @@ def build_learnkit():
         distiller=FakeDistiller(),
         background_postprocess=False,
     )
-    lk.backend.add(SkillRecord(
-        domains={"coding": 0.9},
-        task_type="debug_python_error",
-        content={"steps": ["inspect traceback"]},
-        confidence=0.91,
-    ))
+    lk.backend.add(
+        SkillRecord(
+            domains={"coding": 0.9},
+            task_type="debug_python_error",
+            content={"steps": ["inspect traceback"]},
+            confidence=0.91,
+        )
+    )
     return lk
 
 

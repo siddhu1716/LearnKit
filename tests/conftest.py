@@ -2,11 +2,11 @@
 
 import pytest
 
-from learnkit.trajectory import Trajectory
-from learnkit.schemas.skill import SkillRecord
+from learnkit.backends.sqlite import SQLiteBackend
 from learnkit.schemas.fact import FactRecord
 from learnkit.schemas.failure import FailureRecord
-from learnkit.backends.sqlite import SQLiteBackend
+from learnkit.schemas.skill import SkillRecord
+from learnkit.trajectory import Trajectory
 
 
 def _make_mock_lm(response: str):
@@ -103,8 +103,8 @@ def sample_trajectory():
         role="assistant",
         content="The NDA requires both parties to maintain confidentiality for 3 years...",
         reasoning="I identified the key obligations: confidentiality period is 3 years, "
-                  "mutual NDA so both parties have equal obligations, no carve-outs for "
-                  "publicly available information which is unusual.",
+        "mutual NDA so both parties have equal obligations, no carve-outs for "
+        "publicly available information which is unusual.",
     )
     t.outcome = "success"
     t.quality_score = 4.5

@@ -3,6 +3,7 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional
+
 from ..schemas.base import MemoryRecord, MemoryType
 
 
@@ -37,7 +38,7 @@ class BaseBackend(ABC):
         scope: Optional[str] = None,
         min_confidence: float = 0.0,
         limit: int = 8,
-        exclude_stale: bool = True
+        exclude_stale: bool = True,
     ) -> list[MemoryRecord]:
         """Search records."""
         pass

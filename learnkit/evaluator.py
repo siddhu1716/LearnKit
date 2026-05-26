@@ -3,29 +3,39 @@
 Bounded prompt inputs, JSON parse schema repair, and signal metadata inclusion.
 """
 
+import json
 import os
 import re
-import json
-import dspy
 from enum import Enum
-from typing import Optional, Any
+from typing import Any, Optional
+
+import dspy
 
 from .logging import get_logger
 
 logger = get_logger("evaluator")
+
 
 class EvaluationSignal(str, Enum):
     USER_FEEDBACK = "user_feedback"
     LLM_JUDGE = "llm_judge"
     NLI_CONSISTENCY = "nli_consistency"
 
+
 class EvaluationResult:
-    def __init__(self, score: float, signal: EvaluationSignal, reasoning: str, metadata: Optional[dict[str, Any]] = None):
+    def __init__(
+        self,
+        score: float,
+        signal: EvaluationSignal,
+        reasoning: str,
+        metadata: Optional[dict[str, Any]] = None,
+    ):
         self.score = max(0.0, min(5.0, score))  # Clamp to [0.0, 5.0]
         self.signal = signal
         self.reasoning = reasoning
         self.passes_threshold = self.score >= 3.5  # default threshold
         self.metadata = metadata or {}
+
 
 def truncate(text: Optional[str], max_len: int = 1500) -> str:
     """Truncate input safely to prevent context overflow or massive API costs."""
@@ -35,44 +45,47 @@ def truncate(text: Optional[str], max_len: int = 1500) -> str:
         return text[:max_len] + "\n[... truncated for prompt bounds ...]"
     return text
 
+
 class Evaluator:
     """
     Quality gate before any record enters the memory store.
-    
+
     Priority order (most reliable first):
     1. USER_FEEDBACK — explicit thumbs up/down or rating
     2. LLM_JUDGE — separate model reads task + response, scores 0-5
     3. NLI_CONSISTENCY — factual consistency check
-    
+
     Failure records skip this gate entirely.
     """
 
     QUALITY_THRESHOLD = 3.5
 
     def evaluate_with_llm_judge(
-        self,
-        task: str,
-        response: str,
-        reasoning_trace: Optional[str] = None,
-        lm=None
+        self, task: str, response: str, reasoning_trace: Optional[str] = None, lm=None
     ) -> EvaluationResult:
         """
         LLM-as-judge evaluation with input bounds, robust parsing, and metadata.
         """
         if lm is None:
-            model_name = os.environ.get("LEARNKIT_EVALUATOR_MODEL", "anthropic/claude-haiku-4-5-20251001")
+            model_name = os.environ.get(
+                "LEARNKIT_EVALUATOR_MODEL", "anthropic/claude-haiku-4-5-20251001"
+            )
             try:
                 lm = dspy.LM(model_name)
             except Exception as e:
                 logger.warning(
                     "Failed to initialize evaluator model, using fallback score",
-                    extra={"event": "evaluator_init_fail", "model_name": model_name, "error": str(e)}
+                    extra={
+                        "event": "evaluator_init_fail",
+                        "model_name": model_name,
+                        "error": str(e),
+                    },
                 )
                 return EvaluationResult(
                     score=2.0,
                     signal=EvaluationSignal.LLM_JUDGE,
                     reasoning="Failed to initialize judge model",
-                    metadata={"error": str(e)}
+                    metadata={"error": str(e)},
                 )
         elif isinstance(lm, str):
             try:
@@ -80,13 +93,17 @@ class Evaluator:
             except Exception as e:
                 logger.warning(
                     "Failed to initialize evaluator model string, using fallback score",
-                    extra={"event": "evaluator_init_fail", "model_name": lm, "error": str(e)}
+                    extra={
+                        "event": "evaluator_init_fail",
+                        "model_name": lm,
+                        "error": str(e),
+                    },
                 )
                 return EvaluationResult(
                     score=2.0,
                     signal=EvaluationSignal.LLM_JUDGE,
                     reasoning="Failed to initialize judge model string",
-                    metadata={"error": str(e)}
+                    metadata={"error": str(e)},
                 )
 
         # Enforce prompt input bounds
@@ -119,13 +136,17 @@ Respond with JSON only: {{"score": <number>, "reasoning": "<one sentence>"}}
         except Exception as e:
             logger.warning(
                 "Judge model call failed, using fallback score",
-                extra={"event": "eval_model_call_fail", "error_type": type(e).__name__, "error": str(e)}
+                extra={
+                    "event": "eval_model_call_fail",
+                    "error_type": type(e).__name__,
+                    "error": str(e),
+                },
             )
             return EvaluationResult(
                 score=2.0,
                 signal=EvaluationSignal.LLM_JUDGE,
                 reasoning="Judge model call failed",
-                metadata={"error": str(e)}
+                metadata={"error": str(e)},
             )
 
         # Robust parsing & schema repair
@@ -151,19 +172,26 @@ Respond with JSON only: {{"score": <number>, "reasoning": "<one sentence>"}}
                 reason_match = re.search(r'"reasoning"\s*:\s*"([^"]+)"', cleaned)
                 if score_match:
                     score_val = float(score_match.group(1))
-                    reason_val = reason_match.group(1) if reason_match else "Extracted via regex pattern matching"
+                    reason_val = (
+                        reason_match.group(1)
+                        if reason_match
+                        else "Extracted via regex pattern matching"
+                    )
                     data = {"score": score_val, "reasoning": reason_val}
                     parse_method = "regex_recovery"
                 else:
                     logger.warning(
                         "Judge response was completely unparseable",
-                        extra={"event": "eval_unparseable", "raw_response": response_text}
+                        extra={
+                            "event": "eval_unparseable",
+                            "raw_response": response_text,
+                        },
                     )
                     return EvaluationResult(
                         score=2.0,
                         signal=EvaluationSignal.LLM_JUDGE,
                         reasoning="Judge response unparseable — conservative score applied",
-                        metadata={"raw_response": response_text, "parse_failed": True}
+                        metadata={"raw_response": response_text, "parse_failed": True},
                     )
 
         score = float(data.get("score", 2.0))
@@ -173,13 +201,13 @@ Respond with JSON only: {{"score": <number>, "reasoning": "<one sentence>"}}
             "raw_response": response_text,
             "task_len": len(task),
             "response_len": len(response),
-            "reasoning_len": len(reasoning_trace) if reasoning_trace else 0
+            "reasoning_len": len(reasoning_trace) if reasoning_trace else 0,
         }
         return EvaluationResult(
             score=score,
             signal=EvaluationSignal.LLM_JUDGE,
             reasoning=reasoning,
-            metadata=metadata
+            metadata=metadata,
         )
 
     def evaluate_from_user_feedback(self, rating: int) -> EvaluationResult:
@@ -188,5 +216,5 @@ Respond with JSON only: {{"score": <number>, "reasoning": "<one sentence>"}}
             score=float(rating),
             signal=EvaluationSignal.USER_FEEDBACK,
             reasoning=f"Direct user rating: {rating}/5",
-            metadata={"user_rating": rating}
+            metadata={"user_rating": rating},
         )

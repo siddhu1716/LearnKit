@@ -11,7 +11,9 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
-MemoryType = Literal["skill", "fact", "failure", "strategy", "preference", "trace", "heuristic"]
+MemoryType = Literal[
+    "skill", "fact", "failure", "strategy", "preference", "trace", "heuristic"
+]
 MemoryScope = Literal["user", "team", "public"]
 MemoryStatus = Literal["active", "stale", "quarantine", "deprecated"]
 
@@ -30,10 +32,10 @@ TTL_DEFAULTS: dict[str, int] = {
 class MemoryRecord(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     type: MemoryType
-    domains: dict[str, float] = {}        # multi-label: {"legal": 0.9, "finance": 0.4}
+    domains: dict[str, float] = {}  # multi-label: {"legal": 0.9, "finance": 0.4}
     task_type: Optional[str] = None
-    content: dict = {}                    # type-specific payload
-    confidence: float = 0.5              # starts at 0.5, grows with reuse
+    content: dict = {}  # type-specific payload
+    confidence: float = 0.5  # starts at 0.5, grows with reuse
     reuse_count: int = 0
     success_rate: Optional[float] = None
     scope: MemoryScope = "team"

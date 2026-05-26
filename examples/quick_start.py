@@ -10,8 +10,9 @@ Usage:
     python examples/quick_start.py
 """
 
-import learnkit as lk
 from pathlib import Path
+
+import learnkit as lk
 
 
 def part1_memory_store():
@@ -77,7 +78,7 @@ def part2_context_composition(backend, skill):
 
     print(f"  Inference mode: {mode.value}")
     print(f"  Context length: {len(context)} chars")
-    print(f"  Preview:")
+    print("  Preview:")
     for line in context.split("\n")[:8]:
         print(f"    {line}")
     print("    ...")
@@ -96,7 +97,7 @@ def part3_trajectory_capture():
         "The default start method on macOS is 'spawn' since Python 3.8, "
         "but if you're using fork, it can deadlock with threads.",
         reasoning="Checked Python docs: fork is unsafe with threads on macOS. "
-                  "The multiprocessing module documentation recommends spawn.",
+        "The multiprocessing module documentation recommends spawn.",
     )
     traj.add_step(
         "tool",
@@ -180,9 +181,13 @@ def part5_full_loop():
         return f"Agent solved: {task}"
 
     result = my_agent("Fix a Python multiprocessing deadlock on macOS")
-    import time; time.sleep(1)  # let background thread finish
+    import time
+
+    time.sleep(1)  # let background thread finish
     print(f"  Result: {result}")
-    print("  [OK] Full loop executed (classify -> retrieve -> compose -> run -> evaluate -> distill)")
+    print(
+        "  [OK] Full loop executed (classify -> retrieve -> compose -> run -> evaluate -> distill)"
+    )
 
 
 if __name__ == "__main__":

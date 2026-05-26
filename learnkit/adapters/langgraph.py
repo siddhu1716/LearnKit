@@ -27,9 +27,11 @@ class LangGraphAdapter:
         run_key: str = "_learnkit_run",
     ):
         """Return a callable suitable for LangGraph's add_node()."""
+
         def node(state: dict) -> dict:
             run = self.lk.prepare_run(state[task_key])
             return {**state, context_key: run["context"], run_key: run}
+
         return node
 
     def finalize(

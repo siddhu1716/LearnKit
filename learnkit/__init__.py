@@ -16,20 +16,20 @@ Public surface:
     compose_context   — context composer (formats records → prompt block)
 """
 
-from .trajectory import Trajectory, TrajectoryStep
-from .schemas.base import MemoryRecord
-from .schemas.skill import SkillRecord
-from .schemas.fact import FactRecord
-from .schemas.failure import FailureRecord
-from .schemas.strategy import StrategyRecord
-from .schemas.preference import PreferenceRecord
-from .schemas.trace import TraceRecord
-from .schemas.heuristic import HeuristicRecord
 from .backends.sqlite import SQLiteBackend
 from .composer import compose_context
 from .compressor import compress_context
-from .inference_mode import InferenceMode, determine_inference_mode
 from .core import LearnKit
+from .inference_mode import InferenceMode, determine_inference_mode
+from .schemas.base import MemoryRecord
+from .schemas.fact import FactRecord
+from .schemas.failure import FailureRecord
+from .schemas.heuristic import HeuristicRecord
+from .schemas.preference import PreferenceRecord
+from .schemas.skill import SkillRecord
+from .schemas.strategy import StrategyRecord
+from .schemas.trace import TraceRecord
+from .trajectory import Trajectory, TrajectoryStep
 
 __all__ = [
     "LearnKit",

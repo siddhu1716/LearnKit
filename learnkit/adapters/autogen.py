@@ -33,4 +33,5 @@ class AutoGenAdapter:
             kwargs["_learnkit_context"] = run["context"]
             response = reply_func(task, *args, **kwargs)
             return self.lk.finalize_run(run, response)
+
         return wrapped

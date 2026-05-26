@@ -1,16 +1,17 @@
 import math
-import logging
 
 from .backends.base import BaseBackend
-from .schemas.base import MemoryRecord
 from .logging import get_logger
+from .schemas.base import MemoryRecord
 
 logger = get_logger("retriever")
+
 
 class SemanticRetriever:
     """
     Semantic Retriever for fetching past memories relevant to a task.
     """
+
     def __init__(self, backend: BaseBackend, embedder=None, dense_weight: float = 0.5):
         self.backend = backend
         self.embedder = embedder
@@ -21,12 +22,12 @@ class SemanticRetriever:
         task: str,
         domain_vector: dict[str, float],
         scope: str | None = None,
-        router=None
+        router=None,
     ) -> list:
         # Get top domains (confidence > 0.5)
         top_domains = [d for d, c in domain_vector.items() if c > 0.5]
         domain = top_domains[0] if top_domains else None
-        
+
         limit = 20
         # Hard cap for semantic fallback scan to prevent OOM
         semantic_scan_cap = 100
@@ -38,15 +39,12 @@ class SemanticRetriever:
                     domain=domain,
                     scope=scope,
                     limit=limit,
-                    alpha=self.dense_weight
+                    alpha=self.dense_weight,
                 )
             else:
                 # Fallback: standard lexical search first
                 results = self.backend.search(
-                    query=task,
-                    domain=domain,
-                    scope=scope,
-                    limit=limit
+                    query=task, domain=domain, scope=scope, limit=limit
                 )
 
                 if self.embedder is not None and results:
@@ -55,7 +53,11 @@ class SemanticRetriever:
 
             # If we got no results, but we have an embedder and backend list_all,
             # this represents a zero-lexical-overlap scenario.
-            if not results and self.embedder is not None and hasattr(self.backend, "list_all"):
+            if (
+                not results
+                and self.embedder is not None
+                and hasattr(self.backend, "list_all")
+            ):
                 # Zero lexical overlap: fall back to bounded semantic scan.
                 all_candidates = self.backend.list_all(limit=semantic_scan_cap)
                 active = []
@@ -70,7 +72,10 @@ class SemanticRetriever:
                 if active:
                     results = self._rerank_candidates(task, active, limit=limit)
         except Exception as e:
-            logger.error("Retrieval operation failed", extra={"event": "retrieval_fail", "error_type": type(e).__name__})
+            logger.error(
+                "Retrieval operation failed",
+                extra={"event": "retrieval_fail", "error_type": type(e).__name__},
+            )
             results = []
 
         if router:
@@ -87,24 +92,33 @@ class SemanticRetriever:
         try:
             query_vec = self.embedder(task)
             # Naive BM25 score proxy based on search rank
-            bm25_rank = {record.id: 1.0 / (i + 1) for i, record in enumerate(candidates)}
+            bm25_rank = {
+                record.id: 1.0 / (i + 1) for i, record in enumerate(candidates)
+            }
             scored = []
 
             for record in candidates:
                 record_text = self._record_text(record)
                 record_vec = self.embedder(record_text)
                 dense_score = _cosine(query_vec, record_vec)
-                
+
                 # Fetch actual bm25 score if attached by backend, otherwise use proxy
-                lexical_score = getattr(record, "_bm25_score", bm25_rank.get(record.id, 0.0))
-                
-                score = ((1 - self.dense_weight) * lexical_score) + (self.dense_weight * dense_score)
+                lexical_score = getattr(
+                    record, "_bm25_score", bm25_rank.get(record.id, 0.0)
+                )
+
+                score = ((1 - self.dense_weight) * lexical_score) + (
+                    self.dense_weight * dense_score
+                )
                 scored.append((score, record.confidence, record))
 
             scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
             return [record for _, _, record in scored[:limit]]
         except Exception as e:
-            logger.warning("In-memory reranking failed, falling back to lexical order", extra={"event": "rerank_fail", "error_type": type(e).__name__})
+            logger.warning(
+                "In-memory reranking failed, falling back to lexical order",
+                extra={"event": "rerank_fail", "error_type": type(e).__name__},
+            )
             return candidates
 
     def _record_text(self, record: MemoryRecord) -> str:

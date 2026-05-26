@@ -1,7 +1,7 @@
 # LearnKit SDK — Design Document
 ## Incorporating Hermes Agent + ReaComp
 
-**Version:** 1.0 | **Date:** May 2026  
+**Version:** 1.0 | **Date:** May 2026
 **For:** ML engineers and SDK contributors
 
 ---
@@ -15,8 +15,8 @@ This document maps the exact components, patterns, and concepts from two researc
 ## The Two Sources — What Each Does
 
 ### Hermes Agent (NousResearch)
-**Repo:** github.com/NousResearch/hermes-agent  
-**Stars:** 163K (fastest-growing open-source agent framework of 2026)  
+**Repo:** github.com/NousResearch/hermes-agent
+**Stars:** 163K (fastest-growing open-source agent framework of 2026)
 **Tagline:** "The agent that grows with you"
 
 Hermes is a **complete agent framework** — not just a memory system. It solves the persistence problem for one specific runtime (its own). It cannot be used as a library. Its key internals are:
@@ -31,14 +31,14 @@ Hermes is a **complete agent framework** — not just a memory system. It solves
 - `BatchRunner` — parallel trajectory generation for RL training
 - RL environments — Atropos integration
 
-**What Hermes does NOT have:**  
+**What Hermes does NOT have:**
 Multi-backend memory adapters, typed memory (facts vs skills vs failures), confidence scoring, TTL/expiry, cross-agent skill sharing, privacy scoping, or a public API. All learning is locked to its own runtime.
 
 ---
 
 ### ReaComp (Carnegie Mellon University)
-**Repo:** github.com/cmu-llab/ReaComp  
-**Paper:** arXiv 2605.05485  
+**Repo:** github.com/cmu-llab/ReaComp
+**Paper:** arXiv 2605.05485
 **Tagline:** "Compiling LLM reasoning into symbolic solvers"
 
 ReaComp is a **research paper** demonstrating that ~100 LLM reasoning traces can be compiled by a coding agent into a standalone Python solver that runs at zero LLM cost. Key results:
@@ -49,7 +49,7 @@ ReaComp is a **research paper** demonstrating that ~100 LLM reasoning traces can
 - Solvers transfer zero-shot to new domains (e.g., trained on ASCII → works on Unicode IPA linguistics data)
 - Build cost amortizes over runs: a $0.85 solver recoups cost in 9 tasks; savings compound over 1,000+ tasks
 
-**What ReaComp does NOT have:**  
+**What ReaComp does NOT have:**
 It's a research pipeline for program synthesis, not a general memory/learning SDK. The "solver" is Python code, not a memory record. But its core insight — compile traces into reusable logic, run that logic at zero LLM cost, fall back only on failure — is the most important thing we take from it.
 
 ---
@@ -59,7 +59,7 @@ It's a research pipeline for program synthesis, not a general memory/learning SD
 ### From Hermes — Exact Components to Borrow
 
 #### 1. Memory tool operations pattern
-**Source:** `tools/memory_tool.py`  
+**Source:** `tools/memory_tool.py`
 **Hermes implementation:** Four atomic ops: `add`, `replace`, `remove`, `read` on a markdown file. The agent calls these as tools.
 
 **What we take:** The four-operation interface is correct. Every memory backend (SQLite, Mem0, Qdrant) exposes the same four operations through a common adapter. Developers get a consistent interface regardless of backend.
@@ -77,7 +77,7 @@ memory.read(query)        # retrieve relevant records
 ---
 
 #### 2. Skills system — SKILL.md format
-**Source:** `skills/` directory, `skills_list` and `skill_view` tools  
+**Source:** `skills/` directory, `skills_list` and `skill_view` tools
 **Hermes implementation:** Each skill is a structured markdown file with sections for what the skill does, when to use it, steps, and notes. 118 bundled skills. Stored under `~/.hermes/skills/`.
 
 **What we take:** The skill document format is solid. We adopt the structured markdown schema and add JSON metadata alongside it:
@@ -95,7 +95,7 @@ The markdown format means skills are readable and editable by humans. The JSON m
 ---
 
 #### 3. Session search — SQLite FTS5
-**Source:** `gateway/session.py` (SessionStore), `session_search` toolset  
+**Source:** `gateway/session.py` (SessionStore), `session_search` toolset
 **Hermes implementation:** SQLite database with FTS5 full-text search across all past session transcripts. The agent can explicitly search previous conversations with `session_search` tool.
 
 **What we take:** FTS5 is exactly right for our execution trace store. Cheap, zero dependencies, works offline, full-text search across any text field. We use it as the backend for our Trace memory type.
@@ -113,7 +113,7 @@ CREATE VIRTUAL TABLE traces USING fts5(
 ---
 
 #### 4. Context compression
-**Source:** `agent/context_compressor.py`  
+**Source:** `agent/context_compressor.py`
 **Hermes implementation:** Hermes compresses conversation history when it approaches context limits. Uses LLM summarization to maintain key context while reducing token count.
 
 **What we take:** The ContextCompressor pattern — periodically summarize and compress memory rather than truncating raw. We apply this to our context injection step: when retrieved records would exceed the token budget, the Context Composer summarizes them into a compact block rather than truncating arbitrarily.
@@ -123,7 +123,7 @@ CREATE VIRTUAL TABLE traces USING fts5(
 ---
 
 #### 5. Trajectory saving
-**Source:** `agent/trajectory.py`, `save_trajectories` parameter  
+**Source:** `agent/trajectory.py`, `save_trajectories` parameter
 **Hermes implementation:** Saves JSONL trajectory files per agent run when `save_trajectories=True`. Used for RL training and batch generation.
 
 **What we take:** The trajectory format and the `save_trajectories` opt-in pattern. Our Memory Distiller reads these JSONL files as its primary input. The format maps directly:
@@ -140,7 +140,7 @@ CREATE VIRTUAL TABLE traces USING fts5(
 ---
 
 #### 6. Prompt builder structure
-**Source:** `agent/prompt_builder.py`  
+**Source:** `agent/prompt_builder.py`
 **Hermes implementation:** Builds the system prompt by assembling: base instructions + MEMORY.md content + USER.md content + relevant skills + session context.
 
 **What we take:** The layered prompt construction pattern. Our Context Composer follows the same structure:
@@ -160,7 +160,7 @@ CREATE VIRTUAL TABLE traces USING fts5(
 ---
 
 #### 7. GEPA — self-evolution loop
-**Source:** `hermes-agent-self-evolution` (separate MIT-licensed repo)  
+**Source:** `hermes-agent-self-evolution` (separate MIT-licensed repo)
 **What it does:** DSPy + Genetic-Pareto Prompt Evolution. Reads execution traces, understands WHY things fail, mutates skills and prompts, evaluates against benchmarks, keeps improvements. No GPU needed — all via API calls. ICLR 2026 Oral.
 
 **What we take:** The full GEPA loop, as a periodic scheduled job on our skill library. Not inline during agent runs — run weekly or on-demand.
@@ -178,7 +178,7 @@ python -m learnkit.evolution.evolve_skills \
 ---
 
 #### 8. Toolset registration pattern
-**Source:** `toolsets.py`, `tools/registry.py`  
+**Source:** `toolsets.py`, `tools/registry.py`
 **Hermes implementation:** Named toolsets (groups of tools). `toolsets.py` defines presets. A central `registry.py` manages all tool definitions. Clean separation between "what tools exist" and "which tools are active for this run."
 
 **What we take:** The same pattern for our memory backends. A central backend registry, named backend presets:
@@ -402,23 +402,23 @@ This maps each LearnKit module to its source inspiration:
 ## Key Design Decisions Driven By This Research
 
 ### Decision 1 — Reasoning traces are mandatory, not optional
-**Source:** ReaComp 50pp accuracy collapse without CoT traces.  
+**Source:** ReaComp 50pp accuracy collapse without CoT traces.
 **Decision:** LearnKit always captures reasoning steps if available. For models without native CoT, inject a reasoning prompt before the task. The `capture_reasoning=True` default is non-negotiable.
 
 ### Decision 2 — Skill format stays human-readable
-**Source:** Hermes SKILL.md format.  
+**Source:** Hermes SKILL.md format.
 **Decision:** Skills are stored as structured markdown + JSON sidecar. Markdown for humans to read and edit. JSON sidecar for automated scoring and retrieval. Both files are required.
 
 ### Decision 3 — Two-stage inference over single-mode retrieval
-**Source:** ReaComp hybrid (solver first, LLM fallback).  
+**Source:** ReaComp hybrid (solver first, LLM fallback).
 **Decision:** Context injection mode is determined by skill confidence, not hardcoded. High-confidence skills trigger PRESCRIPTIVE mode (minimal LLM reasoning required). This reduces token cost and latency for well-learned task types.
 
 ### Decision 4 — Failure records stored immediately, no quarantine
-**Source:** ReaComp balanced trace collection; Hermes failure analysis.  
+**Source:** ReaComp balanced trace collection; Hermes failure analysis.
 **Decision:** Successful skill records quarantine for 24 hours before becoming active. Failure records are stored and active immediately — you want agents to know what not to do as fast as possible. There is no quality gate on failure records (by definition they already failed).
 
 ### Decision 5 — Evolution is async and ensembled, never inline
-**Source:** ReaComp run-to-run variance (22.9pp range across runs); GEPA architecture.  
+**Source:** ReaComp run-to-run variance (22.9pp range across runs); GEPA architecture.
 **Decision:** GEPA evolution runs weekly as a background job, never inline during agent execution. Multiple runs are launched in parallel; results are ensembled. Inline evolution would add latency and variance to agent responses.
 
 ---
@@ -427,7 +427,7 @@ This maps each LearnKit module to its source inspiration:
 
 ### Sprint 1 (weeks 1–4): Hermes-derived core
 1. `trajectory.py` — JSONL capture, borrowing Hermes format exactly
-2. `backends/sqlite.py` — FTS5 store, borrowing from Hermes session_search  
+2. `backends/sqlite.py` — FTS5 store, borrowing from Hermes session_search
 3. `schemas/skill.py` — SKILL.md + metadata.json, extending Hermes format
 4. `composer.py` — prompt injection, borrowing from Hermes prompt_builder pattern
 5. `adapters/langchain.py` — toolset registration pattern from Hermes
