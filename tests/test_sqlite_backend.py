@@ -1,6 +1,6 @@
 """Unit tests for LearnKit Phase 1 components."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -53,7 +53,7 @@ def test_memory_record_expiration():
     assert not rec.is_expired()
 
     # Explicit past expiration
-    past_date = datetime.utcnow() - timedelta(days=1)
+    past_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=1)
     rec_expired = SkillRecord(
         domains={"coding": 1.0},
         task_type="debug_multiprocessing",
@@ -221,13 +221,13 @@ def test_sqlite_replace_promote_and_stale_lifecycle(tmp_path):
         task_type="draft_skill",
         content={"steps": ["draft"]},
         status="quarantine",
-        created_at=(datetime.utcnow() - timedelta(hours=25)).isoformat(),
+        created_at=(datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=25)).isoformat(),
     )
     expired = SkillRecord(
         domains={"coding": 0.9},
         task_type="expired_skill",
         content={"steps": ["old"]},
-        expires_at=(datetime.utcnow() - timedelta(days=1)).isoformat(),
+        expires_at=(datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=1)).isoformat(),
     )
 
     backend.add(old_quarantined)
@@ -377,6 +377,38 @@ def test_sqlite_native_hybrid_search():
     results = backend.hybrid_search("thread deadlock", alpha=1.0)
     assert len(results) >= 1
     assert results[0].id == target.id
+
+
+def test_sqlite_native_hybrid_search_with_bm25_contribution():
+    def embedder(text):
+        if "spawn" in text:
+            return [1.0, 0.0, 0.0]
+        if "lock" in text:
+            return [0.0, 1.0, 0.0]
+        return [0.5, 0.5, 0.0]
+
+    backend = SQLiteBackend(db_path=":memory:", embedder=embedder)
+
+    target = SkillRecord(
+        domains={"coding": 0.9},
+        task_type="spawn_fix",
+        content={"steps": ["use spawn"]},
+        confidence=0.8,
+    )
+    distractor = SkillRecord(
+        domains={"coding": 0.9},
+        task_type="lock_fix",
+        content={"steps": ["avoid lock"]},
+        confidence=0.8,
+    )
+    backend.add(target)
+    backend.add(distractor)
+
+    results = backend.hybrid_search("spawn", alpha=0.5)
+    assert len(results) == 2
+    assert results[0].id == target.id
+    assert results[0]._bm25_score > 0.0
+    assert results[1]._bm25_score == 0.0
 
 
 def test_sqlite_passes_contract(tmp_path):

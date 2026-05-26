@@ -7,7 +7,7 @@ Uses SQLite FTS5 for BM25 text search (inspired by Hermes session_search).
 import json
 import sqlite3
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -366,7 +366,7 @@ class SQLiteBackend(BaseBackend):
             if is_fts5 and fts_query:
                 sql = """
                     SELECT r.full_record, r.confidence, r.created_at,
-                           bm25(records_fts) as bm25_score
+                           -bm25(records_fts) as bm25_score
                     FROM records_fts
                     JOIN records r ON records_fts.id = r.id
                     WHERE records_fts MATCH ?
@@ -454,23 +454,42 @@ class SQLiteBackend(BaseBackend):
 
             fts_query = escape_fts(query)
 
-            sql = """
-                SELECT r.full_record, r.confidence,
-                       COALESCE(bm25(records_fts), 0.0) as bm25_score,
-                       CASE WHEN v.embedding IS NOT NULL THEN vec_distance_cosine(v.embedding, ?) ELSE NULL END as dense_dist
-                FROM records r
-                LEFT JOIN records_fts f ON r.id = f.id
-                LEFT JOIN vec_mapping m ON r.id = m.id
-                LEFT JOIN records_vec v ON m.rowid = v.rowid
-                WHERE r.confidence >= ?
-                  AND r.status != 'quarantine'
-            """
-            if fts_query:
-                sql = sql.replace(
-                    "COALESCE(bm25(records_fts), 0.0) as bm25_score",
-                    "COALESCE(bm25(records_fts), 0.0) as bm25_score",
-                )
-            params = [embed_bytes, min_confidence]
+            # Check if FTS5 is available
+            cursor = conn.execute(
+                "SELECT sql FROM sqlite_master WHERE name='records_fts'"
+            )
+            sql_def = cursor.fetchone()
+            is_fts5 = sql_def and "using fts5" in sql_def["sql"].lower()
+
+            if is_fts5 and fts_query:
+                sql = """
+                    SELECT r.full_record, r.confidence,
+                           COALESCE(f.bm25_score, 0.0) as bm25_score,
+                           CASE WHEN v.embedding IS NOT NULL THEN vec_distance_cosine(v.embedding, ?) ELSE NULL END as dense_dist
+                    FROM records r
+                    LEFT JOIN (
+                        SELECT id, -bm25(records_fts) as bm25_score
+                        FROM records_fts
+                        WHERE records_fts MATCH ?
+                    ) f ON r.id = f.id
+                    LEFT JOIN vec_mapping m ON r.id = m.id
+                    LEFT JOIN records_vec v ON m.rowid = v.rowid
+                    WHERE r.confidence >= ?
+                      AND r.status != 'quarantine'
+                """
+                params = [embed_bytes, fts_query, min_confidence]
+            else:
+                sql = """
+                    SELECT r.full_record, r.confidence,
+                           0.0 as bm25_score,
+                           CASE WHEN v.embedding IS NOT NULL THEN vec_distance_cosine(v.embedding, ?) ELSE NULL END as dense_dist
+                    FROM records r
+                    LEFT JOIN vec_mapping m ON r.id = m.id
+                    LEFT JOIN records_vec v ON m.rowid = v.rowid
+                    WHERE r.confidence >= ?
+                      AND r.status != 'quarantine'
+                """
+                params = [embed_bytes, min_confidence]
 
             if record_type:
                 sql += " AND r.type = ?"
@@ -494,6 +513,7 @@ class SQLiteBackend(BaseBackend):
                         continue
 
                     bm25_score = row["bm25_score"] or 0.0
+                    rec._bm25_score = bm25_score
                     dense_dist = (
                         row["dense_dist"] if row["dense_dist"] is not None else 2.0
                     )
@@ -592,7 +612,7 @@ class SQLiteBackend(BaseBackend):
         return decayed
 
     def promote_quarantined(self, min_age_hours: float = 24.0) -> int:
-        cutoff = datetime.utcnow() - timedelta(hours=min_age_hours)
+        cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=min_age_hours)
         promoted = 0
 
         for record in self._records_with_status("quarantine"):

@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Optional
 
@@ -100,7 +100,7 @@ class DictBackend(BaseBackend):
         return decayed
 
     def promote_quarantined(self, min_age_hours: float = 24.0) -> int:
-        cutoff = datetime.utcnow() - timedelta(hours=min_age_hours)
+        cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=min_age_hours)
         promoted = 0
         for r in self.records.values():
             if r.status == "quarantine":
@@ -169,7 +169,7 @@ def run_backend_contract_suite(backend: BaseBackend, tmp_path: Path):
     expired = FactRecord(
         domains={"legal": 0.8},
         content={"statement": "Old document"},
-        expires_at=(datetime.utcnow() - timedelta(days=1)).isoformat(),
+        expires_at=(datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=1)).isoformat(),
     )
     backend.add(expired)
 
@@ -187,7 +187,7 @@ def run_backend_contract_suite(backend: BaseBackend, tmp_path: Path):
         task_type="draft_skill",
         content={"steps": ["draft"]},
         status="quarantine",
-        created_at=(datetime.utcnow() - timedelta(hours=25)).isoformat(),
+        created_at=(datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=25)).isoformat(),
     )
     backend.add(quarantined)
 

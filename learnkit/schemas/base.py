@@ -6,7 +6,7 @@ confidence decay + reinforcement cycle (extends Hermes — which had none).
 """
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
@@ -32,36 +32,36 @@ TTL_DEFAULTS: dict[str, int] = {
 class MemoryRecord(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     type: MemoryType
-    domains: dict[str, float] = {}  # multi-label: {"legal": 0.9, "finance": 0.4}
+    domains: dict[str, float] = Field(default_factory=dict)  # multi-label: {"legal": 0.9, "finance": 0.4}
     task_type: Optional[str] = None
-    content: dict = {}  # type-specific payload
+    content: dict = Field(default_factory=dict)  # type-specific payload
     confidence: float = 0.5  # starts at 0.5, grows with reuse
     reuse_count: int = 0
     success_rate: Optional[float] = None
     scope: MemoryScope = "team"
     status: MemoryStatus = "active"
-    created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None).isoformat())
     expires_at: Optional[str] = None
     last_reinforced: Optional[str] = None
-    transfer_domains: list[str] = []
+    transfer_domains: list[str] = Field(default_factory=list)
     transfer_confidence: Optional[float] = None
     evolution_gen: int = 0
 
     def model_post_init(self, __context) -> None:  # noqa: ANN001
         if self.expires_at is None:
             days = TTL_DEFAULTS.get(self.type, 90)
-            exp = datetime.utcnow() + timedelta(days=days)
+            exp = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=days)
             self.expires_at = exp.isoformat()
 
     def is_expired(self) -> bool:
         if self.expires_at is None:
             return False
-        return datetime.utcnow() > datetime.fromisoformat(self.expires_at)
+        return datetime.now(timezone.utc).replace(tzinfo=None) > datetime.fromisoformat(self.expires_at)
 
     def reinforce(self, quality: float) -> None:
         """Call after a successful retrieval that produced a good outcome."""
         self.reuse_count += 1
-        self.last_reinforced = datetime.utcnow().isoformat()
+        self.last_reinforced = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
         # Rolling weighted average — recent successes count more
         if self.success_rate is None:
             self.success_rate = quality / 5.0

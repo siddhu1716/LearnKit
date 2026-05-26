@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import dspy
 import pytest
@@ -191,14 +191,14 @@ def test_learnkit_maintain_memory(tmp_path):
         domains={"coding": 0.9},
         task_type="expired_skill",
         content={"steps": ["expired"]},
-        expires_at=(datetime.utcnow() - timedelta(days=1)).isoformat(),
+        expires_at=(datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=1)).isoformat(),
     )
     quarantined = SkillRecord(
         domains={"coding": 0.9},
         task_type="reviewed_skill",
         content={"steps": ["reviewed"]},
         status="quarantine",
-        created_at=(datetime.utcnow() - timedelta(hours=25)).isoformat(),
+        created_at=(datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=25)).isoformat(),
     )
     lk.backend.add(active)
     lk.backend.add(expired)
