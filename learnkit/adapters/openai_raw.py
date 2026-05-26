@@ -20,18 +20,48 @@ Usage (once implemented):
 
 
 class OpenAIRawAdapter:
-    """Thin wrapper around raw OpenAI/Anthropic API calls with LearnKit memory.
+    """Thin wrapper around raw OpenAI-style chat calls with LearnKit memory."""
 
-    Not yet implemented — this stub establishes the integration contract.
-    """
-
-    def __init__(self, learnkit_instance):
+    def __init__(self, learnkit_instance, client=None, complete_fn=None):
         self.lk = learnkit_instance
-        raise NotImplementedError(
-            "OpenAIRawAdapter is planned for Phase 4. "
-            "Use the @lk.agent decorator for direct integration."
-        )
+        self.client = client
+        self.complete_fn = complete_fn
 
     def complete(self, task: str, messages: list, model: str = "gpt-4o", **kwargs):
         """Run a completion with LearnKit memory injection and capture."""
-        raise NotImplementedError
+        run = self.lk.prepare_run(task)
+        enriched_messages = self._inject_context(messages, run["context"])
+
+        if self.complete_fn is not None:
+            result = self.complete_fn(model=model, messages=enriched_messages, **kwargs)
+        elif self.client is not None:
+            result = self.client.chat.completions.create(
+                model=model,
+                messages=enriched_messages,
+                **kwargs,
+            )
+        else:
+            raise ValueError("OpenAIRawAdapter requires either client or complete_fn")
+
+        self.lk.finalize_run(run, self._response_text(result))
+        return result
+
+    def _inject_context(self, messages: list, context: str) -> list:
+        if not context:
+            return list(messages)
+        return [{"role": "system", "content": context}, *messages]
+
+    def _response_text(self, result) -> str:
+        if isinstance(result, str):
+            return result
+        if isinstance(result, dict):
+            choices = result.get("choices") or []
+            if choices:
+                message = choices[0].get("message", {})
+                return message.get("content", "")
+            return str(result)
+        choices = getattr(result, "choices", None)
+        if choices:
+            message = getattr(choices[0], "message", None)
+            return getattr(message, "content", "") if message else ""
+        return str(result)

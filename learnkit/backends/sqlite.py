@@ -6,6 +6,7 @@ Uses SQLite FTS5 for BM25 text search (inspired by Hermes session_search).
 
 import json
 import sqlite3
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 from .base import BaseBackend
@@ -147,6 +148,9 @@ class SQLiteBackend(BaseBackend):
         self._close(conn)
         return record.id
 
+    def replace(self, record: MemoryRecord) -> str:
+        return self.add(record)
+
     def read(self, id: str) -> Optional[MemoryRecord]:
         conn = self._conn()
         row = conn.execute("SELECT full_record FROM records WHERE id=?", (id,)).fetchone()
@@ -272,6 +276,17 @@ class SQLiteBackend(BaseBackend):
         self._close(conn)
         return [parse_record(r["full_record"]) for r in rows]
 
+    def list_all(self, limit: int | None = None) -> list[MemoryRecord]:
+        conn = self._conn()
+        sql = "SELECT full_record FROM records ORDER BY created_at ASC"
+        params = []
+        if limit is not None:
+            sql += " LIMIT ?"
+            params.append(limit)
+        rows = conn.execute(sql, params).fetchall()
+        self._close(conn)
+        return [parse_record(r["full_record"]) for r in rows]
+
     def update_confidence(self, id: str, new_confidence: float) -> None:
         record = self.read(id)
         if record is None:
@@ -296,3 +311,56 @@ class SQLiteBackend(BaseBackend):
             self.add(record)
             decayed += 1
         return decayed
+
+    def promote_quarantined(self, min_age_hours: float = 24.0) -> int:
+        """Promote quarantined records to active after the review window."""
+        cutoff = datetime.utcnow() - timedelta(hours=min_age_hours)
+        promoted = 0
+
+        for record in self._records_with_status("quarantine"):
+            created_at = datetime.fromisoformat(record.created_at)
+            if created_at <= cutoff:
+                record.status = "active"
+                self.add(record)
+                promoted += 1
+        return promoted
+
+    def mark_expired_stale(self) -> int:
+        """Mark expired active records stale without deleting their audit trail."""
+        marked = 0
+        for record in self._records_with_status("active"):
+            if record.is_expired():
+                record.status = "stale"
+                self.add(record)
+                marked += 1
+        return marked
+
+    def export_json(self, path: str | Path) -> int:
+        records = self.list_all()
+        output_path = Path(path).expanduser()
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = [record.model_dump(mode="json") for record in records]
+        output_path.write_text(json.dumps(payload, indent=2) + "\n")
+        return len(records)
+
+    def import_json(self, path: str | Path) -> int:
+        input_path = Path(path).expanduser()
+        payload = json.loads(input_path.read_text())
+        if not isinstance(payload, list):
+            raise ValueError("LearnKit import expects a JSON list of memory records")
+
+        imported = 0
+        for item in payload:
+            record = RECORD_TYPES.get(item.get("type"), MemoryRecord).model_validate(item)
+            self.add(record)
+            imported += 1
+        return imported
+
+    def _records_with_status(self, status: str) -> list[MemoryRecord]:
+        conn = self._conn()
+        rows = conn.execute("""
+            SELECT full_record FROM records
+            WHERE status = ?
+        """, (status,)).fetchall()
+        self._close(conn)
+        return [parse_record(r["full_record"]) for r in rows]

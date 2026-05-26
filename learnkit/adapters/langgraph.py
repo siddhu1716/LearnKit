@@ -15,18 +15,28 @@ Usage (once implemented):
 
 
 class LangGraphAdapter:
-    """LangGraph node that wraps LearnKit memory injection and capture.
-
-    Not yet implemented — this stub establishes the integration contract.
-    """
+    """LangGraph-compatible callable helpers for memory injection/finalization."""
 
     def __init__(self, learnkit_instance):
         self.lk = learnkit_instance
-        raise NotImplementedError(
-            "LangGraphAdapter is planned for Phase 4. "
-            "Use the @lk.agent decorator for direct integration."
-        )
 
-    def as_node(self):
+    def as_node(
+        self,
+        task_key: str = "task",
+        context_key: str = "_learnkit_context",
+        run_key: str = "_learnkit_run",
+    ):
         """Return a callable suitable for LangGraph's add_node()."""
-        raise NotImplementedError
+        def node(state: dict) -> dict:
+            run = self.lk.prepare_run(state[task_key])
+            return {**state, context_key: run["context"], run_key: run}
+        return node
+
+    def finalize(
+        self,
+        state: dict,
+        response_key: str = "response",
+        run_key: str = "_learnkit_run",
+    ) -> str:
+        """Finalize a run after a downstream LangGraph node writes a response."""
+        return self.lk.finalize_run(state[run_key], state[response_key])

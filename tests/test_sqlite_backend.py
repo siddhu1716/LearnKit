@@ -11,6 +11,7 @@ from learnkit.schemas.skill import SkillRecord
 from learnkit.schemas.fact import FactRecord
 from learnkit.schemas.failure import FailureRecord
 from learnkit.backends.sqlite import SQLiteBackend
+from learnkit.backends.registry import get_backend
 from learnkit.composer import compose_context
 from learnkit.compressor import compress_context
 from learnkit.inference_mode import InferenceMode
@@ -210,6 +211,63 @@ def test_sqlite_scope_filtering(tmp_path):
 
     assert [r.id for r in team_results] == [team_skill.id]
     assert [r.id for r in team_list] == [team_skill.id]
+
+
+def test_sqlite_replace_promote_and_stale_lifecycle(tmp_path):
+    backend = SQLiteBackend(db_path=str(tmp_path / "memory.db"))
+    old_quarantined = SkillRecord(
+        domains={"coding": 0.9},
+        task_type="draft_skill",
+        content={"steps": ["draft"]},
+        status="quarantine",
+        created_at=(datetime.utcnow() - timedelta(hours=25)).isoformat(),
+    )
+    expired = SkillRecord(
+        domains={"coding": 0.9},
+        task_type="expired_skill",
+        content={"steps": ["old"]},
+        expires_at=(datetime.utcnow() - timedelta(days=1)).isoformat(),
+    )
+
+    backend.add(old_quarantined)
+    backend.add(expired)
+
+    old_quarantined.content["steps"] = ["replaced"]
+    backend.replace(old_quarantined)
+
+    assert backend.read(old_quarantined.id).content["steps"] == ["replaced"]
+    assert backend.promote_quarantined(min_age_hours=24) == 1
+    assert backend.read(old_quarantined.id).status == "active"
+    assert backend.mark_expired_stale() == 1
+    assert backend.read(expired.id).status == "stale"
+
+
+def test_sqlite_export_import_json(tmp_path):
+    source = SQLiteBackend(db_path=str(tmp_path / "source.db"))
+    record = SkillRecord(
+        domains={"legal": 0.9},
+        task_type="contract_summarization",
+        content={"steps": ["extract obligations"]},
+        confidence=0.77,
+    )
+    source.add(record)
+    export_path = tmp_path / "export.json"
+
+    assert source.export_json(export_path) == 1
+
+    target = SQLiteBackend(db_path=str(tmp_path / "target.db"))
+    assert target.import_json(export_path) == 1
+
+    imported = target.read(record.id)
+    assert isinstance(imported, SkillRecord)
+    assert imported.task_type == "contract_summarization"
+    assert imported.confidence == 0.77
+
+
+def test_optional_backends_have_explicit_dependency_errors():
+    for name in ("mem0", "zep", "qdrant"):
+        with pytest.raises(ImportError, match=name):
+            get_backend(name)
 
 
 def test_context_composer():

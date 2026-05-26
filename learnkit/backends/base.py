@@ -1,6 +1,7 @@
 """Base class for all storage backends."""
 
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Optional
 from ..schemas.base import MemoryRecord, MemoryType
 
@@ -12,6 +13,10 @@ class BaseBackend(ABC):
     def add(self, record: MemoryRecord) -> str:
         """Add or update a record."""
         pass
+
+    def replace(self, record: MemoryRecord) -> str:
+        """Replace a record by ID. Defaults to add/upsert semantics."""
+        return self.add(record)
 
     @abstractmethod
     def read(self, id: str) -> Optional[MemoryRecord]:
@@ -55,4 +60,24 @@ class BaseBackend(ABC):
     @abstractmethod
     def decay_confidence(self, weeks: int = 1, decay_rate: float = 0.02) -> int:
         """Apply weekly confidence decay to active/stale records. Returns count of decayed records."""
+        pass
+
+    @abstractmethod
+    def promote_quarantined(self, min_age_hours: float = 24.0) -> int:
+        """Promote quarantined records to active after the review window. Returns count."""
+        pass
+
+    @abstractmethod
+    def mark_expired_stale(self) -> int:
+        """Mark expired active records stale. Returns count."""
+        pass
+
+    @abstractmethod
+    def export_json(self, path: str | Path) -> int:
+        """Export all records as portable JSON. Returns count."""
+        pass
+
+    @abstractmethod
+    def import_json(self, path: str | Path) -> int:
+        """Import records from portable JSON. Returns count."""
         pass

@@ -22,12 +22,13 @@ class LearnKit:
         classifier: Optional[Callable] = None,
         evaluator: Optional[Evaluator] = None,
         distiller: Optional[MemoryDistiller] = None,
+        embedder: Optional[Callable] = None,
         background_postprocess: bool = True,
         **backend_kwargs
     ):
         self.backend = get_backend(memory_backend, **backend_kwargs)
         self.router = MemoryRouter(max_records=8, max_tokens=1200)
-        self.retriever = SemanticRetriever(backend=self.backend)
+        self.retriever = SemanticRetriever(backend=self.backend, embedder=embedder)
         self.classifier = classifier or classify_task
         self.evaluator = evaluator or Evaluator()
         self.distiller = distiller or MemoryDistiller()
@@ -50,41 +51,45 @@ class LearnKit:
         def decorator(fn: Callable) -> Callable:
             @functools.wraps(fn)
             def wrapper(task: str, *args, **kwargs) -> str:
-                # 1. Classify
-                classification = self.classifier(task)
-                domain_vector = classification.domains
-
-                # 2. Retrieve relevant memory
-                records = self.retriever.retrieve(
-                    task=task,
-                    domain_vector=domain_vector,
-                    scope=self.scope,
-                    router=self.router
-                )
-
-                # 3. Determine inference mode (ReaComp two-stage pattern)
-                mode = determine_inference_mode(records)
-
-                # 4. Compose context
-                context_block = compose_context(records, task, mode)
-
-                # 5. Run agent with enriched context
-                traj = Trajectory(task=task)
-                traj.add_step("user", task)
+                run = self.prepare_run(task)
 
                 # Inject context into kwargs or modify the call
-                enriched_kwargs = {**kwargs, "_learnkit_context": context_block}
+                enriched_kwargs = {**kwargs, "_learnkit_context": run["context"]}
                 result = fn(task, *args, **enriched_kwargs)
 
-                traj.add_step("assistant", result)
-                self.last_trajectory = traj
-
-                # 6. Evaluate (async — don't block the return)
-                self._post_process(traj, domain_vector)
-
-                return result
+                return self.finalize_run(run, result)
             return wrapper
         return decorator
+
+    def prepare_run(self, task: str) -> dict:
+        classification = self.classifier(task)
+        domain_vector = classification.domains
+        records = self.retriever.retrieve(
+            task=task,
+            domain_vector=domain_vector,
+            scope=self.scope,
+            router=self.router
+        )
+        mode = determine_inference_mode(records)
+        context_block = compose_context(records, task, mode)
+        traj = Trajectory(task=task)
+        traj.add_step("user", task)
+        self.last_trajectory = traj
+        return {
+            "classification": classification,
+            "domain_vector": domain_vector,
+            "records": records,
+            "mode": mode,
+            "context": context_block,
+            "trajectory": traj,
+        }
+
+    def finalize_run(self, run: dict, response: str) -> str:
+        traj = run["trajectory"]
+        traj.add_step("assistant", response)
+        self.last_trajectory = traj
+        self._post_process(traj, run["domain_vector"])
+        return response
 
     def _post_process(self, traj: Trajectory, domain_vector: dict):
         if not self.background_postprocess:
@@ -137,3 +142,16 @@ class LearnKit:
                 status="active"
             )
             self.backend.add(failure)
+
+    def maintain_memory(
+        self,
+        weeks: int = 1,
+        decay_rate: float = 0.02,
+        quarantine_hours: float = 24.0,
+    ) -> dict[str, int]:
+        """Run the local maintenance loop: decay, stale marking, quarantine promotion."""
+        return {
+            "decayed": self.backend.decay_confidence(weeks=weeks, decay_rate=decay_rate),
+            "stale": self.backend.mark_expired_stale(),
+            "promoted": self.backend.promote_quarantined(min_age_hours=quarantine_hours),
+        }

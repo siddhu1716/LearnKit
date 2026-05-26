@@ -15,14 +15,19 @@ Usage (once implemented):
 
 
 class LangChainAdapter:
-    """LangChain callback handler that injects LearnKit memory into agent runs.
-
-    Not yet implemented — this stub establishes the integration contract.
-    """
+    """Small framework-neutral handler with LangChain-shaped lifecycle methods."""
 
     def __init__(self, learnkit_instance):
         self.lk = learnkit_instance
-        raise NotImplementedError(
-            "LangChainAdapter is planned for Phase 4. "
-            "Use the @lk.agent decorator for direct integration."
-        )
+        self.current_run = None
+
+    def inject_context(self, task: str) -> str:
+        self.current_run = self.lk.prepare_run(task)
+        return self.current_run["context"]
+
+    def finalize(self, response: str) -> str:
+        if self.current_run is None:
+            raise ValueError("No active LearnKit run to finalize")
+        result = self.lk.finalize_run(self.current_run, response)
+        self.current_run = None
+        return result

@@ -15,18 +15,22 @@ Usage (once implemented):
 
 
 class AutoGenAdapter:
-    """AutoGen reply_func adapter that wraps LearnKit memory into agent replies.
-
-    Not yet implemented — this stub establishes the integration contract.
-    """
+    """AutoGen-style reply wrapper that injects LearnKit context into replies."""
 
     def __init__(self, learnkit_instance):
         self.lk = learnkit_instance
-        raise NotImplementedError(
-            "AutoGenAdapter is planned for Phase 4. "
-            "Use the @lk.agent decorator for direct integration."
-        )
 
     def register(self, agent):
         """Register LearnKit memory hooks on an AutoGen agent."""
-        raise NotImplementedError
+        if not hasattr(agent, "register_reply"):
+            raise TypeError("AutoGen agent must expose register_reply")
+        agent.register_reply(self.wrap_reply)
+        return agent
+
+    def wrap_reply(self, reply_func):
+        def wrapped(task: str, *args, **kwargs):
+            run = self.lk.prepare_run(task)
+            kwargs["_learnkit_context"] = run["context"]
+            response = reply_func(task, *args, **kwargs)
+            return self.lk.finalize_run(run, response)
+        return wrapped

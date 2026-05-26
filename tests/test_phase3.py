@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
+from datetime import datetime, timedelta
 from learnkit.evolution.gepa import GEPAEvolver
 from learnkit.core import LearnKit
 from learnkit.schemas.skill import SkillRecord
@@ -163,3 +164,36 @@ def test_public_api_exports_learnkit():
     import learnkit as lk
 
     assert lk.LearnKit is LearnKit
+
+
+def test_learnkit_maintain_memory(tmp_path):
+    lk = LearnKit(memory_backend="sqlite", db_path=str(tmp_path / "memory.db"))
+    active = SkillRecord(
+        domains={"coding": 0.9},
+        task_type="active_skill",
+        content={"steps": ["active"]},
+        confidence=0.5,
+    )
+    expired = SkillRecord(
+        domains={"coding": 0.9},
+        task_type="expired_skill",
+        content={"steps": ["expired"]},
+        expires_at=(datetime.utcnow() - timedelta(days=1)).isoformat(),
+    )
+    quarantined = SkillRecord(
+        domains={"coding": 0.9},
+        task_type="reviewed_skill",
+        content={"steps": ["reviewed"]},
+        status="quarantine",
+        created_at=(datetime.utcnow() - timedelta(hours=25)).isoformat(),
+    )
+    lk.backend.add(active)
+    lk.backend.add(expired)
+    lk.backend.add(quarantined)
+
+    result = lk.maintain_memory()
+
+    assert result == {"decayed": 2, "stale": 1, "promoted": 1}
+    assert lk.backend.read(active.id).confidence == pytest.approx(0.48)
+    assert lk.backend.read(expired.id).status == "stale"
+    assert lk.backend.read(quarantined.id).status == "active"
