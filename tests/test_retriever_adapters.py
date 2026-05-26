@@ -14,7 +14,7 @@ class FakeEvaluator:
 
 class FakeDistiller:
     def distill(self, trajectory, domain_vector, quality_score):
-        return None, [], []
+        return None, [], [], None
 
 
 def fake_classifier(task):

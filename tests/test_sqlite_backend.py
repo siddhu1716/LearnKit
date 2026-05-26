@@ -333,3 +333,43 @@ def test_context_compressor_direct_use():
     assert len(compressed) <= 80
     assert compressed.startswith("header")
     assert "[Context truncated — additional records available in memory store]" in compressed
+
+
+def test_sqlite_native_hybrid_search():
+    def embedder(text):
+        if "deadlock" in text or "spawn" in text:
+            return [1.0, 0.0, 0.0]
+        if "contract" in text:
+            return [0.0, 1.0, 0.0]
+        return [0.0, 0.0, 1.0]
+
+    backend = SQLiteBackend(db_path=":memory:", embedder=embedder)
+    
+    target = SkillRecord(
+        domains={"coding": 0.9},
+        task_type="multiprocessing_fix",
+        content={"steps": ["set spawn start method"]},
+        confidence=0.8,
+    )
+    distractor = SkillRecord(
+        domains={"coding": 0.9},
+        task_type="contract_summary",
+        content={"steps": ["extract contract terms"]},
+        confidence=0.9,
+    )
+    backend.add(target)
+    backend.add(distractor)
+
+    # Hybrid search with pure dense similarity
+    results = backend.hybrid_search("thread deadlock", alpha=1.0)
+    assert len(results) >= 1
+    assert results[0].id == target.id
+
+
+def test_sqlite_passes_contract(tmp_path):
+    """Verify that SQLiteBackend satisfies the BaseBackend contract."""
+    from tests.test_backend_contract import run_backend_contract_suite
+    backend = SQLiteBackend(db_path=str(tmp_path / "contract_memory.db"))
+    run_backend_contract_suite(backend, tmp_path)
+
+

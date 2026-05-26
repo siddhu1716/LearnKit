@@ -115,7 +115,7 @@ def test_learnkit_agent_full_loop_sync():
                 content={"steps": ["reuse the working approach"]},
                 status="quarantine",
             )
-            return self.skill, [], []
+            return self.skill, [], [], None
 
     def fake_classifier(task):
         return ClassificationOutput(
