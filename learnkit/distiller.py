@@ -48,7 +48,7 @@ class MemoryDistiller:
     """
 
     def __init__(self, lm=None):
-        self.lm = lm or dspy.LM("anthropic/claude-3-5-haiku-20241022")
+        self.lm = lm or dspy.LM("anthropic/claude-haiku-4-5-20251001")
 
     def distill(
         self,
@@ -78,8 +78,8 @@ class MemoryDistiller:
             task=trajectory.task,
             domains=list(domain_vector.keys()),
             quality=quality_score,
-            reasoning="\\n".join(reasoning_steps) or "No reasoning trace captured",
-            steps="\\n".join(execution_steps),
+            reasoning="\n".join(reasoning_steps) or "No reasoning trace captured",
+            steps="\n".join(execution_steps),
             output=final_output[:500]
         )
 
@@ -115,6 +115,8 @@ class MemoryDistiller:
             for f in data.get("facts", [])
         ]
 
+        # Failure records activate IMMEDIATELY — no quarantine
+        # Per ReaComp: agents need to know what not to do as fast as possible
         failures = [
             FailureRecord(
                 domains=domain_vector,

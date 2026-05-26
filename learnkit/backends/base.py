@@ -36,3 +36,23 @@ class BaseBackend(ABC):
     ) -> list[MemoryRecord]:
         """Search records."""
         pass
+
+    @abstractmethod
+    def list_by_domain(self, domain: str, limit: int = 20) -> list[MemoryRecord]:
+        """List active records for a given domain, ordered by confidence."""
+        pass
+
+    @abstractmethod
+    def list_by_scope(self, scope: str = "team", limit: int = 20) -> list[MemoryRecord]:
+        """List active records for a given scope, ordered by confidence."""
+        pass
+
+    @abstractmethod
+    def update_confidence(self, id: str, new_confidence: float) -> None:
+        """Update a record's confidence score."""
+        pass
+
+    @abstractmethod
+    def decay_confidence(self, weeks: int = 1, decay_rate: float = 0.02) -> int:
+        """Apply weekly confidence decay to active/stale records. Returns count of decayed records."""
+        pass

@@ -41,7 +41,7 @@ class Evaluator:
         ReaComp equivalent: reward signal for whether solver succeeded.
         """
         if lm is None:
-            lm = dspy.LM("anthropic/claude-3-5-haiku-20241022")
+            lm = dspy.LM("anthropic/claude-haiku-4-5-20251001")
 
         judge_prompt = f"""
 You are evaluating an AI agent's response quality. Score from 0-5.

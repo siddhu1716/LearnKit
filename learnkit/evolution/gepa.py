@@ -39,7 +39,7 @@ class GEPAEvolver:
     def __init__(self, backend: BaseBackend, evaluator: Evaluator, lm=None):
         self.backend = backend
         self.evaluator = evaluator
-        self.lm = lm or dspy.LM("anthropic/claude-3-5-sonnet-20241022")
+        self.lm = lm or dspy.LM("anthropic/claude-sonnet-4-20250514")
 
     def evolve_skill(
         self,
@@ -55,7 +55,7 @@ class GEPAEvolver:
         import json
         import uuid
 
-        traces_summary = "\\n".join([
+        traces_summary = "\n".join([
             f"- Task: {t.task[:100]}, Quality: {t.quality_score}/5"
             for t in traces[:10]
         ])

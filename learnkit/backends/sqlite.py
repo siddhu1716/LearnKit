@@ -183,8 +183,14 @@ class SQLiteBackend(BaseBackend):
         is_fts5 = sql_def and "using fts5" in sql_def["sql"].lower()
 
         if is_fts5:
-            # escape/format search query
-            fts_query = f'"{query}"' if " " in query and '"' not in query else query
+            # Split multi-word queries into OR-joined terms for cross-column matching.
+            # Phrase matching ("word1 word2") requires adjacent words in the SAME column,
+            # which fails when terms appear across task_type/content_text/domains_text.
+            words = query.split()
+            if len(words) > 1:
+                fts_query = " OR ".join(words)
+            else:
+                fts_query = query
             
             sql = """
                 SELECT r.full_record, r.confidence, r.created_at,

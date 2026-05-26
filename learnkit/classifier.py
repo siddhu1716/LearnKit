@@ -38,7 +38,7 @@ class TaskClassifier(dspy.Module):
 
 def classify_task(task: str, lm=None) -> ClassificationOutput:
     if lm is None:
-        lm = dspy.LM("anthropic/claude-3-5-haiku-20241022")
+        lm = dspy.LM("anthropic/claude-haiku-4-5-20251001")
     with dspy.context(lm=lm):
         classifier = TaskClassifier()
         return classifier(task=task)

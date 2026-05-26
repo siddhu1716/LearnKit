@@ -1,0 +1,29 @@
+{
+  "id": "fixture-skill-contract-summarization",
+  "type": "skill",
+  "domains": {"legal": 0.9, "finance": 0.3},
+  "task_type": "contract_summarization",
+  "content": {
+    "steps": [
+      "Extract all obligations per party",
+      "Extract termination clauses",
+      "Flag indemnity clauses separately",
+      "Simplify to plain English",
+      "Structure as bullet summary"
+    ],
+    "tools_used": ["pdf_reader", "clause_extractor"],
+    "constraints": ["under 500 words", "no legal jargon"],
+    "failure_modes": ["hallucinated clause references"]
+  },
+  "confidence": 0.87,
+  "reuse_count": 3,
+  "success_rate": 0.85,
+  "scope": "team",
+  "status": "active",
+  "created_at": "2026-05-01T10:00:00Z",
+  "expires_at": "2026-11-01T10:00:00Z",
+  "last_reinforced": "2026-05-20T14:30:00Z",
+  "transfer_domains": [],
+  "transfer_confidence": null,
+  "evolution_gen": 0
+}
