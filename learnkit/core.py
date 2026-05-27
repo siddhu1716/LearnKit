@@ -13,6 +13,7 @@ from .inference_mode import determine_inference_mode
 from .logging import get_logger
 from .retriever import SemanticRetriever
 from .router import MemoryRouter
+from .schemas.base import MemoryScope
 from .trajectory import Trajectory
 
 logger = get_logger("core")
@@ -23,7 +24,7 @@ class LearnKit:
         self,
         memory_backend: str = "sqlite",
         evaluation: str = "llm_judge",
-        scope: str = "team",
+        scope: MemoryScope = "team",
         capture_reasoning: bool = True,  # ReaComp: mandatory CoT capture
         quality_threshold: float = 3.5,
         classifier: Optional[Callable] = None,
@@ -198,12 +199,12 @@ class LearnKit:
                 if skill:
                     skill.scope = self.scope
                     self.backend.add(skill)
-                for f in facts:
-                    f.scope = self.scope
-                    self.backend.add(f)
-                for f in failures:
-                    f.scope = self.scope
-                    self.backend.add(f)
+                for fact in facts:
+                    fact.scope = self.scope
+                    self.backend.add(fact)
+                for failure in failures:
+                    failure.scope = self.scope
+                    self.backend.add(failure)
                 if trace_record:
                     trace_record.scope = self.scope
                     self.backend.add(trace_record)
