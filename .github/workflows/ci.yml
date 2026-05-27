@@ -58,6 +58,10 @@ jobs:
     needs: build-test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # Expose the secret as a job-level env var so the upload step can
+    # gate on its presence. Secrets cannot be referenced in job-level `if`.
+    env:
+      TEST_PYPI_TOKEN: ${{ secrets.TEST_PYPI_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -77,9 +81,11 @@ jobs:
           python -m build --sdist --wheel
 
       - name: Publish to Test PyPI (optional)
+        # Skipped until TEST_PYPI_TOKEN is configured in repo secrets.
+        # When the secret is added, this step runs automatically.
+        if: env.TEST_PYPI_TOKEN != ''
         env:
           TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
+          TWINE_PASSWORD: ${{ env.TEST_PYPI_TOKEN }}
         run: |
           twine upload --repository-url https://test.pypi.org/legacy/ dist/*
-        # Remove this step or replace with real PyPI config when ready.
