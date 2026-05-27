@@ -196,12 +196,16 @@ class LearnKit:
                     quality_score=eval_result.score,
                 )
                 if skill:
+                    skill.scope = self.scope
                     self.backend.add(skill)
                 for f in facts:
+                    f.scope = self.scope
                     self.backend.add(f)
                 for f in failures:
+                    f.scope = self.scope
                     self.backend.add(f)
                 if trace_record:
+                    trace_record.scope = self.scope
                     self.backend.add(trace_record)
             else:
                 # Low quality — store as failure record immediately
@@ -214,6 +218,7 @@ class LearnKit:
                         "what_to_avoid": "Approach used in this trace",
                     },
                     status="active",
+                    scope=self.scope,
                 )
                 self.backend.add(failure)
         except Exception as e:
