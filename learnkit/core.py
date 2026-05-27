@@ -1,5 +1,7 @@
+import atexit
 import functools
 import threading
+import weakref
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, Dict, Optional
 
@@ -54,6 +56,22 @@ class LearnKit:
         self._worker_pool = ThreadPoolExecutor(
             max_workers=max_workers, thread_name_prefix="LearnKitWorker"
         )
+        self._shutdown_lock = threading.Lock()
+        self._is_shutdown = False
+
+        # Drain in-flight post-processing futures before interpreter exit so
+        # background evaluator/distiller calls do not try to schedule new
+        # sub-tasks against an already-closed pool (which surfaced as the
+        # "cannot schedule new futures after shutdown" warning on every
+        # quick_start exit before this).
+        self_ref = weakref.ref(self)
+
+        def _atexit_shutdown() -> None:
+            inst = self_ref()
+            if inst is not None:
+                inst.shutdown(wait=True)
+
+        atexit.register(_atexit_shutdown)
 
     @property
     def last_trajectory(self) -> Optional[Trajectory]:
@@ -67,6 +85,14 @@ class LearnKit:
         """Thread-safe access to a specific run's trajectory."""
         with self._trajectory_lock:
             return self._trajectories.get(run_id)
+
+    def shutdown(self, wait: bool = True) -> None:
+        """Drain the post-processing worker pool. Safe to call multiple times."""
+        with self._shutdown_lock:
+            if self._is_shutdown:
+                return
+            self._is_shutdown = True
+            self._worker_pool.shutdown(wait=wait)
 
     def agent(self, domain: Optional[str] = None, task_type: Optional[str] = None):
         """
@@ -162,7 +188,11 @@ class LearnKit:
         """
         Quality gate + distillation. Runs after response returned to user.
         Uses a bounded thread pool to avoid unbound thread growth and logs exceptions.
+        Falls back to sync if the pool has been drained (e.g. after shutdown).
         """
+        if self._is_shutdown:
+            self._post_process_now(traj, domain_vector)
+            return
         future = self._worker_pool.submit(self._post_process_now, traj, domain_vector)
 
         # Add a done callback to catch and log silent failures in the thread
