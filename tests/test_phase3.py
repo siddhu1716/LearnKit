@@ -179,6 +179,68 @@ def test_public_api_exports_learnkit():
     assert lk.LearnKit is LearnKit
 
 
+def test_distilled_records_inherit_instance_scope():
+    """Regression: LearnKit(scope=...) must propagate to records written by post-processing.
+
+    Before the fix, _post_process_now created records without setting scope,
+    so they inherited the schema default ('team') even when the user configured
+    a custom scope. That caused retrieval-time scope filters to miss everything.
+    """
+    from learnkit.schemas.failure import FailureRecord
+
+    class FakeEvaluator:
+        def evaluate_with_llm_judge(
+            self, task, response, reasoning_trace=None, lm=None
+        ):
+            return EvaluationResult(4.2, EvaluationSignal.LLM_JUDGE, "good")
+
+    produced = {}
+
+    class FakeDistiller:
+        def distill(self, trajectory, domain_vector, quality_score):
+            skill = SkillRecord(
+                domains=domain_vector,
+                task_type="t",
+                content={"steps": ["s"]},
+                status="quarantine",
+            )
+            failure = FailureRecord(
+                domains=domain_vector,
+                content={"description": "d", "what_to_avoid": "w"},
+                status="active",
+            )
+            produced["skill_id"] = skill.id
+            produced["failure_id"] = failure.id
+            return skill, [], [failure], None
+
+    def fake_classifier(task):
+        return ClassificationOutput(
+            task_type="t", domains={"coding": 0.9}, complexity="medium"
+        )
+
+    lk = LearnKit(
+        memory_backend="sqlite",
+        db_path=":memory:",
+        scope="user",
+        classifier=fake_classifier,
+        evaluator=FakeEvaluator(),
+        distiller=FakeDistiller(),
+        background_postprocess=False,
+    )
+
+    @lk.agent(domain="coding")
+    def agent(task, _learnkit_context=None):
+        return "ok"
+
+    agent("do the thing")
+
+    stored_skill = lk.backend.read(produced["skill_id"])
+    stored_failure = lk.backend.read(produced["failure_id"])
+    assert stored_skill is not None and stored_failure is not None
+    assert stored_skill.scope == "user"
+    assert stored_failure.scope == "user"
+
+
 def test_learnkit_maintain_memory(tmp_path):
     lk = LearnKit(memory_backend="sqlite", db_path=str(tmp_path / "memory.db"))
     active = SkillRecord(
@@ -191,14 +253,18 @@ def test_learnkit_maintain_memory(tmp_path):
         domains={"coding": 0.9},
         task_type="expired_skill",
         content={"steps": ["expired"]},
-        expires_at=(datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=1)).isoformat(),
+        expires_at=(
+            datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=1)
+        ).isoformat(),
     )
     quarantined = SkillRecord(
         domains={"coding": 0.9},
         task_type="reviewed_skill",
         content={"steps": ["reviewed"]},
         status="quarantine",
-        created_at=(datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=25)).isoformat(),
+        created_at=(
+            datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=25)
+        ).isoformat(),
     )
     lk.backend.add(active)
     lk.backend.add(expired)

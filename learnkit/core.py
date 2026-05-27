@@ -1,5 +1,7 @@
+import atexit
 import functools
 import threading
+import weakref
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, Dict, Optional
 
@@ -13,6 +15,7 @@ from .inference_mode import determine_inference_mode
 from .logging import get_logger
 from .retriever import SemanticRetriever
 from .router import MemoryRouter
+from .schemas.base import MemoryScope
 from .trajectory import Trajectory
 
 logger = get_logger("core")
@@ -23,7 +26,7 @@ class LearnKit:
         self,
         memory_backend: str = "sqlite",
         evaluation: str = "llm_judge",
-        scope: str = "team",
+        scope: MemoryScope = "team",
         capture_reasoning: bool = True,  # ReaComp: mandatory CoT capture
         quality_threshold: float = 3.5,
         classifier: Optional[Callable] = None,
@@ -53,6 +56,22 @@ class LearnKit:
         self._worker_pool = ThreadPoolExecutor(
             max_workers=max_workers, thread_name_prefix="LearnKitWorker"
         )
+        self._shutdown_lock = threading.Lock()
+        self._is_shutdown = False
+
+        # Drain in-flight post-processing futures before interpreter exit so
+        # background evaluator/distiller calls do not try to schedule new
+        # sub-tasks against an already-closed pool (which surfaced as the
+        # "cannot schedule new futures after shutdown" warning on every
+        # quick_start exit before this).
+        self_ref = weakref.ref(self)
+
+        def _atexit_shutdown() -> None:
+            inst = self_ref()
+            if inst is not None:
+                inst.shutdown(wait=True)
+
+        atexit.register(_atexit_shutdown)
 
     @property
     def last_trajectory(self) -> Optional[Trajectory]:
@@ -66,6 +85,14 @@ class LearnKit:
         """Thread-safe access to a specific run's trajectory."""
         with self._trajectory_lock:
             return self._trajectories.get(run_id)
+
+    def shutdown(self, wait: bool = True) -> None:
+        """Drain the post-processing worker pool. Safe to call multiple times."""
+        with self._shutdown_lock:
+            if self._is_shutdown:
+                return
+            self._is_shutdown = True
+            self._worker_pool.shutdown(wait=wait)
 
     def agent(self, domain: Optional[str] = None, task_type: Optional[str] = None):
         """
@@ -161,7 +188,11 @@ class LearnKit:
         """
         Quality gate + distillation. Runs after response returned to user.
         Uses a bounded thread pool to avoid unbound thread growth and logs exceptions.
+        Falls back to sync if the pool has been drained (e.g. after shutdown).
         """
+        if self._is_shutdown:
+            self._post_process_now(traj, domain_vector)
+            return
         future = self._worker_pool.submit(self._post_process_now, traj, domain_vector)
 
         # Add a done callback to catch and log silent failures in the thread
@@ -196,12 +227,16 @@ class LearnKit:
                     quality_score=eval_result.score,
                 )
                 if skill:
+                    skill.scope = self.scope
                     self.backend.add(skill)
-                for f in facts:
-                    self.backend.add(f)
-                for f in failures:
-                    self.backend.add(f)
+                for fact in facts:
+                    fact.scope = self.scope
+                    self.backend.add(fact)
+                for failure in failures:
+                    failure.scope = self.scope
+                    self.backend.add(failure)
                 if trace_record:
+                    trace_record.scope = self.scope
                     self.backend.add(trace_record)
             else:
                 # Low quality — store as failure record immediately
@@ -214,6 +249,7 @@ class LearnKit:
                         "what_to_avoid": "Approach used in this trace",
                     },
                     status="active",
+                    scope=self.scope,
                 )
                 self.backend.add(failure)
         except Exception as e:

@@ -25,6 +25,12 @@ from .base import BaseBackend
 
 logger = get_logger("sqlite_backend")
 
+# Mirrors MemoryScope = Literal["user", "team", "public"] in schemas/base.py.
+# Pydantic validates on construction, but `validate_assignment` defaults to
+# False so `record.scope = "..."` after creation bypasses validation. This
+# set is the defense-in-depth check at write time.
+VALID_SCOPES: frozenset[str] = frozenset(("user", "team", "public"))
+
 RECORD_TYPES = {
     "skill": SkillRecord,
     "fact": FactRecord,
@@ -212,6 +218,15 @@ class SQLiteBackend(BaseBackend):
         return " ".join(parts)
 
     def add(self, record: MemoryRecord) -> str:
+        # Validate scope at write time so an invalid value can't be persisted.
+        # Without this, parse_record at read time would explode on a poisoned
+        # row, with the original write site long gone from the stack.
+        if record.scope not in VALID_SCOPES:
+            raise BackendError(
+                f"Invalid scope {record.scope!r} on record {record.id} "
+                f"(type={record.type}); must be one of {sorted(VALID_SCOPES)}."
+            )
+
         conn = self._conn()
         domains_text = " ".join(record.domains.keys())
         content_text = self._get_record_text(record)
@@ -612,7 +627,9 @@ class SQLiteBackend(BaseBackend):
         return decayed
 
     def promote_quarantined(self, min_age_hours: float = 24.0) -> int:
-        cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=min_age_hours)
+        cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(
+            hours=min_age_hours
+        )
         promoted = 0
 
         for record in self._records_with_status("quarantine"):
