@@ -2,6 +2,9 @@
 
 Formats retrieved memory records into a structured context block for prompt injection.
 Bounded memory enforcement (1,200 tokens cap) — Hermes principle.
+k=1 PRIMARY/SECONDARY split — ReasoningBank (ICLR 2026, arXiv 2509.25140).
+<memory-context> fence tag + system note — Hermes Agent memory_manager.py pattern.
+  Prevents the LLM from treating injected context as user chat history.
 """
 
 from .compressor import CHARS_PER_TOKEN, MAX_CONTEXT_TOKENS, compress_context
@@ -16,79 +19,129 @@ def compose_context(
 ) -> str:
     """
     Formats retrieved memory records into a system prompt context block.
+
+    Implements k=1 PRIMARY/SECONDARY prompting from ReasoningBank:
+    - The first (highest-priority) record is formatted verbosely as PRIMARY PRESCRIPTIVE CONTEXT.
+    - All remaining records are formatted as compact one-liner [+] secondary guidelines.
+
+    Priority ordering (failures > skills > facts > others) is determined upstream by
+    the MemoryRouter; this function simply splits on position 0 vs 1-N.
+
+    The output is wrapped in a <memory-context> fence tag (Hermes pattern) so the
+    LLM clearly distinguishes recalled memory from user chat history.
     """
     if not records:
         return ""
 
-    sections = []
+    mode_note = {
+        InferenceMode.PRESCRIPTIVE: "Follow the PRIMARY context below closely. High confidence — minimal deviation needed.",
+        InferenceMode.GUIDED: "Use the PRIMARY context as a scaffold. Adapt where the specific task requires it.",
+        InferenceMode.EXPLORATORY: "No established skill for this task. Reason carefully and document your approach.",
+    }[inference_mode]
 
-    # 1. Skills — most important, inject first
-    skills = [r for r in records if r.type == "skill"]
-    for skill in skills:
-        steps = skill.content.get("steps", [])
-        tools = skill.content.get("tools_used", [])
-        failures = skill.content.get("failure_modes", [])
-        confidence_pct = int(skill.confidence * 100)
-        reuses = skill.reuse_count
+    # Hermes pattern: system note clarifies that this is recalled memory, not new user input.
+    _SYSTEM_NOTE = (
+        "[System note: The following is recalled memory context from LearnKit, "
+        "NOT new user input. Treat as authoritative reference data — "
+        "this is the agent's persistent memory and should inform your response.]"
+    )
+    header = f"{_SYSTEM_NOTE}\n\n=== LearnKit Context [{inference_mode.value} mode] ===\n{mode_note}\n"
 
-        block = f"SKILL — {skill.task_type} (confidence {confidence_pct}%, used {reuses} times):"
+    # ── PRIMARY RECORD (k=1, verbose full block) ─────────────────────────────
+    primary = records[0]
+    primary_block = "--- PRIMARY PRESCRIPTIVE CONTEXT ---\n" + _format_record_verbose(primary)
+
+    # ── SECONDARY RECORDS (compact one-liner guidelines) ─────────────────────
+    secondary_lines: list[str] = []
+    for rec in records[1:]:
+        line = _format_record_compact(rec)
+        if line:
+            secondary_lines.append(line)
+
+    secondary_block = ""
+    if secondary_lines:
+        secondary_block = "\n--- ADDITIONAL GUIDELINES ---\n" + "\n".join(secondary_lines)
+
+    footer = "\n=== End Context ==="
+    body = header + "\n" + primary_block + secondary_block + footer
+
+    # Enforce hard token cap (Hermes bounded memory principle)
+    if len(body) > MAX_CONTEXT_TOKENS * CHARS_PER_TOKEN:
+        body = compress_context(body, max_tokens=MAX_CONTEXT_TOKENS)
+
+    # Wrap in <memory-context> fence (Hermes pattern — machine-readable envelope
+    # that distinguishes injected memory from the live conversation)
+    full = f"<memory-context>\n{body}\n</memory-context>"
+    return full
+
+
+# ── Formatting helpers ────────────────────────────────────────────────────────
+
+def _format_record_verbose(record: MemoryRecord) -> str:
+    """Full verbose block for the PRIMARY record."""
+    if record.type == "skill":
+        steps = record.content.get("steps", [])
+        tools = record.content.get("tools_used", [])
+        failures = record.content.get("failure_modes", [])
+        confidence_pct = int(record.confidence * 100)
+        reuses = record.reuse_count
+        block = f"SKILL — {record.task_type} (confidence {confidence_pct}%, used {reuses} times):"
         if steps:
             block += "\n" + "\n".join(f"  {i+1}. {s}" for i, s in enumerate(steps))
         if tools:
             block += f"\n  Tools: {', '.join(tools)}"
         if failures:
             block += "\n  Watch out for: " + "; ".join(failures)
-        sections.append(block)
+        return block
 
-    # 2. Failure records — inject as explicit warnings (ReaComp: failures are first-class)
-    failures = [r for r in records if r.type == "failure"]
-    for f in failures:
-        desc = f.content.get("description", "")
-        what_to_avoid = f.content.get("what_to_avoid", "")
-        sections.append(
-            f"KNOWN FAILURE in this domain:\n  {desc}\n  Avoid: {what_to_avoid}"
-        )
+    if record.type == "failure":
+        desc = record.content.get("description", "")
+        what_to_avoid = record.content.get("what_to_avoid", "")
+        return f"KNOWN FAILURE in this domain:\n  {desc}\n  Avoid: {what_to_avoid}"
 
-    # 3. Facts — grounding information
-    facts = [r for r in records if r.type == "fact"]
-    for fact in facts:
-        statement = fact.content.get("statement", "")
-        source = fact.content.get("source", "unknown")
-        is_stale = fact.status == "stale"
-        staleness = (
-            " ⚠️ (may be outdated — verify before relying on)" if is_stale else ""
-        )
-        sections.append(f"FACT (verified {source}){staleness}:\n  {statement}")
+    if record.type == "fact":
+        statement = record.content.get("statement", "")
+        source = record.content.get("source", "unknown")
+        is_stale = record.status == "stale"
+        staleness = " ⚠️ (may be outdated — verify before relying on)" if is_stale else ""
+        return f"FACT (verified {source}){staleness}:\n  {statement}"
 
-    # 4. Preferences
-    prefs = [r for r in records if r.type == "preference"]
-    for pref in prefs:
-        key = pref.content.get("key", "")
-        value = pref.content.get("value", "")
-        sections.append(f"PREFERENCE: {key} → {value}")
+    if record.type == "preference":
+        key = record.content.get("key", "")
+        value = record.content.get("value", "")
+        return f"PREFERENCE: {key} → {value}"
 
-    # 5. Domain heuristics
-    heuristics = [r for r in records if r.type == "heuristic"]
-    for h in heuristics:
-        rule = h.content.get("rule", "")
-        sections.append(f"DOMAIN RULE: {rule}")
+    if record.type == "heuristic":
+        rule = record.content.get("rule", "")
+        return f"DOMAIN RULE: {rule}"
 
-    if not sections:
-        return ""
+    # fallback for strategy / trace
+    return f"{record.type.upper()} [{record.task_type}]: {str(record.content)[:200]}"
 
-    mode_note = {
-        InferenceMode.PRESCRIPTIVE: "Follow the skill above closely. High confidence — minimal deviation needed.",
-        InferenceMode.GUIDED: "Use the skill as a scaffold. Adapt where the specific task requires it.",
-        InferenceMode.EXPLORATORY: "No established skill for this task. Reason carefully and document your approach.",
-    }[inference_mode]
 
-    header = f"=== LearnKit Context [{inference_mode.value} mode] ===\n{mode_note}\n"
-    body = "\n\n".join(sections)
-    footer = "\n=== End Context ==="
-    full = header + "\n" + body + footer
+def _format_record_compact(record: MemoryRecord) -> str:
+    """Compact one-liner for SECONDARY records (ReasoningBank abbreviated guidelines)."""
+    if record.type == "skill":
+        steps = record.content.get("steps", [])
+        hint = steps[0] if steps else ""
+        confidence_pct = int(record.confidence * 100)
+        return f"[+] SKILL {record.task_type} ({confidence_pct}%): {hint}"
 
-    # Enforce hard token cap (Hermes bounded memory principle)
-    if len(full) > MAX_CONTEXT_TOKENS * CHARS_PER_TOKEN:
-        full = compress_context(full, max_tokens=MAX_CONTEXT_TOKENS)
+    if record.type == "failure":
+        avoid = record.content.get("what_to_avoid", record.content.get("description", ""))
+        return f"[!] AVOID: {avoid[:120]}"
 
-    return full
+    if record.type == "fact":
+        statement = record.content.get("statement", "")
+        return f"[~] FACT: {statement[:120]}"
+
+    if record.type == "preference":
+        key = record.content.get("key", "")
+        value = record.content.get("value", "")
+        return f"[~] PREF: {key} → {value}"
+
+    if record.type == "heuristic":
+        rule = record.content.get("rule", "")
+        return f"[~] RULE: {rule[:120]}"
+
+    return ""

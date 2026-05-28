@@ -304,10 +304,18 @@ def test_context_composer():
         inference_mode=InferenceMode.PRESCRIPTIVE,
     )
 
+    # Hermes-style fence tag wraps the whole block
+    assert "<memory-context>" in context
+    assert "</memory-context>" in context
+    # System note distinguishes recalled memory from user input
+    assert "recalled memory context from LearnKit" in context
     assert "=== LearnKit Context [prescriptive mode] ===" in context
+    # Primary (k=1) — skill gets the verbose full block
+    assert "PRIMARY PRESCRIPTIVE CONTEXT" in context
     assert "SKILL — multiprocessing_fix" in context
-    assert "KNOWN FAILURE in this domain" in context
-    assert "FACT (verified docs)" in context
+    # Secondaries use compact one-liner format (ReasoningBank abbreviated guidelines)
+    assert "[!] AVOID:" in context          # failure compact format
+    assert "[~] FACT:" in context           # fact compact format
     assert "=== End Context ===" in context
 
     # Test compression limit: Create 10 massive skills to exceed 4800 characters

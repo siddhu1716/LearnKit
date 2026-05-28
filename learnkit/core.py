@@ -1,5 +1,6 @@
 import atexit
 import functools
+import hashlib
 import threading
 import weakref
 from concurrent.futures import ThreadPoolExecutor
@@ -19,6 +20,18 @@ from .schemas.base import MemoryScope
 from .trajectory import Trajectory
 
 logger = get_logger("core")
+
+
+def _skill_fingerprint(skill) -> str:
+    """Compute a stable fingerprint for a SkillRecord's step sequence.
+
+    AWM + Voyager pattern: prevents storing near-duplicate skills from
+    similar trajectories. Steps are normalized (lowercased, stripped) before
+    hashing so minor wording variations don't bypass dedup.
+    """
+    steps = skill.content.get("steps", [])
+    normalized = "|".join(s.strip().lower() for s in steps if isinstance(s, str))
+    return hashlib.sha256(normalized.encode()).hexdigest()
 
 
 class LearnKit:
@@ -228,7 +241,26 @@ class LearnKit:
                 )
                 if skill:
                     skill.scope = self.scope
-                    self.backend.add(skill)
+                    # AWM + Voyager pattern: skip if a near-duplicate skill already exists
+                    # (same step-sequence fingerprint). Reinforce the existing record instead.
+                    fp = _skill_fingerprint(skill)
+                    existing_fp = self.backend.search(
+                        query=f"fingerprint:{fp}", domain=None, scope=self.scope, limit=1
+                    )
+                    dup = next(
+                        (r for r in existing_fp if r.content.get("_fingerprint") == fp),
+                        None,
+                    )
+                    if dup:
+                        new_conf = min(0.95, dup.confidence + 0.02)
+                        self.backend.update_confidence(dup.id, new_conf)
+                        logger.info(
+                            "Skill dedup: reinforced existing record instead of inserting duplicate",
+                            extra={"event": "skill_dedup", "fingerprint": fp[:16]},
+                        )
+                    else:
+                        skill.content["_fingerprint"] = fp
+                        self.backend.add(skill)
                 for fact in facts:
                     fact.scope = self.scope
                     self.backend.add(fact)

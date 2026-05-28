@@ -56,7 +56,9 @@ class MemoryRecord(BaseModel):
     def is_expired(self) -> bool:
         if self.expires_at is None:
             return False
-        return datetime.now(timezone.utc).replace(tzinfo=None) > datetime.fromisoformat(self.expires_at)
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        exp = datetime.fromisoformat(self.expires_at).replace(tzinfo=None)
+        return now > exp
 
     def reinforce(self, quality: float) -> None:
         """Call after a successful retrieval that produced a good outcome."""

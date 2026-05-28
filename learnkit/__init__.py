@@ -14,6 +14,7 @@ Public surface:
     HeuristicRecord   — domain heuristic memory type
     SQLiteBackend     — default storage backend
     compose_context   — context composer (formats records → prompt block)
+    seed_bundled_skills — load bundled SKILL.md + metadata.json into a backend
 """
 
 from .backends.sqlite import SQLiteBackend
@@ -29,6 +30,7 @@ from .schemas.preference import PreferenceRecord
 from .schemas.skill import SkillRecord
 from .schemas.strategy import StrategyRecord
 from .schemas.trace import TraceRecord
+from .skills_loader import seed_bundled_skills
 from .trajectory import Trajectory, TrajectoryStep
 
 __all__ = [
@@ -48,4 +50,5 @@ __all__ = [
     "compress_context",
     "InferenceMode",
     "determine_inference_mode",
+    "seed_bundled_skills",
 ]
