@@ -1,0 +1,1477 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LearnKit — The Experience Distillation SDK for AI Agents</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #030303;
+            --surface: #0a0a0a;
+            --surface-accent: #111111;
+            --accent: #00ff88;
+            --accent-dim: rgba(0, 255, 136, 0.06);
+            --accent-glow: rgba(0, 255, 136, 0.15);
+            --secondary: #a78bfa;          /* violet — replaces blue */
+            --secondary-glow: rgba(167, 139, 250, 0.15);
+            --warn: #f59e0b;
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1aa;
+            --text-muted: #52525b;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(255, 255, 255, 0.15);
+            --font-main: 'Geist', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            background-color: var(--bg);
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg);
+            color: var(--text-primary);
+            line-height: 1.5;
+            overflow-x: hidden;
+        }
+
+        .bg-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: linear-gradient(to right, var(--border) 1px, transparent 1px), linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+            background-size: 40px 40px;
+            mask-image: radial-gradient(circle at 50% 50%, black, transparent 80%);
+            z-index: -1;
+            opacity: 0.4;
+        }
+
+        .bg-glow {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background:
+                /* Deep violet crown — very top of the page */
+                radial-gradient(ellipse 130% 55% at 50% -20%, rgba(139, 92, 246, 0.28), transparent 58%),
+                /* Emerald green mid-hero */
+                radial-gradient(ellipse 90% 45% at 50% 25%, rgba(0, 255, 136, 0.14), transparent 55%),
+                /* Soft violet left accent */
+                radial-gradient(ellipse 60% 35% at 5%  35%, rgba(167, 139, 250, 0.07), transparent 55%),
+                /* Soft emerald right accent */
+                radial-gradient(ellipse 60% 35% at 95% 35%, rgba(0, 200, 120, 0.06), transparent 55%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4 {
+            font-weight: 700;
+            letter-spacing: -0.03em;
+        }
+
+        .text-gradient {
+            background: linear-gradient(to bottom right, #fff 30%, #a1a1aa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        .section {
+            padding: 120px 0;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .section.revealed {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* HERO */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            padding: 80px 24px;
+        }
+
+        /* Full-bleed gradient overlay — violet crown → emerald → transparent */
+        .hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100vw;
+            background:
+                linear-gradient(to bottom,
+                    rgba(139, 92, 246, 0.12) 0%,
+                    rgba(80, 200, 150, 0.08) 35%,
+                    rgba(0, 255, 136, 0.04) 60%,
+                    transparent             85%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Keep hero children above the ::before overlay */
+        .hero>* {
+            position: relative;
+            z-index: 1;
+        }
+
+        .badge-new {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            color: var(--accent);
+            padding: 4px 12px;
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 24px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            animation: fadeIn 1s ease;
+        }
+
+        .badge-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: pulse-dot 2s infinite;
+        }
+
+        @keyframes pulse-dot {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1)
+            }
+
+            50% {
+                opacity: 0.4;
+                transform: scale(0.8)
+            }
+        }
+
+        .hero h1 {
+            font-size: clamp(2.2rem, 7vw, 4.2rem);
+            line-height: 1.1;
+            margin-bottom: 24px;
+            max-width: 860px;
+            min-height: 1.2em;
+        }
+
+        .hero>p {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            max-width: 580px;
+            margin-bottom: 40px;
+        }
+
+        .waitlist-form {
+            display: flex;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 8px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(12px);
+            width: 100%;
+            max-width: 480px;
+            transition: border-color 0.3s;
+        }
+
+        .waitlist-form:focus-within {
+            border-color: rgba(0, 255, 136, 0.3);
+        }
+
+        .waitlist-form input {
+            background: transparent;
+            border: none;
+            padding: 12px 16px;
+            color: white;
+            font-family: var(--font-main);
+            font-size: 16px;
+            flex: 1;
+            outline: none;
+        }
+
+        .btn-submit {
+            background: var(--text-primary);
+            color: var(--bg);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            font-family: var(--font-main);
+        }
+
+        .btn-submit:hover {
+            background: #e5e5e5;
+            transform: scale(1.02);
+        }
+
+        .hero-stat {
+            margin-top: 28px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .counter-val {
+            color: var(--text-primary);
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* HERO ANIMATION — memory growth chart */
+        .hero-visual {
+            margin-top: 56px;
+            width: 100%;
+            max-width: 700px;
+        }
+
+        .chart-wrap {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 28px 32px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chart-label-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .chart-title {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-family: var(--font-mono);
+        }
+
+        .chart-live {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--accent);
+            font-family: var(--font-mono);
+        }
+
+        .live-dot {
+            width: 5px;
+            height: 5px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: pulse-dot 1.5s infinite;
+        }
+
+        .chart-canvas-wrap {
+            position: relative;
+            height: 100px;
+        }
+
+        canvas#growth-chart {
+            width: 100% !important;
+        }
+
+        .chart-x-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+        }
+
+        .chart-x-labels span {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+
+        .record-pills {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .pill {
+            background: var(--surface-accent);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .pill-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .pill-count {
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* PROBLEM */
+        .problem-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-top: 64px;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 40px;
+            border-radius: 24px;
+            transition: all 0.3s;
+        }
+
+        .card:hover {
+            border-color: var(--border-hover);
+            background: var(--surface-accent);
+        }
+
+        .card h3 {
+            font-size: 1.2rem;
+            margin-bottom: 16px;
+        }
+
+        .card p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        /* CODE */
+        .code-container {
+            margin-top: 64px;
+            background: #000;
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 40px;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            line-height: 1.7;
+            position: relative;
+        }
+
+        .code-label {
+            position: absolute;
+            top: 20px;
+            right: 24px;
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .code-comment {
+            color: #52525b;
+        }
+
+        .code-keyword {
+            color: #3b82f6;
+        }
+
+        .code-string {
+            color: #00ff88;
+        }
+
+        .code-func {
+            color: #8b5cf6;
+        }
+
+        /* FLOW */
+        .flow-wrap {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 80px;
+            gap: 12px;
+        }
+
+        .flow-item {
+            flex: 1;
+            text-align: center;
+            padding: 32px 20px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            transition: all 0.5s;
+        }
+
+        .flow-item.active {
+            border-color: var(--accent);
+            box-shadow: 0 0 30px var(--accent-glow);
+        }
+
+        .flow-num {
+            font-size: 12px;
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: block;
+            font-family: var(--font-mono);
+        }
+
+        .flow-item h4 {
+            font-size: 1rem;
+            margin-bottom: 8px;
+        }
+
+        .flow-item p {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+        }
+
+        /* ARCHITECTURE DIAGRAM */
+        .arch-wrap {
+            margin-top: 80px;
+            position: relative;
+        }
+
+        .arch-canvas-container {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        canvas#arch-canvas {
+            display: block;
+            width: 100%;
+        }
+
+        .arch-legend {
+            display: flex;
+            gap: 24px;
+            justify-content: center;
+            margin-top: 24px;
+            flex-wrap: wrap;
+        }
+
+        .arch-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+
+        .arch-legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+        }
+
+        /* TABLE */
+        .comparison-wrap {
+            margin-top: 64px;
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            overflow: hidden;
+            background: var(--surface);
+        }
+
+        .table-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .table-row:last-child {
+            border-bottom: none;
+        }
+
+        .table-cell {
+            padding: 24px 32px;
+            font-size: 0.95rem;
+        }
+
+        .table-cell:first-child {
+            color: var(--text-secondary);
+            border-right: 1px solid var(--border);
+        }
+
+        .table-header {
+            background: var(--surface-accent);
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .table-cell.good {
+            color: var(--accent);
+        }
+
+        /* USE CASES */
+        .use-case-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            margin-top: 64px;
+        }
+
+        .use-case-card {
+            display: flex;
+            gap: 24px;
+            padding: 40px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            transition: all 0.3s;
+        }
+
+        .use-case-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-4px);
+        }
+
+        .use-case-icon {
+            font-size: 24px;
+            width: 48px;
+            height: 48px;
+            background: var(--surface-accent);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        /* CITATIONS */
+        .citation-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            margin-top: 64px;
+        }
+
+        .citation-card {
+            padding: 32px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            transition: border-color 0.3s;
+        }
+
+        .citation-card:hover {
+            border-color: rgba(167, 139, 250, 0.35);
+        }
+
+        .citation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .citation-tag {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--secondary);
+            font-weight: 600;
+            font-family: var(--font-mono);
+        }
+
+        /* FOOTER CTA */
+        .footer-cta {
+            text-align: center;
+        }
+
+        .footer-cta h2 {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            margin-bottom: 24px;
+            max-width: 760px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        footer {
+            padding: 80px 0 40px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 32px;
+            margin-bottom: 32px;
+        }
+
+        .footer-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--text-primary);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        .typewriter-cursor {
+            display: inline-block;
+            width: 3px;
+            height: 0.85em;
+            background: var(--accent);
+            margin-left: 4px;
+            animation: blink 1s infinite;
+            vertical-align: middle;
+            border-radius: 1px;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: 0
+            }
+        }
+
+        .success-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .success-modal {
+            background: var(--surface);
+            border: 1px solid var(--accent);
+            padding: 48px;
+            border-radius: 32px;
+            text-align: center;
+            max-width: 400px;
+        }
+
+        @media(max-width:768px) {
+
+            .problem-grid,
+            .use-case-grid,
+            .citation-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .flow-wrap {
+                flex-direction: column;
+            }
+
+            .table-row {
+                grid-template-columns: 1fr;
+            }
+
+            .table-cell:first-child {
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .section {
+                padding: 80px 0;
+            }
+
+            .record-pills {
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="bg-grid"></div>
+    <div class="bg-glow"></div>
+
+    <!-- HERO -->
+    <section class="hero container">
+        <span class="badge-new"><span class="badge-dot"></span>Early access · Star us on GitHub</span>
+        <h1 id="headline" class="text-gradient"></h1>
+        <p>Introducing <b><i>LearnKit</i></b> — a thin experience distillation layer that wraps any agent and makes it
+            compound knowledge over time.</p>
+
+        <div class="waitlist-form">
+            <input type="email" id="email-hero" placeholder="Enter your work email">
+            <button class="btn-submit" onclick="submitForm('email-hero')">Join waitlist</button>
+        </div>
+
+        <p class="hero-stat">Your agent has solved this problem <span class="counter-val" id="counter">0</span> times.
+            It doesn't know that.</p>
+
+        <!-- HERO ANIMATION: live memory growth chart -->
+        <div class="hero-visual">
+            <div class="chart-wrap">
+                <div class="chart-label-row">
+                    <span class="chart-title">Agent quality score · across runs</span>
+                    <span class="chart-live"><span class="live-dot"></span>LIVE SIM</span>
+                </div>
+                <div class="chart-canvas-wrap">
+                    <canvas id="growth-chart" height="100"></canvas>
+                </div>
+                <div class="chart-x-labels">
+                    <span>Run 1</span><span>Run 10</span><span>Run 20</span><span>Run 30</span><span>Run
+                        40</span><span>Run 50</span>
+                </div>
+                <div class="record-pills">
+                    <div class="pill"><span class="pill-dot" style="background:#00ff88"></span>Skills <span
+                            class="pill-count" id="pill-skills">0</span></div>
+                    <div class="pill"><span class="pill-dot" style="background:#3b82f6"></span>Workflows <span
+                            class="pill-count" id="pill-workflows">0</span></div>
+                    <div class="pill"><span class="pill-dot" style="background:#f59e0b"></span>Failures <span
+                            class="pill-count" id="pill-failures">0</span></div>
+                    <div class="pill"><span class="pill-dot" style="background:#8b5cf6"></span>Facts <span
+                            class="pill-count" id="pill-facts">0</span></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PROBLEM -->
+    <section class="section container" id="problem">
+        <div style="text-align:center;max-width:700px;margin:0 auto;">
+            <h2 class="text-gradient" style="font-size:3rem;margin-bottom:24px;">Agents are amnesiac by design.</h2>
+            <p style="color:var(--text-secondary);font-size:1.1rem;">Retraining isn't an option. Storing raw logs isn't
+                learning. We need a better way.</p>
+        </div>
+        <div class="problem-grid">
+            <div class="card">
+                <h3>Zero-sum runs</h3>
+                <p>Your agent solved this exact problem last Tuesday. Today it's hallucinating again because it has no
+                    persistent skill layer.</p>
+            </div>
+            <div class="card">
+                <h3>The log haystack</h3>
+                <p>Raw vector memory is just a bigger haystack. Without distillation, your agent gets lost in the noise
+                    of its own past.</p>
+            </div>
+            <div class="card">
+                <h3>Retraining barrier</h3>
+                <p>Retraining models is slow and expensive. LearnKit gives you fine-tuning results with zero GPU hours
+                    and no model changes.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- SOLUTION: code -->
+    <section class="section container" id="solution">
+        <div style="text-align:center;">
+            <h2 class="text-gradient" style="font-size:3rem;margin-bottom:24px;">Institutional knowledge in 5 lines.
+            </h2>
+        </div>
+        <div class="code-container">
+            <div class="code-label">Python SDK</div>
+            <pre><code><span class="code-keyword">import</span> learnkit
+lk = learnkit.LearnKit()
+
+<span class="code-keyword">@lk.agent</span>(domain=<span class="code-string">"legal"</span>)
+<span class="code-keyword">def</span> <span class="code-func">agent</span>(task):
+    <span class="code-keyword">return</span> llm.run(task)
+
+<span class="code-comment"># Run 1:  Figures it out from scratch</span>
+<span class="code-comment"># Run 10: Has distilled workflows from 9 prior runs</span>
+<span class="code-comment"># Run 50: Has a curated wiki of domain expertise</span></code></pre>
+        </div>
+        <div
+            style="display:flex;justify-content:center;gap:40px;margin-top:48px;color:var(--text-muted);font-size:14px;flex-wrap:wrap;gap:24px;">
+            <span>✦ Works with any framework</span>
+            <span>✦ Auditable JSON records</span>
+            <span>✦ Zero infra to start</span>
+        </div>
+    </section>
+
+    <!-- HOW IT WORKS: flow + ARCHITECTURE -->
+    <section class="section container" id="how-it-works">
+        <div style="text-align:center;">
+            <h2 class="text-gradient" style="font-size:3rem;margin-bottom:16px;">Experience distillation.</h2>
+            <p style="color:var(--text-secondary);">How LearnKit compounds knowledge in the background — every single
+                run.</p>
+        </div>
+
+        <div class="flow-wrap" id="flow-diagram">
+            <div class="flow-item"><span class="flow-num">01</span>
+                <h4>CLASSIFY</h4>
+                <p>Task domain detected automatically</p>
+            </div>
+            <div class="flow-item"><span class="flow-num">02</span>
+                <h4>RETRIEVE</h4>
+                <p>Best past strategies injected into context</p>
+            </div>
+            <div class="flow-item"><span class="flow-num">03</span>
+                <h4>COMPOSE</h4>
+                <p>Agent runs with rich curated experience</p>
+            </div>
+            <div class="flow-item"><span class="flow-num">04</span>
+                <h4>DISTILL</h4>
+                <p>Successes stored as typed skills + workflows</p>
+            </div>
+        </div>
+
+        <!-- ARCHITECTURE DIAGRAM -->
+        <div class="arch-wrap">
+            <div style="margin-bottom:24px;">
+                <h3 style="font-size:1.5rem;margin-bottom:8px;">Architecture</h3>
+                <p style="color:var(--text-secondary);font-size:0.95rem;">A live trace of a single agent run flowing
+                    through the LearnKit layer.</p>
+            </div>
+            <div class="arch-canvas-container">
+                <canvas id="arch-canvas" height="380"></canvas>
+            </div>
+            <div class="arch-legend">
+                <div class="arch-legend-item"><span class="arch-legend-dot" style="background:#00ff88"></span>Active
+                    signal</div>
+                <div class="arch-legend-item"><span class="arch-legend-dot" style="background:#3b82f6"></span>LearnKit
+                    layer</div>
+                <div class="arch-legend-item"><span class="arch-legend-dot" style="background:#8b5cf6"></span>Memory
+                    store</div>
+                <div class="arch-legend-item"><span class="arch-legend-dot" style="background:#f59e0b"></span>Agent /
+                    LLM</div>
+            </div>
+        </div>
+
+        <div class="comparison-wrap" style="margin-top:64px;">
+            <div class="table-row table-header">
+                <div class="table-cell">Raw Memory Storage</div>
+                <div class="table-cell">LearnKit Distillation</div>
+            </div>
+            <div class="table-row">
+                <div class="table-cell">Stores chat logs</div>
+                <div class="table-cell good">Stores distilled strategies</div>
+            </div>
+            <div class="table-row">
+                <div class="table-cell">Grows linearly, bloats</div>
+                <div class="table-cell good">Bounded, scored, curated</div>
+            </div>
+            <div class="table-row">
+                <div class="table-cell">No quality signal</div>
+                <div class="table-cell good">Every record has a quality gate</div>
+            </div>
+            <div class="table-row">
+                <div class="table-cell">Failures buried in logs</div>
+                <div class="table-cell good">Failures activate immediately</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- USE CASES -->
+    <section class="section container" id="use-cases">
+        <div style="text-align:center;margin-bottom:64px;">
+            <h2 class="text-gradient" style="font-size:3rem;">Built for production agents.</h2>
+        </div>
+        <div class="use-case-grid">
+            <div class="use-case-card">
+                <div class="use-case-icon">🔧</div>
+                <div>
+                    <h3>Coding Agents</h3>
+                    <p style="color:var(--text-secondary);margin-top:8px;">Remembers your stack and debugging patterns.
+                        Stores working solutions as runnable, tested code.</p>
+                </div>
+            </div>
+            <div class="use-case-card">
+                <div class="use-case-icon">⚖️</div>
+                <div>
+                    <h3>Legal Assistants</h3>
+                    <p style="color:var(--text-secondary);margin-top:8px;">Builds jurisdiction-specific templates. Flags
+                        patterns and known failure modes with root causes.</p>
+                </div>
+            </div>
+            <div class="use-case-card">
+                <div class="use-case-icon">🔬</div>
+                <div>
+                    <h3>Research Agents</h3>
+                    <p style="color:var(--text-secondary);margin-top:8px;">Accumulates templates for common research
+                        patterns. Facts carry temporal validity — outdated citations auto-expire.</p>
+                </div>
+            </div>
+            <div class="use-case-card">
+                <div class="use-case-icon">🎧</div>
+                <div>
+                    <h3>Customer Support</h3>
+                    <p style="color:var(--text-secondary);margin-top:8px;">Workflow templates per ticket category.
+                        Skills distilled from high-CSAT resolutions.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- RESEARCH -->
+    <section class="section container" id="research">
+        <div style="text-align:center;margin-bottom:64px;">
+            <h2 class="text-gradient" style="font-size:3rem;">Backed by research.</h2>
+            <p style="color:var(--text-secondary);margin-top:16px;font-size:1rem;">LearnKit's core ideas are validated
+                by published research from Google, CMU, and MineDojo.</p>
+        </div>
+        <div class="citation-grid">
+            <div class="citation-card">
+                <div class="citation-header">
+                    <h4>ReasoningBank</h4><span class="citation-tag">Google · ICLR 2026</span>
+                </div>
+                <p style="color:var(--text-secondary);font-size:0.9rem;">Distilled experience outperforms raw memory
+                    retrieval. Validated on SWE-Bench and WebArena.</p>
+            </div>
+            <div class="citation-card">
+                <div class="citation-header">
+                    <h4>Agent Workflow Memory</h4><span class="citation-tag">CMU · 2024</span>
+                </div>
+                <p style="color:var(--text-secondary);font-size:0.9rem;">Parameterized workflow templates generalize
+                    better than raw skill logs. LearnKit auto-induces these after 5+ similar tasks.</p>
+            </div>
+            <div class="citation-card">
+                <div class="citation-header">
+                    <h4>Voyager</h4><span class="citation-tag">MineDojo · 2023</span>
+                </div>
+                <p style="color:var(--text-secondary);font-size:0.9rem;">Ever-growing executable skill libraries enable
+                    compounding agent knowledge across sessions.</p>
+            </div>
+            <div class="citation-card">
+                <div class="citation-header">
+                    <h4>SIA</h4><span class="citation-tag">Hexo AI · arXiv 2026</span>
+                </div>
+                <p style="color:var(--text-secondary);font-size:0.9rem;">56.6% gain on LawBench via self-improvement
+                    loops. Validates the self-improving AI thesis in production.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER CTA -->
+    <section class="section container footer-cta">
+        <h2 class="text-gradient">"Agents don't learn. Until now."</h2>
+        <p style="color:var(--text-secondary);margin-bottom:48px;font-size:1.2rem;margin-top:16px;">Be first to give
+            your agents a memory that compounds.</p>
+        <div style="display:flex;justify-content:center;">
+            <div class="waitlist-form">
+                <input type="email" id="email-footer" placeholder="Enter your work email">
+                <button class="btn-submit" onclick="submitForm('email-footer')">Get early access</button>
+            </div>
+        </div>
+        <p style="margin-top:24px;color:var(--text-muted);font-size:14px;">Open source core · MIT license · No credit
+            card</p>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="footer-links">
+                <a href="https://github.com/siddhu1716/LearnKit">GitHub</a>
+                <a href="#">Documentation</a>
+                <a href="#">Privacy</a>
+            </div>
+            <p style="color:var(--text-muted);font-size:14px;">© 2026 LearnKit · Built by developers for developers.</p>
+        </div>
+    </footer>
+
+    <div class="success-overlay" id="success-overlay">
+        <div class="success-modal">
+            <h2 style="margin-bottom:16px;">You're in.</h2>
+            <p style="color:var(--text-secondary);margin-bottom:32px;">We'll reach out as soon as a spot opens up.</p>
+            <button class="btn-submit" onclick="closeModal()">Got it</button>
+        </div>
+    </div>
+
+    <script>
+        /* ── TYPEWRITER ── */
+        const headline = "Your agents die at the end of every conversation.";
+        const headlineEl = document.getElementById('headline');
+        let ti = 0;
+        function type() {
+            if (ti < headline.length) {
+                headlineEl.innerHTML = headline.substring(0, ti + 1) + '<span class="typewriter-cursor"></span>';
+                ti++;
+                setTimeout(type, 42);
+            }
+        }
+        type();
+
+        /* ── RUN COUNTER ── */
+        const counterEl = document.getElementById('counter');
+        const counterTarget = 47, counterDur = 2200, counterStart = Date.now();
+        function updateCounter() {
+            const p = Math.min((Date.now() - counterStart) / counterDur, 1);
+            counterEl.textContent = Math.floor(p * counterTarget);
+            if (p < 1) requestAnimationFrame(updateCounter);
+        }
+        updateCounter();
+
+        /* ── HERO GROWTH CHART ── */
+        (function () {
+            const canvas = document.getElementById('growth-chart');
+            const ctx = canvas.getContext('2d');
+            const runs = 50;
+
+            // Generate quality score data — starts noisy, improves with memory
+            function generateData() {
+                const pts = [];
+                let base = 2.0;
+                for (let i = 0; i < runs; i++) {
+                    const memory_boost = Math.min(i * 0.045, 2.2);
+                    const noise = (Math.random() - 0.5) * 0.4;
+                    const val = Math.min(Math.max(base + memory_boost + noise, 1.5), 5.0);
+                    pts.push(val);
+                }
+                return pts;
+            }
+
+            const data = generateData();
+            let drawn = 0;
+            let animFrame;
+
+            const pillSkills = document.getElementById('pill-skills');
+            const pillWorkflows = document.getElementById('pill-workflows');
+            const pillFailures = document.getElementById('pill-failures');
+            const pillFacts = document.getElementById('pill-facts');
+
+            function resize() {
+                const dpr = window.devicePixelRatio || 1;
+                const rect = canvas.parentElement.getBoundingClientRect();
+                canvas.width = rect.width * dpr;
+                canvas.height = 100 * dpr;
+                canvas.style.width = rect.width + 'px';
+                canvas.style.height = '100px';
+                ctx.scale(dpr, dpr);
+            }
+            resize();
+            window.addEventListener('resize', () => { resize(); drawn = Math.min(drawn, data.length); drawChart(); });
+
+            function drawChart() {
+                const W = canvas.width / (window.devicePixelRatio || 1);
+                const H = 100;
+                ctx.clearRect(0, 0, W, H);
+
+                const pad = { l: 8, r: 8, t: 10, b: 10 };
+                const chartW = W - pad.l - pad.r;
+                const chartH = H - pad.t - pad.b;
+                const minV = 1, maxV = 5.2;
+
+                function px(i) { return pad.l + (i / (runs - 1)) * chartW; }
+                function py(v) { return pad.t + chartH - ((v - minV) / (maxV - minV)) * chartH; }
+
+                if (drawn < 2) return;
+
+                // Gradient fill
+                const grad = ctx.createLinearGradient(0, pad.t, 0, H - pad.b);
+                grad.addColorStop(0, 'rgba(0,255,136,0.25)');
+                grad.addColorStop(1, 'rgba(0,255,136,0)');
+
+                ctx.beginPath();
+                ctx.moveTo(px(0), py(data[0]));
+                for (let i = 1; i < drawn; i++) {
+                    const cx = (px(i - 1) + px(i)) / 2;
+                    ctx.bezierCurveTo(cx, py(data[i - 1]), cx, py(data[i]), px(i), py(data[i]));
+                }
+                ctx.lineTo(px(drawn - 1), H - pad.b);
+                ctx.lineTo(px(0), H - pad.b);
+                ctx.closePath();
+                ctx.fillStyle = grad;
+                ctx.fill();
+
+                // Line
+                ctx.beginPath();
+                ctx.moveTo(px(0), py(data[0]));
+                for (let i = 1; i < drawn; i++) {
+                    const cx = (px(i - 1) + px(i)) / 2;
+                    ctx.bezierCurveTo(cx, py(data[i - 1]), cx, py(data[i]), px(i), py(data[i]));
+                }
+                ctx.strokeStyle = '#00ff88';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Head dot
+                const hx = px(drawn - 1), hy = py(data[drawn - 1]);
+                ctx.beginPath();
+                ctx.arc(hx, hy, 4, 0, Math.PI * 2);
+                ctx.fillStyle = '#00ff88';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(hx, hy, 8, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0,255,136,0.2)';
+                ctx.fill();
+
+                // Update pills
+                pillSkills.textContent = Math.floor((drawn / runs) * 34);
+                pillWorkflows.textContent = Math.floor((drawn / runs) * 8);
+                pillFailures.textContent = Math.floor((drawn / runs) * 12);
+                pillFacts.textContent = Math.floor((drawn / runs) * 21);
+            }
+
+            function animate() {
+                if (drawn < data.length) {
+                    drawn += 0.5;
+                    drawChart();
+                    animFrame = requestAnimationFrame(animate);
+                } else {
+                    drawn = data.length;
+                    drawChart();
+                    // Restart after pause
+                    setTimeout(() => {
+                        drawn = 0;
+                        const newData = generateData();
+                        data.splice(0, data.length, ...newData);
+                        animate();
+                    }, 3000);
+                }
+            }
+            setTimeout(animate, 800);
+        })();
+
+
+        /* ── ARCHITECTURE DIAGRAM ── */
+        (function () {
+            const canvas = document.getElementById('arch-canvas');
+            const ctx = canvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
+
+            function setup() {
+                const W = canvas.parentElement.getBoundingClientRect().width;
+                const H = 380;
+                canvas.width = W * dpr;
+                canvas.height = H * dpr;
+                canvas.style.width = W + 'px';
+                canvas.style.height = H + 'px';
+                ctx.scale(dpr, dpr);
+                return { W, H };
+            }
+
+            let dims = setup();
+            window.addEventListener('resize', () => { dims = setup(); });
+
+            // Node definitions — positions as fractions of W/H
+            const NODES = [
+                // Row 0 — user task
+                { id: 'task', label: 'User Task', sub: 'incoming request', col: '#f0f0f0', x: 0.5, y: 0.10, r: 38 },
+                // Row 1 — LearnKit entry
+                { id: 'lk', label: 'LearnKit', sub: '@lk.agent wrapper', col: '#3b82f6', x: 0.5, y: 0.30, r: 44 },
+                // Row 2 — internals
+                { id: 'clf', label: 'Classifier', sub: 'domain · type', col: '#3b82f6', x: 0.18, y: 0.52, r: 36 },
+                { id: 'ret', label: 'Retriever', sub: 'BM25 + dense', col: '#3b82f6', x: 0.38, y: 0.52, r: 36 },
+                { id: 'eval', label: 'Evaluator', sub: 'quality gate', col: '#3b82f6', x: 0.62, y: 0.52, r: 36 },
+                { id: 'dist', label: 'Distiller', sub: 'trace → records', col: '#3b82f6', x: 0.82, y: 0.52, r: 36 },
+                // Row 3 — agent
+                { id: 'agent', label: 'Agent / LLM', sub: 'unchanged model', col: '#f59e0b', x: 0.5, y: 0.72, r: 44 },
+                // Row 4 — memory
+                { id: 'skills', label: 'Skills', sub: '', col: '#8b5cf6', x: 0.22, y: 0.92, r: 28 },
+                { id: 'workflows', label: 'Workflows', sub: '', col: '#8b5cf6', x: 0.40, y: 0.92, r: 28 },
+                { id: 'failures', label: 'Failures', sub: '', col: '#f59e0b', x: 0.58, y: 0.92, r: 28 },
+                { id: 'facts', label: 'Facts', sub: '', col: '#8b5cf6', x: 0.76, y: 0.92, r: 28 },
+            ];
+
+            // Edges: [from, to, label, style]  style: 'fwd'|'ret'|'distill'
+            const EDGES = [
+                ['task', 'lk', 'task', 'fwd'],
+                ['lk', 'clf', 'classify', 'fwd'],
+                ['lk', 'ret', 'retrieve', 'fwd'],
+                ['ret', 'agent', 'context', 'fwd'],
+                ['clf', 'agent', 'domain hint', 'fwd'],
+                ['agent', 'eval', 'response', 'fwd'],
+                ['eval', 'dist', 'if score≥3', 'fwd'],
+                ['dist', 'skills', '', 'distill'],
+                ['dist', 'workflows', '', 'distill'],
+                ['dist', 'failures', '', 'distill'],
+                ['dist', 'facts', '', 'distill'],
+                ['skills', 'ret', '', 'ret'],
+                ['workflows', 'ret', '', 'ret'],
+            ];
+
+            // Animation state
+            const STEP_DURATION = 900; // ms per step
+            const STEPS = [
+                { active: ['task'], label: 'Task received' },
+                { active: ['task', 'lk'], label: 'LearnKit intercepts' },
+                { active: ['lk', 'clf', 'ret'], label: 'Classify & retrieve' },
+                { active: ['ret', 'agent'], label: 'Context injected into agent' },
+                { active: ['clf', 'agent'], label: 'Domain hint applied' },
+                { active: ['agent'], label: 'Agent runs with rich context' },
+                { active: ['agent', 'eval'], label: 'Quality evaluated' },
+                { active: ['eval', 'dist'], label: 'Distilling experience...' },
+                { active: ['dist', 'skills', 'workflows', 'failures', 'facts'], label: 'Records stored to memory' },
+                { active: ['skills', 'ret', 'workflows'], label: 'Memory ready for next run' },
+            ];
+
+            let currentStep = 0;
+            let stepProgress = 0;
+            let lastTime = null;
+            let archAnimating = false;
+
+            function nodePos(id, W, H) {
+                const n = NODES.find(x => x.id === id);
+                return { x: n.x * W, y: n.y * H, r: n.r };
+            }
+
+            function activeNodes(step) {
+                return STEPS[step % STEPS.length].active;
+            }
+
+            function isEdgeActive(edge, step) {
+                const active = activeNodes(step);
+                return active.includes(edge[0]) && active.includes(edge[1]);
+            }
+
+            function hexAlpha(hex, a) {
+                const r = parseInt(hex.slice(1, 3), 16);
+                const g = parseInt(hex.slice(3, 5), 16);
+                const b = parseInt(hex.slice(5, 7), 16);
+                return `rgba(${r},${g},${b},${a})`;
+            }
+
+            function drawArch(timestamp) {
+                if (!lastTime) lastTime = timestamp;
+                const delta = timestamp - lastTime;
+                lastTime = timestamp;
+
+                stepProgress += delta / STEP_DURATION;
+                if (stepProgress >= 1) {
+                    stepProgress = 0;
+                    currentStep = (currentStep + 1) % STEPS.length;
+                }
+
+                const { W, H } = dims;
+                ctx.clearRect(0, 0, W, H);
+
+                // Background
+                ctx.fillStyle = '#0a0a0a';
+                ctx.fillRect(0, 0, W, H);
+
+                const step = currentStep;
+                const active = activeNodes(step);
+
+                // Draw edges first
+                EDGES.forEach(edge => {
+                    const fromN = NODES.find(x => x.id === edge[0]);
+                    const toN = NODES.find(x => x.id === edge[1]);
+                    if (!fromN || !toN) return;
+                    const fx = fromN.x * W, fy = fromN.y * H;
+                    const tx = toN.x * W, ty = toN.y * H;
+
+                    const isActive = isEdgeActive(edge, step);
+                    const style = edge[3];
+
+                    // Draw base edge
+                    ctx.beginPath();
+                    ctx.moveTo(fx, fy);
+                    // Curve
+                    const midX = (fx + tx) / 2, midY = (fy + ty) / 2;
+                    ctx.bezierCurveTo(fx, midY, tx, midY, tx, ty);
+
+                    if (isActive) {
+                        const edgeCol = style === 'distill' ? '#8b5cf6' : style === 'ret' ? '#00ff88' : '#3b82f6';
+                        ctx.strokeStyle = edgeCol;
+                        ctx.lineWidth = 2;
+                        ctx.setLineDash([]);
+                        ctx.globalAlpha = 0.9;
+                    } else {
+                        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+                        ctx.lineWidth = 1;
+                        ctx.setLineDash([4, 4]);
+                        ctx.globalAlpha = 1;
+                    }
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.globalAlpha = 1;
+
+                    // Animate a packet along active edges
+                    if (isActive) {
+                        const t = stepProgress;
+                        // bezier point
+                        const bx = Math.pow(1 - t, 3) * fx + 3 * Math.pow(1 - t, 2) * t * fx + 3 * (1 - t) * t * t * tx + Math.pow(t, 3) * tx;
+                        const by = Math.pow(1 - t, 3) * fy + 3 * Math.pow(1 - t, 2) * t * ((fy + ty) / 2) + 3 * (1 - t) * t * t * ((fy + ty) / 2) + Math.pow(t, 3) * ty;
+                        const edgeCol = style === 'distill' ? '#8b5cf6' : style === 'ret' ? '#00ff88' : '#3b82f6';
+                        ctx.beginPath();
+                        ctx.arc(bx, by, 5, 0, Math.PI * 2);
+                        ctx.fillStyle = edgeCol;
+                        ctx.shadowBlur = 12;
+                        ctx.shadowColor = edgeCol;
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+                    }
+                });
+
+                // Draw nodes
+                NODES.forEach(node => {
+                    const nx = node.x * W, ny = node.y * H;
+                    const isActive = active.includes(node.id);
+                    const r = node.r;
+
+                    // Glow ring for active
+                    if (isActive) {
+                        ctx.beginPath();
+                        ctx.arc(nx, ny, r + 8, 0, Math.PI * 2);
+                        ctx.fillStyle = hexAlpha(node.col, 0.12);
+                        ctx.fill();
+                    }
+
+                    // Node circle
+                    ctx.beginPath();
+                    ctx.arc(nx, ny, r, 0, Math.PI * 2);
+                    const grad = ctx.createRadialGradient(nx - r * 0.3, ny - r * 0.3, r * 0.1, nx, ny, r);
+                    if (isActive) {
+                        grad.addColorStop(0, hexAlpha(node.col, 0.6));
+                        grad.addColorStop(1, hexAlpha(node.col, 0.15));
+                    } else {
+                        grad.addColorStop(0, 'rgba(20,20,20,1)');
+                        grad.addColorStop(1, 'rgba(10,10,10,1)');
+                    }
+                    ctx.fillStyle = grad;
+                    ctx.fill();
+
+                    // Border
+                    ctx.beginPath();
+                    ctx.arc(nx, ny, r, 0, Math.PI * 2);
+                    ctx.strokeStyle = isActive ? node.col : 'rgba(255,255,255,0.1)';
+                    ctx.lineWidth = isActive ? 1.5 : 1;
+                    if (isActive) {
+                        ctx.shadowBlur = 20;
+                        ctx.shadowColor = node.col;
+                    }
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
+
+                    // Label
+                    ctx.fillStyle = isActive ? '#ffffff' : 'rgba(255,255,255,0.4)';
+                    ctx.font = `bold ${r > 35 ? 13 : 11}px Geist, sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(node.label, nx, ny - (node.sub ? 7 : 0));
+
+                    if (node.sub) {
+                        ctx.fillStyle = isActive ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)';
+                        ctx.font = `${r > 35 ? 10 : 9}px JetBrains Mono, monospace`;
+                        ctx.fillText(node.sub, nx, ny + 9);
+                    }
+                });
+
+                // Step label
+                const stepLabel = STEPS[step].label;
+                ctx.fillStyle = 'rgba(0,255,136,0.9)';
+                ctx.font = '12px JetBrains Mono, monospace';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                ctx.fillText('▶ ' + stepLabel, 20, 14);
+
+                // Step dots
+                for (let s = 0; s < STEPS.length; s++) {
+                    ctx.beginPath();
+                    ctx.arc(W - 20 - (STEPS.length - 1 - s) * 14, 20, 3, 0, Math.PI * 2);
+                    ctx.fillStyle = s === step ? '#00ff88' : 'rgba(255,255,255,0.15)';
+                    ctx.fill();
+                }
+
+                if (archAnimating) requestAnimationFrame(drawArch);
+            }
+
+            // Start arch animation when section is visible
+            const archSection = document.getElementById('how-it-works');
+            const archObserver = new IntersectionObserver((entries) => {
+                entries.forEach(e => {
+                    if (e.isIntersecting && !archAnimating) {
+                        archAnimating = true;
+                        lastTime = null;
+                        requestAnimationFrame(drawArch);
+                    } else if (!e.isIntersecting) {
+                        archAnimating = false;
+                    }
+                });
+            }, { threshold: 0.2 });
+            archObserver.observe(archSection);
+
+
+            /* ── SCROLL REVEAL ── */
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('revealed');
+                        if (entry.target.id === 'how-it-works') animateFlow();
+                    }
+                });
+            }, { threshold: 0.1 });
+            document.querySelectorAll('.section').forEach(s => observer.observe(s));
+
+            function animateFlow() {
+                document.querySelectorAll('.flow-item').forEach((item, idx) => {
+                    setTimeout(() => item.classList.add('active'), idx * 600);
+                });
+            }
+
+            /* ── FORM ── */
+            window.submitForm = function (inputId) {
+                const email = document.getElementById(inputId).value;
+                if (email && email.includes('@')) {
+                    document.getElementById('success-overlay').style.display = 'flex';
+                } else {
+                    alert('Please enter a valid email.');
+                }
+            };
+            window.closeModal = function () {
+                document.getElementById('success-overlay').style.display = 'none';
+            };
+        })();
+    </script>
+</body>
+
+</html>
