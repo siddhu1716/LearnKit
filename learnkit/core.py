@@ -1,6 +1,7 @@
 import atexit
 import functools
 import hashlib
+import sys
 import threading
 import weakref
 from concurrent.futures import ThreadPoolExecutor
@@ -224,6 +225,19 @@ class LearnKit:
         future.add_done_callback(_handle_result)
 
     def _post_process_now(self, traj: Trajectory, domain_vector: dict) -> None:
+        # Interpreter is shutting down — dspy/litellm's own thread pool may already
+        # be torn down (their atexit runs first since they're imported lazily on
+        # the first LM call). Calling the judge here would fail with "cannot
+        # schedule new futures after interpreter shutdown", which the evaluator
+        # then catches and returns score=2.0, which then causes us to write a
+        # synthetic FailureRecord for a run that was actually successful.
+        # Skip post-processing entirely in this case.
+        if sys.is_finalizing():
+            logger.info(
+                "Skipping post-processing during interpreter finalization",
+                extra={"event": "post_process_skip_finalizing", "task": traj.task[:80]},
+            )
+            return
         try:
             eval_result = self.evaluator.evaluate_with_llm_judge(
                 task=traj.task, response=traj.steps[-1].content if traj.steps else ""
@@ -245,7 +259,10 @@ class LearnKit:
                     # (same step-sequence fingerprint). Reinforce the existing record instead.
                     fp = _skill_fingerprint(skill)
                     existing_fp = self.backend.search(
-                        query=f"fingerprint:{fp}", domain=None, scope=self.scope, limit=1
+                        query=f"fingerprint:{fp}",
+                        domain=None,
+                        scope=self.scope,
+                        limit=1,
                     )
                     dup = next(
                         (r for r in existing_fp if r.content.get("_fingerprint") == fp),
@@ -286,6 +303,76 @@ class LearnKit:
                 self.backend.add(failure)
         except Exception as e:
             raise PostProcessError(f"Post-processing failed: {e}") from e
+
+    def inspect(self, task: str) -> dict:
+        """Readonly view of the LearnKit loop's first three stages for a task.
+
+        Runs Classify -> Retrieve -> Compose without registering a trajectory,
+        running an agent, or writing anything. Returns plain JSON-serialisable
+        data — intended for demos, debugging, and the marketing-site Playground.
+        """
+        try:
+            classification = self.classifier(task)
+            domain_vector = classification.domains
+        except Exception as e:
+            logger.warning(
+                "inspect: classification failed, falling back",
+                extra={
+                    "event": "inspect_classifier_fallback",
+                    "error_type": type(e).__name__,
+                },
+            )
+            from .classifier import ClassificationOutput
+
+            classification = ClassificationOutput(
+                task_type="unknown", domains={}, complexity="medium"
+            )
+            domain_vector = {}
+
+        try:
+            records = self.retriever.retrieve(
+                task=task,
+                domain_vector=domain_vector,
+                scope=self.scope,
+                router=self.router,
+            )
+        except Exception as e:
+            logger.warning(
+                "inspect: retrieval failed, returning empty",
+                extra={
+                    "event": "inspect_retrieval_fallback",
+                    "error_type": type(e).__name__,
+                },
+            )
+            records = []
+
+        mode = determine_inference_mode(records)
+        context_block = compose_context(records, task, mode)
+
+        return {
+            "task": task,
+            "classification": {
+                "task_type": classification.task_type,
+                "domains": dict(domain_vector),
+                "complexity": getattr(classification, "complexity", "medium"),
+            },
+            "inference_mode": mode.value,
+            "records": [
+                {
+                    "id": r.id,
+                    "type": r.type,
+                    "task_type": r.task_type,
+                    "domains": dict(r.domains),
+                    "confidence": round(r.confidence, 3),
+                    "reuse_count": r.reuse_count,
+                    "status": r.status,
+                    "content": r.content,
+                }
+                for r in records
+            ],
+            "context": context_block,
+            "context_chars": len(context_block),
+        }
 
     def maintain_memory(
         self,

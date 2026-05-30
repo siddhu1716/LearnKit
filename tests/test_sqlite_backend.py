@@ -221,13 +221,17 @@ def test_sqlite_replace_promote_and_stale_lifecycle(tmp_path):
         task_type="draft_skill",
         content={"steps": ["draft"]},
         status="quarantine",
-        created_at=(datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=25)).isoformat(),
+        created_at=(
+            datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=25)
+        ).isoformat(),
     )
     expired = SkillRecord(
         domains={"coding": 0.9},
         task_type="expired_skill",
         content={"steps": ["old"]},
-        expires_at=(datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=1)).isoformat(),
+        expires_at=(
+            datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=1)
+        ).isoformat(),
     )
 
     backend.add(old_quarantined)
@@ -314,8 +318,8 @@ def test_context_composer():
     assert "PRIMARY PRESCRIPTIVE CONTEXT" in context
     assert "SKILL — multiprocessing_fix" in context
     # Secondaries use compact one-liner format (ReasoningBank abbreviated guidelines)
-    assert "[!] AVOID:" in context          # failure compact format
-    assert "[~] FACT:" in context           # fact compact format
+    assert "[!] AVOID:" in context  # failure compact format
+    assert "[~] FACT:" in context  # fact compact format
     assert "=== End Context ===" in context
 
     # Test compression limit: Create 10 massive skills to exceed 4800 characters
@@ -425,3 +429,34 @@ def test_sqlite_passes_contract(tmp_path):
 
     backend = SQLiteBackend(db_path=str(tmp_path / "contract_memory.db"))
     run_backend_contract_suite(backend, tmp_path)
+
+
+def test_search_with_fts5_reserved_words_in_query(tmp_path):
+    """Regression: search queries containing FTS5 operators (and/or/not/near)
+    used to blow up the MATCH expression and silently return empty results.
+    Surfaced during 2026-05-29 benchmark — broke retrieval on nearly every
+    contract_summarization task (each prompt contained the word "and").
+    """
+    backend = SQLiteBackend(db_path=str(tmp_path / "fts_reserved.db"))
+    rec = SkillRecord(
+        domains={"legal": 0.9},
+        task_type="contract_summarization",
+        content={"steps": ["Extract obligations", "List termination triggers"]},
+        confidence=0.8,
+        status="active",
+    )
+    backend.add(rec)
+
+    # Each of these used to raise OperationalError in FTS5 and fall back to [].
+    # Every query includes at least one term from the record content so we
+    # verify both (a) the MATCH expression parses, and (b) the row is found.
+    for q in [
+        "summarize obligations and termination triggers",
+        "extract obligations or list conditions",
+        "obligations clauses not yet reviewed",
+        "obligations near the termination section",
+        "contract: obligations + termination",
+    ]:
+        results = backend.search(q, domain="legal")
+        assert len(results) >= 1, f"search returned 0 for {q!r}"
+        assert results[0].id == rec.id

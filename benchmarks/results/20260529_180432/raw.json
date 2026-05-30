@@ -1,0 +1,1022 @@
+[
+  {
+    "arm": "control",
+    "task_id": "py01",
+    "domain": "python_debugging",
+    "pattern": "concurrency_default_start_method",
+    "task_index": 1,
+    "response": "The root cause is that Python 3.12 defaults to the `spawn` start method on macOS, which requires the target function to be importable and safe to re-execute, causing a deadlock if the pool is initialized in the global scope. To fix this, you must wrap your entry point in an `if __name__ == \"__main__\":` block to prevent the child processes from recursively executing the module-level code. Alternatively, you can explicitly set the start method to `fork` using `multiprocessing.set_start_method('fork')` before creating the `Pool`, though this is generally discouraged due to thread-safety concerns in macOS. For a robust solution, move the `Pool.map()` call inside a function triggered by your `if __name__ == \"__main__\":` block.",
+    "score": 4.0,
+    "score_reasoning": "The response correctly identifies the root cause (spawn method on macOS in Python 3.12) and provides the primary fix (if __name__ == '__main__' wrapper), but slightly overstates the accuracy of the alternative fork method claim and could be more concise about why spawn causes the hanging specifically.",
+    "usage": {
+      "prompt_tokens": 74,
+      "completion_tokens": 167,
+      "total_tokens": 241
+    },
+    "latency_s": 13.232150999829173,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "control",
+    "task_id": "py02",
+    "domain": "python_debugging",
+    "pattern": "concurrency_default_start_method",
+    "task_index": 2,
+    "response": "The root cause is that Windows uses the `spawn` start method, which necessitates that the `target` function be importable from a module rather than defined as a local function or a `lambda` inside another scope, as the new process must re-import the function to execute it. Because local objects lack a `__module__` attribute, `pickle` fails to serialize them for cross-process communication. To fix this, move the target function to the top-level scope of your module so it can be resolved by name. Alternatively, ensure your entry point is protected by `if __name__ == '__main__':` to prevent recursive process spawning, which is mandatory under Windows.",
+    "score": 4.0,
+    "score_reasoning": "The response correctly identifies the root cause (Windows spawn method requiring picklable functions) and provides accurate primary solutions (move function to module level, use if __name__ == '__main__'), but omits alternative fixes like using multiprocessing.get_context('spawn') with proper structure or the set_start_method approach, and could clarify that the if __name__ == '__main__' guard prevents issues rather than being strictly required for pickling.",
+    "usage": {
+      "prompt_tokens": 74,
+      "completion_tokens": 139,
+      "total_tokens": 213
+    },
+    "latency_s": 1.5183166000060737,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "control",
+    "task_id": "py03",
+    "domain": "python_debugging",
+    "pattern": "concurrency_default_start_method",
+    "task_index": 3,
+    "response": "The deadlock occurs because `logging` module handlers often rely on internal locks that are not re-initialized after `fork()` when the `spawn` method is not explicitly used, causing a process to hang while attempting to acquire a held lock. On macOS, Python defaults to the `spawn` start method for `multiprocessing` in recent versions (3.8+), but if you have explicitly configured it to `fork` (or are on older versions), the child process inherits the parent's locked state. To resolve this, you must explicitly set the start method to `spawn` or `forkserver` before creating your `ProcessPoolExecutor` by calling `multiprocessing.set_start_method('spawn', force=True)`. This ensures the child process starts with a clean memory space, avoiding the inherited lock contention. Avoid using `fork` with multi-threaded or complex logging configurations to prevent these non-deterministic synchronization failures.",
+    "score": 2.0,
+    "score_reasoning": "The response contains a significant factual error: macOS defaults to 'spawn' in Python 3.8+, so the deadlock problem it describes (fork inheriting locks) is contradictory to its own premise; the actual issue is that 'spawn' requires pickling which fails with certain logging configurations, and the standard fix involves configuring logging *before* process creation or using fork/forkserver, not forcing 'spawn' as a solution.",
+    "usage": {
+      "prompt_tokens": 68,
+      "completion_tokens": 192,
+      "total_tokens": 260
+    },
+    "latency_s": 6.463066800031811,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "control",
+    "task_id": "py04",
+    "domain": "python_debugging",
+    "pattern": "mutable_default_arg",
+    "task_index": 4,
+    "response": "The root cause is that default arguments in Python are evaluated once at the time of function definition, not during each function call, making `items` a persistent object shared across all invocations. To fix this, use `None` as the default value for the argument and initialize the list inside the function body. This pattern ensures a new list is instantiated during every call, preventing cross-contamination of state.\n\n```python\ndef append_item(item, items=None):\n    if items is None:\n        items = []\n    items.append(item)\n    return items\n```",
+    "score": 5.0,
+    "score_reasoning": "The response accurately identifies the mutable default argument pitfall, clearly explains why it occurs (single evaluation at definition time), provides the idiomatic fix with correct implementation, and uses precise terminology throughout.",
+    "usage": {
+      "prompt_tokens": 72,
+      "completion_tokens": 122,
+      "total_tokens": 194
+    },
+    "latency_s": 1.1360351997427642,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "control",
+    "task_id": "py05",
+    "domain": "python_debugging",
+    "pattern": "mutable_default_arg",
+    "task_index": 5,
+    "response": "This occurs because default argument values are evaluated only once at function definition time, meaning the `tags` dictionary is stored as a persistent attribute on the function object and shared across all instances. To fix this, set the default to `None` and initialize the attribute inside the `__init__` method body. This ensures each instance creates its own unique dictionary object.\n\n```python\ndef __init__(self, tags=None):\n    self.tags = tags if tags is not None else {}\n```",
+    "score": 5.0,
+    "score_reasoning": "The response accurately identifies the mutable default argument pitfall, correctly explains why it occurs (evaluation at definition time), and provides the standard Python solution with clear code example that properly handles the None case.",
+    "usage": {
+      "prompt_tokens": 72,
+      "completion_tokens": 103,
+      "total_tokens": 175
+    },
+    "latency_s": 15.674709199927747,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "control",
+    "task_id": "py06",
+    "domain": "python_debugging",
+    "pattern": "mutable_default_arg",
+    "task_index": 6,
+    "response": "The root cause is Python\u2019s mutable default argument behavior, where the dictionary object created at function definition is shared across all calls that omit the `opts` argument. Because dictionaries are mutable, `opts['env'] = 'prod'` modifies the underlying default object, causing subsequent tests to inherit modified state. To fix this, set the default value to `None` and initialize the dictionary inside the function body. Use the following pattern: `def make_config(opts=None): opts = opts or {}; opts['env'] = 'prod'; return opts`. This ensures a fresh dictionary is allocated in the local scope for every invocation.",
+    "score": 4.0,
+    "score_reasoning": "The response correctly identifies the mutable default argument problem and provides a working fix, but the suggested solution `opts = opts or {}` has a subtle flaw: it will create a new dict when `opts={}` is explicitly passed (falsy), potentially masking intentional empty configs; the more robust pattern would be `opts = opts if opts is not None else {}` or use `copy()` to safely mutate: `opts = (opts or {}).copy()`.",
+    "usage": {
+      "prompt_tokens": 75,
+      "completion_tokens": 128,
+      "total_tokens": 203
+    },
+    "latency_s": 3.7063516001217067,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "control",
+    "task_id": "py07",
+    "domain": "python_debugging",
+    "pattern": "closure_late_binding",
+    "task_index": 7,
+    "response": "The root cause is that Python's lambdas use late binding, meaning they look up the variable `i` in the enclosing scope only when the function is actually called, at which point the loop has finished and `i` remains at its final value of `2`. To fix this, you must capture the current value of `i` by providing it as a default argument, which is evaluated at the time the lambda is defined. Use `[lambda i=i: i for i in range(3)]` to force the local assignment of the loop variable to the function's signature. This pattern effectively creates a new closure scope for each iteration, ensuring that each function retains its intended value.",
+    "score": 5.0,
+    "score_reasoning": "The response accurately explains Python's late binding in closures, correctly identifies why [2,2,2] occurs, and provides the exact standard fix (default argument pattern) with clear explanation of how it works.",
+    "usage": {
+      "prompt_tokens": 86,
+      "completion_tokens": 142,
+      "total_tokens": 228
+    },
+    "latency_s": 2.2651770999655128,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "control",
+    "task_id": "py08",
+    "domain": "python_debugging",
+    "pattern": "closure_late_binding",
+    "task_index": 8,
+    "response": "The root cause is a **closure late-binding** issue: the `name` variable is looked up in the surrounding scope when the lambda is called, at which point the loop has finished and `name` remains at its final value. To fix this, bind the variable to a default argument, which captures the current value during iteration: `[lambda evt, name=name: log(name, evt) for name in NAMES]`. Alternatively, use `functools.partial(log, name)` to create a function with the argument pre-filled. This behavior is standard in Python (as per PEP 227) because loop variables are not block-scoped.",
+    "score": 5.0,
+    "score_reasoning": "The response accurately diagnoses the late-binding closure problem, provides two correct and practical solutions (default argument and functools.partial), explains the root cause clearly, and correctly cites PEP 227 for context.",
+    "usage": {
+      "prompt_tokens": 71,
+      "completion_tokens": 137,
+      "total_tokens": 208
+    },
+    "latency_s": 1.2945917998440564,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "control",
+    "task_id": "py09",
+    "domain": "python_debugging",
+    "pattern": "closure_late_binding",
+    "task_index": 9,
+    "response": "The root cause is Python\u2019s late binding behavior, where the lambda captures the variable `i` by reference rather than by value, meaning all lambdas evaluate `i` at the time they are clicked (when the loop has finished and `i` is 4). To fix this, you must \"freeze\" the current value of `i` by creating a default argument in the lambda: `command=lambda i=i: handle(i)`. This works because default arguments are evaluated at the time the function object is defined, effectively creating a local copy for each iteration. For more complex logic, you can also use `functools.partial(handle, i)` to achieve the same effect in a cleaner, more explicit manner.",
+    "score": 5.0,
+    "score_reasoning": "The response accurately explains late binding in Python closures, correctly identifies the root cause, provides the standard lambda default argument solution with clear explanation of why it works, and offers a valid alternative with functools.partial\u2014all with no errors or omissions.",
+    "usage": {
+      "prompt_tokens": 81,
+      "completion_tokens": 150,
+      "total_tokens": 231
+    },
+    "latency_s": 1.5324972998350859,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "control",
+    "task_id": "py10",
+    "domain": "python_debugging",
+    "pattern": "mixed",
+    "task_index": 10,
+    "response": "The root cause is that `asyncio.gather` wraps exceptions in the returned result list if `return_exceptions=False` (default), but it only propagates the *first* exception encountered while canceling the others, which can lead to silent failure if you don't explicitly await the result or check the output. To ensure all failures are visible, you should set `return_exceptions=True` and manually iterate through the results to check if any are `isinstance(result, Exception)`. Alternatively, use `asyncio.TaskGroup` (introduced in Python 3.11), which provides a more robust structured concurrency model that automatically propagates all exceptions via an `ExceptionGroup` if any task fails. By switching to `TaskGroup`, you eliminate silent drops because the block will raise a single `ExceptionGroup` containing all individual task errors.",
+    "score": 2.0,
+    "score_reasoning": "The response contains significant inaccuracies: it incorrectly claims gather wraps exceptions in the result list (it propagates the first exception by default), misrepresents the actual behavior of return_exceptions=False, and while TaskGroup is correctly suggested as an alternative, the explanation of gather's contract is fundamentally misleading and would not solve the stated problem of 'silently dropping' exceptions.",
+    "usage": {
+      "prompt_tokens": 79,
+      "completion_tokens": 173,
+      "total_tokens": 252
+    },
+    "latency_s": 1.3404469001106918,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "treatment",
+    "task_id": "py01",
+    "domain": "python_debugging",
+    "pattern": "concurrency_default_start_method",
+    "task_index": 1,
+    "response": "The root cause is that Python 3.12 defaults to the `spawn` start method on macOS, which requires the target function to be importable and safe to re-execute in a new process; calling `map()` at the module level triggers this execution during the parent's initialization, causing a deadlock. To fix this, you must wrap your execution code inside a `if __name__ == \"__main__\":` block to prevent the child processes from recursively executing the module-level code upon spawn. Ensure your `multiprocessing.Pool` instantiation is also contained within this guard to prevent accidental process duplication. This follows the standard \"safe importing\" pattern required for `spawn` and `forkserver` modes in the `multiprocessing` module.",
+    "score": 5.0,
+    "score_reasoning": "The response accurately identifies the root cause (spawn start method on macOS Python 3.12 causing deadlock with module-level Pool.map()), provides the correct minimal fix (wrapping in `if __name__ == \"__main__\":` guard), and correctly explains the mechanism (child processes re-executing module-level code), with no errors or hallucinations.",
+    "usage": {
+      "prompt_tokens": 74,
+      "completion_tokens": 154,
+      "total_tokens": 228
+    },
+    "latency_s": 1.7753359000198543,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "treatment",
+    "task_id": "py02",
+    "domain": "python_debugging",
+    "pattern": "concurrency_default_start_method",
+    "task_index": 2,
+    "response": "The root cause is that on Windows, the `spawn` start method requires `multiprocessing` to re-import your main module to recreate the child process's environment; it fails because it cannot serialize (\"pickle\") locally defined functions or classes. To fix this, move your target functions and classes to the module's top-level scope so they are globally addressable by the unpickler. Additionally, always wrap your process instantiation calls within an `if __name__ == '__main__':` block to prevent recursive process spawning during the module re-import process. Finally, if you must pass complex objects, ensure they are defined in a top-level module rather than inside a function or a nested scope.",
+    "score": 5.0,
+    "score_reasoning": "The response accurately identifies the root cause (Windows uses spawn method requiring pickling), provides all three essential fixes (top-level function definitions, `if __name__ == '__main__'` guard, and module-level object definitions), explains the mechanism clearly, and contains no errors or misleading information.",
+    "usage": {
+      "prompt_tokens": 259,
+      "completion_tokens": 145,
+      "total_tokens": 404
+    },
+    "latency_s": 1.283486200030893,
+    "learnkit_context_chars": 842
+  },
+  {
+    "arm": "treatment",
+    "task_id": "py03",
+    "domain": "python_debugging",
+    "pattern": "concurrency_default_start_method",
+    "task_index": 3,
+    "response": "The deadlock occurs because `logging` module handlers often rely on internal locks that are not fork-safe, and macOS uses `fork` (without `exec`) by default, leading to a child process inheriting a process-locked state that it can never release. To resolve this, you must change the start method to `spawn` by calling `multiprocessing.set_start_method('spawn', force=True)` at the entry point of your script (before any worker initialization). Alternatively, ensure your `logging` configuration is deferred until after the process has started, or configure a `QueueHandler` to ship logs back to the main process via a `multiprocessing.Queue` to avoid resource contention in the child. These issues are documented in Python's `multiprocessing` context documentation, which notes that `spawn` is the safer default for macOS to avoid the hazards of `fork` in multi-threaded programs.",
+    "score": 4.0,
+    "score_reasoning": "The response accurately identifies the fork-safety issue with logging and correctly recommends the `spawn` start method and `QueueHandler` solutions, but slightly overstates the macOS default behavior (macOS 3.13+ defaults to `spawn`, not `fork`) and could be clearer about why logging specifically causes deadlocks (inherited lock state in child processes).",
+    "usage": {
+      "prompt_tokens": 68,
+      "completion_tokens": 189,
+      "total_tokens": 257
+    },
+    "latency_s": 1.9784912997856736,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "treatment",
+    "task_id": "py04",
+    "domain": "python_debugging",
+    "pattern": "mutable_default_arg",
+    "task_index": 4,
+    "response": "The root cause is that default arguments in Python are evaluated once at the time of function definition, meaning the `items` list persists across multiple calls as a single mutable object. To fix this, you should use `None` as the default value and initialize the list inside the function body. This ensures a new list is created during every invocation, adhering to PEP 8 standards.\n\n```python\ndef append_item(item, items=None):\n    if items is None:\n        items = []\n    items.append(item)\n    return items\n```",
+    "score": 5.0,
+    "score_reasoning": "The response accurately identifies the mutable default argument pitfall, correctly explains the mechanism (evaluation at definition time), provides the idiomatic fix with proper implementation, and mentions PEP 8 compliance\u2014covering all aspects of the question comprehensively.",
+    "usage": {
+      "prompt_tokens": 216,
+      "completion_tokens": 117,
+      "total_tokens": 333
+    },
+    "latency_s": 11.91145440004766,
+    "learnkit_context_chars": 676
+  },
+  {
+    "arm": "treatment",
+    "task_id": "py05",
+    "domain": "python_debugging",
+    "pattern": "mutable_default_arg",
+    "task_index": 5,
+    "response": "The root cause is that Python evaluates default arguments only once at function definition time, making the mutable dictionary `tags` a shared object across all instances of your class. To fix this, use `None` as the default value and initialize the dictionary inside the `__init__` method body. You should rewrite your code as `def __init__(self, tags=None): self.tags = tags if tags is not None else {}`. This ensures each instance receives its own unique dictionary object rather than a reference to the class-level default. This pattern is a standard best practice in Python to prevent side effects caused by mutable default arguments.",
+    "score": 5.0,
+    "score_reasoning": "The response accurately identifies the mutable default argument pitfall, correctly explains that defaults are evaluated once at function definition time, provides the correct solution with proper code example, and reinforces the best practice pattern.",
+    "usage": {
+      "prompt_tokens": 216,
+      "completion_tokens": 129,
+      "total_tokens": 345
+    },
+    "latency_s": 2.792824000120163,
+    "learnkit_context_chars": 680
+  },
+  {
+    "arm": "treatment",
+    "task_id": "py06",
+    "domain": "python_debugging",
+    "pattern": "mutable_default_arg",
+    "task_index": 6,
+    "response": "The root cause is Python\u2019s **mutable default argument** behavior, where the `opts` dictionary is created once at definition time and shared across every subsequent test call. To fix this, use `None` as the default value and initialize the dictionary inside the function body.\n\n```python\ndef make_config(opts=None):\n    if opts is None:\n        opts = {}\n    opts['env'] = 'prod'\n    return opts\n```\n\nThis pattern ensures a fresh dictionary is allocated in the local scope for every invocation, preventing cross-test pollution. Since Python 3.7+, this is the standard idiomatic approach to avoiding the state persistence issues inherent in function objects.",
+    "score": 4.0,
+    "score_reasoning": "The explanation correctly identifies the mutable default argument issue and provides a working fix with proper idiom, but omits that the original code would still mutate passed-in dictionaries (e.g., `make_config({'existing': 'value'})` pollutes the caller's dict), which is a secondary but important data corruption pathway that should be mentioned for completeness.",
+    "usage": {
+      "prompt_tokens": 75,
+      "completion_tokens": 144,
+      "total_tokens": 219
+    },
+    "latency_s": 13.704751799814403,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "treatment",
+    "task_id": "py07",
+    "domain": "python_debugging",
+    "pattern": "closure_late_binding",
+    "task_index": 7,
+    "response": "The root cause is that Python's lambdas use late binding, meaning they look up the variable `i` in the enclosing scope only when invoked, at which point the loop has finished and `i` remains at its final value of 2. To fix this, you must force early binding by capturing the current value of `i` using a default argument in the lambda definition: `lambda i=i: i`. Alternatively, in Python 3.8+, you can use `functools.partial(lambda x: x, i)` to achieve the same effect by freezing the argument at creation time. This ensures each function instance stores a unique value rather than a reference to the shared loop variable.",
+    "score": 4.0,
+    "score_reasoning": "The explanation of late binding is correct and the primary fix (default argument `lambda i=i: i`) is accurate and standard, but the `functools.partial` alternative is unnecessarily convoluted and not a typical solution to this problem, making it a minor but notable weakness.",
+    "usage": {
+      "prompt_tokens": 86,
+      "completion_tokens": 143,
+      "total_tokens": 229
+    },
+    "latency_s": 5.512964599765837,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "treatment",
+    "task_id": "py08",
+    "domain": "python_debugging",
+    "pattern": "closure_late_binding",
+    "task_index": 8,
+    "response": "The root cause is Python's **late binding** behavior, where closures capture the `name` variable by reference rather than by value, causing all lambdas to resolve to the final loop iteration's value. To fix this, you must force early binding by capturing the variable as a default argument, which evaluates during the lambda's definition. Update your list comprehension to: `handlers = [lambda evt, n=name: log(n, evt) for name in NAMES]`. By assigning `n=name`, you create a local scope for the lambda that stores the specific value of `name` at the time of creation. This is the idiomatic pattern for bypassing scope-capture issues in loops across all Python versions.",
+    "score": 5.0,
+    "score_reasoning": "The response accurately identifies late binding as the root cause, correctly explains why all lambdas reference the same variable, provides the exact correct fix using default argument binding, and includes clear explanation of why the solution works.",
+    "usage": {
+      "prompt_tokens": 236,
+      "completion_tokens": 148,
+      "total_tokens": 384
+    },
+    "latency_s": 1.541645800229162,
+    "learnkit_context_chars": 796
+  },
+  {
+    "arm": "treatment",
+    "task_id": "py09",
+    "domain": "python_debugging",
+    "pattern": "closure_late_binding",
+    "task_index": 9,
+    "response": "The root cause is Python\u2019s late binding behavior in closures, where the `i` variable is looked up in the enclosing scope at the time the `command` is executed, not when the lambda is defined. To fix this, you must capture the current value of `i` as a default argument in the lambda: `command=lambda x=i: handle(x)`. By assigning `x=i`, you create a local variable within the lambda scope that stores the iteration value at definition time. This pattern is standard practice in Python when creating callbacks inside loops to ensure each instance retains the expected state.",
+    "score": 5.0,
+    "score_reasoning": "The response correctly identifies late binding in closures as the root cause, accurately explains why all buttons call handle(4), and provides the exact correct solution with clear explanation of how default arguments capture values at definition time rather than execution time.",
+    "usage": {
+      "prompt_tokens": 360,
+      "completion_tokens": 124,
+      "total_tokens": 484
+    },
+    "latency_s": 6.237989800050855,
+    "learnkit_context_chars": 1304
+  },
+  {
+    "arm": "treatment",
+    "task_id": "py10",
+    "domain": "python_debugging",
+    "pattern": "mixed",
+    "task_index": 10,
+    "response": "The root cause is that `asyncio.gather` defaults to `return_exceptions=False`, which causes it to wrap exceptions within the result list rather than bubbling them up, or it may appear silent if you fail to await the gathered task or inspect the returned sequence. To make failures visible, you must explicitly set `return_exceptions=False` (the default) and ensure you wrap the `await asyncio.gather(...)` call in a `try/except` block, as `gather` propagates the first exception it encounters immediately. Alternatively, if you set `return_exceptions=True`, the exceptions are returned as elements in the resulting list, requiring you to iterate through them and check for `isinstance(result, Exception)` to handle them. For better observability, consider using `asyncio.TaskGroup` (available since Python 3.11), which provides robust error handling by automatically canceling remaining tasks if one fails within the group. Always ensure you are not accidentally suppressing exceptions by failing to collect the return value of `gather`.",
+    "score": 2.0,
+    "score_reasoning": "The response contains a critical logical error (contradicting itself about return_exceptions=False behavior), conflates multiple distinct issues, and provides incomplete/misleading guidance on the actual exception-handling contract, though the TaskGroup recommendation and return_exceptions=True explanation are correct.",
+    "usage": {
+      "prompt_tokens": 412,
+      "completion_tokens": 212,
+      "total_tokens": 624
+    },
+    "latency_s": 12.875369899906218,
+    "learnkit_context_chars": 1445
+  },
+  {
+    "arm": "control",
+    "task_id": "ct01",
+    "domain": "contract_summarization",
+    "pattern": "saas_msa",
+    "task_index": 1,
+    "response": "### Obligations\n*   **Vendor:** Provide the Hosted Service with 99.9% monthly uptime (excluding scheduled maintenance).\n\n### Term\n*   **Initial Term:** 36 months from the Effective Date.\n*   **Renewal:** Auto-renews for successive 12-month periods.\n*   **Non-Renewal Notice:** Requires at least 60 days' written notice prior to the end of the current term.\n\n### Termination\n*   **Material Breach:** Either party may terminate if a material breach remains uncured for 30 days following written notice.\n\n### Liability\n*   **Cap:** Total liability is limited to fees paid by the customer during the 12 months preceding the claim.\n*   **Exclusions:** The liability cap does not apply to indemnity obligations for IP infringement or breaches of confidentiality.",
+    "score": 5.0,
+    "score_reasoning": "The response accurately captures all key contractual elements (uptime obligation, 36-month initial term with 12-month auto-renewal, 60-day non-renewal notice, 30-day cure period for material breach termination, and liability cap with specified exclusions) in a clear, well-structured format with no omissions or inaccuracies.",
+    "usage": {
+      "prompt_tokens": 152,
+      "completion_tokens": 175,
+      "total_tokens": 327
+    },
+    "latency_s": 1.2084919000044465,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "control",
+    "task_id": "ct02",
+    "domain": "contract_summarization",
+    "pattern": "saas_msa",
+    "task_index": 2,
+    "response": "As requested, here is the summary of the provided text:\n\n**Obligations**\n*   **Customer:** Must pay $48,000 annually in advance.\n*   **Vendor:** Provides Service on an \"as is\" basis; disclaims all implied warranties.\n*   **Force Majeure:** Obligations are suspended for both parties for up to 60 days during a force majeure event.\n\n**Term**\n*   Fixed duration of 24 months.\n*   No automatic renewal provision.\n\n**Termination**\n*   **For Convenience:** Either party may terminate with 90 days' written notice, provided the initial 12 months have elapsed.\n*   **Force Majeure:** Either party may terminate if a force majeure event persists beyond 60 days.\n\n**Liability**\n*   **Cap:** Vendor\u2019s total liability is limited to an amount equal to 6 months of fees.",
+    "score": 5.0,
+    "score_reasoning": "The response accurately captures all key contractual elements (payment obligation, service as-is disclaimer, 24-month term without auto-renewal, 90-day termination for convenience after month 12, 6-month liability cap, and force majeure provisions) with clear organization and no errors or omissions.",
+    "usage": {
+      "prompt_tokens": 136,
+      "completion_tokens": 194,
+      "total_tokens": 330
+    },
+    "latency_s": 1.3235980002209544,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "control",
+    "task_id": "ct03",
+    "domain": "contract_summarization",
+    "pattern": "saas_msa",
+    "task_index": 3,
+    "response": "As a contracts attorney, I have summarized the provided terms as follows:\n\n**Obligations**\n*   **Provider:** Must grant Customer a non-exclusive license to the Platform.\n*   **Customer:** Must pay fees for the Platform; must provide written notice for non-payment if invoked by Provider.\n\n**Term**\n*   **Initial Period:** 12 months.\n*   **Renewal:** Automatically renews on a monthly basis following the initial term.\n\n**Termination**\n*   **By Customer:** May terminate any auto-renewal period by providing 15 days' notice.\n*   **By Provider:** May terminate immediately if payment is not received within 10 days of a written demand.\n\n**Liability**\n*   **Cap:** Liability is limited to the greater of (a) 12 months of fees or (b) $100,000.\n*   **Carve-outs:** The cap does not apply to indemnification obligations, breaches of Section 9 (Confidentiality), or gross negligence.",
+    "score": 5.0,
+    "score_reasoning": "The response accurately captures all key contractual elements (obligations, term, termination, and liability cap with carve-outs) with clear organization, precise language, and no hallucinations or omissions from the source material.",
+    "usage": {
+      "prompt_tokens": 151,
+      "completion_tokens": 221,
+      "total_tokens": 372
+    },
+    "latency_s": 1.3967823996208608,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "control",
+    "task_id": "ct04",
+    "domain": "contract_summarization",
+    "pattern": "nda",
+    "task_index": 4,
+    "response": "### Obligations\n*   **Confidentiality:** Maintain strict confidentiality of received information.\n*   **Standard of Care:** Exercise at least the same degree of care used for the Recipient\u2019s own confidential information.\n*   **Restricted Disclosure:** Limit disclosure to employees with a \"need-to-know\" basis who are bound by equivalent confidentiality obligations.\n\n### Term\n*   **Duration:** Confidentiality obligations persist for 5 years from the date of disclosure.\n\n### Termination\n*   **Survival:** All confidentiality obligations survive the termination of the underlying business relationship.\n\n### Liability\n*   *Not specified in the provided text.*",
+    "score": 5.0,
+    "score_reasoning": "The response accurately captures all three required elements (obligations, term, and survival clauses) with precise language, logical organization, and appropriate handling of unspecified information, with no errors or omissions.",
+    "usage": {
+      "prompt_tokens": 115,
+      "completion_tokens": 132,
+      "total_tokens": 247
+    },
+    "latency_s": 1.2665904997847974,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "control",
+    "task_id": "ct05",
+    "domain": "contract_summarization",
+    "pattern": "nda",
+    "task_index": 5,
+    "response": "**Obligations**\n*   **Protection:** Employ reasonable measures to safeguard Confidential Information.\n*   **Access Control:** Restrict access exclusively to personnel with a legitimate need.\n*   **Use Restriction:** Limit use of Confidential Information solely to the purposes of the engagement.\n\n**Term**\n*   Not specified in the provided text.\n\n**Termination**\n*   Not specified in the provided text.\n\n**Liability**\n*   Not specified in the provided text.\n\n***\n\n*Note: While requested, \"Survival\" was not listed as a header; however, per your provided text, confidentiality obligations survive for 3 years post-termination, with trade secrets surviving indefinitely.*",
+    "score": 4.0,
+    "score_reasoning": "Response accurately captures all three requested elements (obligations, term, survival) with clear structure and correct information, but unnecessarily includes unrequested sections (Termination, Liability) and awkwardly handles the survival clause in a footnote rather than as a dedicated section.",
+    "usage": {
+      "prompt_tokens": 109,
+      "completion_tokens": 141,
+      "total_tokens": 250
+    },
+    "latency_s": 1.068318999838084,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "control",
+    "task_id": "ct06",
+    "domain": "contract_summarization",
+    "pattern": "nda",
+    "task_index": 6,
+    "response": "As a contracts attorney, I have summarized the provided text below:\n\n**Obligations**\n*   Recipient must protect Discloser\u2019s Confidential Information.\n*   Confidentiality obligations exclude information that:\n    *   Is or becomes public knowledge through no fault of the Recipient.\n    *   Was rightfully known by the Recipient prior to disclosure.\n    *   Was independently developed by the Recipient.\n\n**Term**\n*   Confidentiality obligations persist for a period of 7 years following the termination of the Agreement.\n\n**Termination**\n*   [Not specified in the text.]\n\n**Liability**\n*   [Not specified in the text.]",
+    "score": 4.0,
+    "score_reasoning": "The response accurately captures all key obligations and exceptions from the source text with clear formatting, but the separate 'Termination' and 'Liability' sections are unnecessary since they weren't part of the original task and adding '[Not specified]' adds minimal value.",
+    "usage": {
+      "prompt_tokens": 107,
+      "completion_tokens": 140,
+      "total_tokens": 247
+    },
+    "latency_s": 20.2041303999722,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "control",
+    "task_id": "ct07",
+    "domain": "contract_summarization",
+    "pattern": "employment",
+    "task_index": 7,
+    "response": "As a contracts attorney, I have summarized the provided provisions below:\n\n**Obligations**\n*   **IP Assignment:** The employee must assign to the Company all inventions conceived during the term of employment that relate to the Company\u2019s business or are developed using Company resources.\n*   **Non-Solicitation:** For 12 months following termination, the employee is prohibited from soliciting the Company\u2019s customers within North America.\n\n**Term**\n*   **At-Will:** The employment relationship is at-will, meaning it may be ended by either party at any time.\n\n**Termination**\n*   **Notice Period:** Either party must provide 2 weeks' notice to terminate the relationship.\n*   **Severance:** The employee is entitled to 4 weeks of pay if the Company terminates the employment without cause.\n\n**Liability**\n*   *Note: No specific clauses regarding limitation of liability or indemnification were provided in the text.*",
+    "score": 5.0,
+    "score_reasoning": "The response accurately captures all four required elements (IP assignment, non-compete/non-solicitation, termination, and severance), presents them in a clear, well-organized structure using appropriate legal terminology, contains no errors or hallucinations, and appropriately notes the absence of liability clauses rather than fabricating information.",
+    "usage": {
+      "prompt_tokens": 125,
+      "completion_tokens": 196,
+      "total_tokens": 321
+    },
+    "latency_s": 7.510516100097448,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "control",
+    "task_id": "ct08",
+    "domain": "contract_summarization",
+    "pattern": "employment",
+    "task_index": 8,
+    "response": "As a contracts attorney, I have summarized the provided provisions below:\n\n**Obligations**\n*   **Work Product:** All work created within the scope of employment constitutes \"work-for-hire,\" with full ownership vested in the Employer.\n*   **Non-Compete:** Employee is prohibited from engaging in any competing business activity for the duration of their employment.\n\n**Term**\n*   **At-Will:** Employment is at-will, meaning it may be ended at any time by either party, subject to the specified termination conditions.\n\n**Termination**\n*   **For Cause:** Employer may terminate immediately for fraud, gross negligence, or material breach of company policy.\n*   **Severance:** No severance is payable except in the event of termination resulting from a reduction in force.\n\n**Liability**\n*   *Not addressed in the provided text.*",
+    "score": 5.0,
+    "score_reasoning": "The response accurately captures all key provisions (work-for-hire IP ownership, non-compete during employment, at-will employment, for-cause termination grounds, and severance conditions), is well-organized with clear headings, uses precise legal language, and appropriately notes what was not addressed rather than hallucinating missing terms.",
+    "usage": {
+      "prompt_tokens": 115,
+      "completion_tokens": 179,
+      "total_tokens": 294
+    },
+    "latency_s": 1.027042199857533,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "control",
+    "task_id": "ct09",
+    "domain": "contract_summarization",
+    "pattern": "employment",
+    "task_index": 9,
+    "response": "### Obligations\n* **Intellectual Property Assignment:** Employee must assign all rights, title, and interest in all inventions (patentable or not) conceived during employment that relate to the Company\u2019s business or arise from work performed for the Company.\n* **Non-Solicitation:** Employee is prohibited from soliciting the Company\u2019s employees or contractors for a period of 18 months following the end of employment.\n\n### Term\n* The text does not specify a fixed duration for the employment relationship; it is an ongoing engagement subject to the notice requirements.\n\n### Termination\n* **Notice:** Either party must provide 30 days' advance written notice to terminate the employment relationship.\n\n### Liability\n* The provided text contains no provisions regarding liability or indemnification.",
+    "score": 4.0,
+    "score_reasoning": "The response accurately captures all key provisions (IP assignment, non-solicitation, termination notice) with clear structure and no errors, but could be more explicit about the non-compete clause being absent rather than mentioning only IP/non-solicitation, and could note the 18-month period applies post-employment.",
+    "usage": {
+      "prompt_tokens": 127,
+      "completion_tokens": 155,
+      "total_tokens": 282
+    },
+    "latency_s": 1.7208034000359476,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "control",
+    "task_id": "ct10",
+    "domain": "contract_summarization",
+    "pattern": "mixed",
+    "task_index": 10,
+    "response": "### Obligations\n* **License Grant:** Licensor grants Licensee a worldwide, non-exclusive, non-transferable license to use Patented Technology.\n* **Scope:** Usage is restricted to the \"Field of Use\" (industrial water treatment, excluding municipal).\n* **Payment:** Licensee must pay a royalty of 4% of Net Sales.\n* **Payment Schedule:** Royalties are due quarterly.\n* **Minimum Royalty:** Licensee must pay a guaranteed annual minimum of $50,000.\n\n### Term\n* The text provided does not specify a duration or expiration date for the agreement.\n\n### Termination\n* **Material Breach:** Either party may terminate for a material breach if it remains uncured 60 days after notice.\n* **Insolvency:** Licensor may terminate immediately if Licensee declares bankruptcy or makes an assignment for the benefit of creditors.\n\n### Liability\n* The text provided does not contain provisions regarding limitations of liability, indemnification, or damages.",
+    "score": 5.0,
+    "score_reasoning": "The response accurately captures all key licensing terms, royalty structure, and termination triggers from the source material, is well-organized with clear sections, correctly notes missing information (term duration and liability provisions) without fabricating details, and contains no errors or hallucinations.",
+    "usage": {
+      "prompt_tokens": 141,
+      "completion_tokens": 207,
+      "total_tokens": 348
+    },
+    "latency_s": 2.1191901001147926,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "treatment",
+    "task_id": "ct01",
+    "domain": "contract_summarization",
+    "pattern": "saas_msa",
+    "task_index": 1,
+    "response": "As requested, here is the summary of the provided SaaS Master Services Agreement:\n\n**Obligations**\n*   **Vendor:** Provide the Hosted Service with a 99.9% monthly uptime guarantee (excluding scheduled maintenance).\n\n**Term**\n*   **Initial Term:** 36 months from the Effective Date.\n*   **Renewal:** Automatically renews for successive 12-month periods.\n*   **Opt-out:** Non-renewal requires written notice at least 60 days prior to the end of the current term.\n\n**Termination**\n*   **Cause:** Either party may terminate for a material breach if such breach remains uncured for 30 days following written notice.\n\n**Liability**\n*   **Cap:** Total liability for the Vendor is limited to the fees paid by the client during the 12 months preceding the claim.\n*   **Exclusions:** The liability cap does not apply to indemnity obligations for IP infringement or breaches of confidentiality.",
+    "score": 5.0,
+    "score_reasoning": "The response accurately and completely captures all four requested elements (obligations, term, termination triggers, and liability cap) with precise details, clear organization, proper identification of exclusions, and no hallucinations or errors.",
+    "usage": {
+      "prompt_tokens": 152,
+      "completion_tokens": 204,
+      "total_tokens": 356
+    },
+    "latency_s": 1.4208915997296572,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "treatment",
+    "task_id": "ct02",
+    "domain": "contract_summarization",
+    "pattern": "saas_msa",
+    "task_index": 2,
+    "response": "As a contracts attorney, I have summarized the provided terms as follows:\n\n**Obligations**\n*   **Customer:** Must pay $48,000 annually in advance.\n*   **Vendor:** Must provide the Service on an \"as is\" basis; explicitly disclaims all implied warranties.\n*   **Force Majeure:** Obligations are suspended for up to 60 days during a qualifying event.\n\n**Term**\n*   Fixed 24-month duration.\n*   No automatic renewal provision.\n\n**Termination**\n*   **Convenience:** Either party may terminate with 90 days' written notice, provided that notice is given after the 12th month.\n*   **Force Majeure:** Either party may terminate if a force majeure event persists beyond 60 days.\n\n**Liability**\n*   **Cap:** Vendor\u2019s total liability is limited to the equivalent of 6 months of fees.\n*   **Carve-outs:** None stated.",
+    "score": 5.0,
+    "score_reasoning": "The response accurately captures all key contractual elements (obligations, term, termination provisions, and liability cap), is well-organized with clear formatting, contains no hallucinations or errors, and appropriately notes the absence of stated carve-outs to the liability cap.",
+    "usage": {
+      "prompt_tokens": 305,
+      "completion_tokens": 209,
+      "total_tokens": 514
+    },
+    "latency_s": 8.819156599696726,
+    "learnkit_context_chars": 839
+  },
+  {
+    "arm": "treatment",
+    "task_id": "ct03",
+    "domain": "contract_summarization",
+    "pattern": "saas_msa",
+    "task_index": 3,
+    "response": "As a contracts attorney, I have summarized the provisions of your agreement as follows:\n\n### Obligations\n*   Provider must grant Customer a non-exclusive license to access and use the Platform.\n*   Customer must remit payment for services in accordance with the agreement terms.\n\n### Term\n*   The initial Subscription Term is 12 months.\n*   Upon expiration of the initial term, the agreement auto-renews on a month-to-month basis.\n\n### Termination\n*   Customer may terminate any auto-renewal period by providing at least 15 days' notice.\n*   Provider may terminate the agreement immediately if Customer fails to pay after a 10-day written demand period.\n\n### Liability\n*   **Cap:** Liability is limited to the greater of (a) the fees paid during the preceding 12 months or (b) $100,000.\n*   **Carve-outs:** The liability cap does not apply to damages resulting from indemnification obligations, breaches of Section 9 (Confidentiality), or gross negligence, meaning exposure in these areas is uncapped.",
+    "score": 5.0,
+    "score_reasoning": "The response accurately and completely summarizes all four requested elements (obligations, term, termination, liability cap with carve-outs) with precise language, clear organization, and no errors or hallucinations.",
+    "usage": {
+      "prompt_tokens": 403,
+      "completion_tokens": 233,
+      "total_tokens": 636
+    },
+    "latency_s": 1.5793314999900758,
+    "learnkit_context_chars": 1228
+  },
+  {
+    "arm": "treatment",
+    "task_id": "ct04",
+    "domain": "contract_summarization",
+    "pattern": "nda",
+    "task_index": 4,
+    "response": "**Obligations**\n*   Recipient must maintain Confidential Information in strict confidence.\n*   Recipient must apply a standard of care at least equal to that used for its own confidential information.\n*   Recipient is restricted from disclosing information to third parties, with a narrow exception for employees with a \"need-to-know\" who are subject to equivalent confidentiality obligations.\n\n**Term**\n*   The confidentiality obligations remain in effect for a period of five years following the date of disclosure.\n\n**Termination**\n*   The underlying business relationship may be terminated, but such termination does not extinguish the confidentiality obligations.\n\n**Liability**\n*   [Not specified in the provided text.]\n\n***\n\n**Extraction Notes:**\n*   *Decision:* The provided text does not contain specific provisions regarding liability, indemnification, or limitation of damages. Consistent with the prompt's instructions, no clauses were invented. \n*   *Verification:* All four requested sections (Obligations, Term, Termination, Liability) are addressed. \n*   *Survival:* The survival mandate is explicitly captured under the \"Termination\" header, confirming that the obligation duration persists beyond the life of the business relationship.",
+    "score": 5.0,
+    "score_reasoning": "The response accurately extracts all three requested elements (obligations, term, and survival clauses) with precise detail, clear organization, appropriate caveats about missing information, and explicit verification that the source material was not embellished.",
+    "usage": {
+      "prompt_tokens": 416,
+      "completion_tokens": 242,
+      "total_tokens": 658
+    },
+    "latency_s": 3.7600157000124454,
+    "learnkit_context_chars": 1492
+  },
+  {
+    "arm": "treatment",
+    "task_id": "ct05",
+    "domain": "contract_summarization",
+    "pattern": "nda",
+    "task_index": 5,
+    "response": "As requested, here is the summary of the provided text, structured according to your requirements:\n\n**Obligations**\n*   The Receiving Party must protect the Disclosing Party's Confidential Information using reasonable care.\n*   Access to Confidential Information is restricted to personnel who have a legitimate business need.\n*   The Receiving Party is prohibited from using Confidential Information for any purpose outside the scope of the engagement.\n\n**Term**\n*   The text does not specify an initial term or effective period for the underlying engagement.\n\n**Termination**\n*   The text does not define specific grounds or procedures for termination, though it references the period \"post-termination\" regarding the survival of obligations.\n\n**Liability**\n*   The provided text does not contain provisions regarding liability, limitations of liability, or indemnification.\n\n***\n\n**Note on Survival:** While not explicitly requested as a standalone heading, the provided text stipulates that confidentiality obligations persist for three years following the termination of the agreement, with the exception of trade secrets, which remain protected indefinitely.",
+    "score": 5.0,
+    "score_reasoning": "The response accurately summarizes all three requested elements (obligations, term, and survival), correctly identifies what information is absent from the source text, and presents the survival clause clearly with proper distinction between general confidential information (3 years) and trade secrets (indefinite), with no factual errors or hallucinations.",
+    "usage": {
+      "prompt_tokens": 427,
+      "completion_tokens": 213,
+      "total_tokens": 640
+    },
+    "latency_s": 2.6057066000066698,
+    "learnkit_context_chars": 1580
+  },
+  {
+    "arm": "treatment",
+    "task_id": "ct06",
+    "domain": "contract_summarization",
+    "pattern": "nda",
+    "task_index": 6,
+    "response": "To provide the requested summary, I have extracted the relevant provisions regarding obligations and survival from your text.\n\n**Obligations**\n*   **Protection:** Recipient must protect Discloser\u2019s Confidential Information.\n*   **Exclusions:** Obligations do not apply to information that:\n    *   Is or becomes publicly known through no fault of the Recipient.\n    *   Was rightfully known by the Recipient prior to disclosure.\n    *   Is independently developed by the Recipient.\n\n**Term**\n*   **Survival:** Confidentiality obligations persist for a period of 7 years following the termination of the Agreement.\n\n**Termination**\n*   *Not provided in the source text.*\n\n**Liability**\n*   *Not provided in the source text.*\n\n***\n\n*Log of extraction decisions:*\n* *Extraction focused strictly on the provided paragraph; categories not represented in the text (Termination, Liability) are marked accordingly to ensure compliance with the \"do not invent clauses\" constraint.*\n* *Survival period identified as a derivative of the term of obligations.*",
+    "score": 5.0,
+    "score_reasoning": "The response accurately extracts and clearly structures all key obligations (protection duty and three exclusions) and the 7-year survival period from the source text, appropriately notes missing sections without inventing content, and demonstrates transparent extraction methodology.",
+    "usage": {
+      "prompt_tokens": 436,
+      "completion_tokens": 221,
+      "total_tokens": 657
+    },
+    "latency_s": 5.629861699882895,
+    "learnkit_context_chars": 1633
+  },
+  {
+    "arm": "treatment",
+    "task_id": "ct07",
+    "domain": "contract_summarization",
+    "pattern": "employment",
+    "task_index": 7,
+    "response": "### Obligations\n*   **IP Assignment:** Employee must assign to the Company all inventions conceived during the period of employment that relate to the Company\u2019s business or were developed using Company resources.\n*   **Non-Solicitation:** Employee is prohibited from soliciting the Company\u2019s customers located in North America for a period of 12 months following the termination of employment.\n\n### Term\n*   The employment relationship is \"at will,\" meaning there is no fixed duration specified for the term of employment.\n\n### Termination\n*   **Notice:** Either party may terminate the employment agreement at any time by providing 2 weeks' written notice.\n*   **Severance:** The Company is obligated to provide 4 weeks of pay to the Employee if the employment is terminated without cause.\n\n### Liability\n*   The provided text does not contain any provisions regarding liability, indemnification, or limitations of damages.",
+    "score": 5.0,
+    "score_reasoning": "The response accurately captures all four key contract elements (IP assignment, non-compete/non-solicitation, termination clauses, and severance) with precise details matching the source text, is well-organized with clear headings, contains no hallucinations or unsupported claims, and appropriately notes the absence of liability provisions.",
+    "usage": {
+      "prompt_tokens": 469,
+      "completion_tokens": 184,
+      "total_tokens": 653
+    },
+    "latency_s": 1.2915258002467453,
+    "learnkit_context_chars": 1663
+  },
+  {
+    "arm": "treatment",
+    "task_id": "ct08",
+    "domain": "contract_summarization",
+    "pattern": "employment",
+    "task_index": 8,
+    "response": "As requested, here is the summary of the provided contract terms:\n\n**Obligations**\n* **IP Ownership:** All work product created within the scope of employment is classified as \"work-for-hire\" and is owned exclusively by the Employer.\n* **Non-Compete:** The Employee is prohibited from engaging in any competing business activity for the duration of their employment.\n\n**Term**\n* **Employment Status:** Employment is at-will, meaning it can be ended by either party at any time, subject to the termination provisions.\n\n**Termination**\n* **For Cause:** The Employer may terminate the agreement immediately upon the occurrence of fraud, gross negligence, or a material breach of company policy.\n* **Reduction in Force:** Severance pay is only provided if the termination occurs as part of a formal reduction in force; otherwise, no severance is owed.\n\n**Liability**\n* [Not addressed in the provided text.]",
+    "score": 5.0,
+    "score_reasoning": "The response accurately captures all four key areas (obligations, IP, non-compete, termination), is well-organized with clear subsections, contains no hallucinations or inaccuracies, and appropriately notes that liability was not addressed in the source material.",
+    "usage": {
+      "prompt_tokens": 436,
+      "completion_tokens": 192,
+      "total_tokens": 628
+    },
+    "latency_s": 1.551495200023055,
+    "learnkit_context_chars": 1616
+  },
+  {
+    "arm": "treatment",
+    "task_id": "ct09",
+    "domain": "contract_summarization",
+    "pattern": "employment",
+    "task_index": 9,
+    "response": "### Obligations\n*   **IP Assignment:** Employee must assign all right, title, and interest in all inventions (patentable or not) conceived during the term of employment that relate to the Company's business or result from work performed for the Company.\n*   **Non-Solicitation:** Employee is prohibited from soliciting the Company\u2019s employees or contractors for a period of 18 months following the conclusion of employment.\n\n### Term\n*   The agreement remains effective for the duration of the Employee's employment.\n\n### Termination\n*   Either party may terminate the employment relationship by providing at least 30 days' prior written notice.\n\n### Liability\n*   The provided text does not contain provisions regarding liability or indemnification.",
+    "score": 4.0,
+    "score_reasoning": "Response is accurate and well-structured with correct summaries of IP assignment, non-solicitation, and termination clauses; minor deduction for creating a 'Liability' section that wasn't requested and noting absence of provisions rather than strictly adhering to the four requested topics (obligations, IP, non-compete, termination).",
+    "usage": {
+      "prompt_tokens": 455,
+      "completion_tokens": 151,
+      "total_tokens": 606
+    },
+    "latency_s": 18.787914299871773,
+    "learnkit_context_chars": 1622
+  },
+  {
+    "arm": "treatment",
+    "task_id": "ct10",
+    "domain": "contract_summarization",
+    "pattern": "mixed",
+    "task_index": 10,
+    "response": "### Obligations\n*   **License Grant:** Licensor provides a worldwide, non-exclusive, non-transferable license to use the Patented Technology strictly within the \"Field of Use\" (industrial water treatment, excluding municipal applications).\n*   **Royalty Payments:** Licensee must pay a royalty of 4% of Net Sales.\n*   **Payment Schedule:** Royalties are payable on a quarterly basis.\n*   **Minimum Royalty:** Licensee is obligated to meet a $50,000 annual minimum royalty payment.\n\n### Term\n*   **Duration:** The text does not specify an expiration date for the license grant; therefore, the license is perpetual unless terminated according to the provisions below.\n\n### Termination\n*   **Material Breach:** Either party may terminate the agreement if the other party commits a material breach that remains uncured for 60 days following notice.\n*   **Insolvency/Bankruptcy:** Licensor has the right to terminate the agreement immediately upon the occurrence of Licensee\u2019s bankruptcy or assignment for the benefit of creditors.\n\n### Liability\n*   **Limitation of Liability:** The provided text does not contain explicit clauses regarding indemnification, damages caps, or limitations of liability.",
+    "score": 5.0,
+    "score_reasoning": "The response accurately captures all key licensing terms, royalty structure, and termination triggers from the source material with clear organization, appropriate acknowledgment of missing information (perpetual duration, no liability clauses), and no hallucinations or errors.",
+    "usage": {
+      "prompt_tokens": 448,
+      "completion_tokens": 252,
+      "total_tokens": 700
+    },
+    "latency_s": 1.9410399002954364,
+    "learnkit_context_chars": 1567
+  },
+  {
+    "arm": "control",
+    "task_id": "sql01",
+    "domain": "sql_authoring",
+    "pattern": "window_funcs_topn",
+    "task_index": 1,
+    "response": "```sql\n-- Use row_number() partitioned by customer_id ordered by total descending to identify the top 3 per customer\nSELECT customer_id, id, total, created_at\nFROM (\n  SELECT *, ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY total DESC) as rn\n  FROM orders\n) t\nWHERE rn <= 3;\n```",
+    "score": 5.0,
+    "score_reasoning": "The solution correctly uses ROW_NUMBER() window function partitioned by customer_id ordered by total DESC to identify top 3 most expensive orders per customer, returns all required columns in correct order, and the subquery filtering approach is idiomatic and efficient for this task.",
+    "usage": {
+      "prompt_tokens": 95,
+      "completion_tokens": 81,
+      "total_tokens": 176
+    },
+    "latency_s": 0.9373038997873664,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "control",
+    "task_id": "sql02",
+    "domain": "sql_authoring",
+    "pattern": "window_funcs_topn",
+    "task_index": 2,
+    "response": "```sql\n-- Use window function ROW_NUMBER() partitioned by dept_id to rank employees by hire date and filter the top 2.\nSELECT dept_id, id, salary, hired_at\nFROM (\n    SELECT *, ROW_NUMBER() OVER(PARTITION BY dept_id ORDER BY hired_at DESC) as rank\n    FROM employees\n) t\nWHERE rank <= 2;\n```",
+    "score": 5.0,
+    "score_reasoning": "The SQL query correctly uses ROW_NUMBER() windowed function partitioned by dept_id and ordered by hired_at DESC to identify the 2 most recently hired employees per department, returns all requested columns in the correct order, and uses proper Postgres syntax.",
+    "usage": {
+      "prompt_tokens": 85,
+      "completion_tokens": 86,
+      "total_tokens": 171
+    },
+    "latency_s": 3.072370500303805,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "control",
+    "task_id": "sql03",
+    "domain": "sql_authoring",
+    "pattern": "window_funcs_topn",
+    "task_index": 3,
+    "response": "```sql\n-- Use window function ROW_NUMBER to rank events per user and filter for the top 5\nSELECT user_id, kind, ts\nFROM (\n  SELECT user_id, kind, ts, \n         ROW_NUMBER() OVER(PARTITION BY user_id ORDER BY ts DESC) as rank\n  FROM events\n) sub\nWHERE rank <= 5\nORDER BY user_id, ts ASC;\n```",
+    "score": 5.0,
+    "score_reasoning": "The SQL correctly uses ROW_NUMBER() window function partitioned by user_id to rank events by recency, filters for top 5 per user, and orders results chronologically within each user as requested, with all required columns (user_id, kind, ts) included.",
+    "usage": {
+      "prompt_tokens": 85,
+      "completion_tokens": 92,
+      "total_tokens": 177
+    },
+    "latency_s": 15.634594299830496,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "control",
+    "task_id": "sql04",
+    "domain": "sql_authoring",
+    "pattern": "gap_detection",
+    "task_index": 4,
+    "response": "```sql\n-- Use LAG to identify gaps > 30 minutes, create session IDs via cumulative sum of those gaps, then group by user and session ID.\nWITH flagged_views AS (\n  SELECT \n    user_id, \n    viewed_at,\n    CASE \n      WHEN viewed_at - LAG(viewed_at) OVER (PARTITION BY user_id ORDER BY viewed_at) > INTERVAL '30 minutes' \n      THEN 1 ELSE 0 \n    END AS is_new_session\n  FROM page_views\n),\nsessioned_views AS (\n  SELECT \n    user_id, \n    viewed_at,\n    SUM(is_new_session) OVER (PARTITION BY user_id ORDER BY viewed_at) AS session_id\n  FROM flagged_views\n)\nSELECT \n  user_id, \n  MIN(viewed_at) AS session_start, \n  MAX(viewed_at) AS session_end, \n  COUNT(*) AS view_count\nFROM sessioned_views\nGROUP BY user_id, session_id;\n```",
+    "score": 5.0,
+    "score_reasoning": "The query correctly uses LAG to detect >30 minute gaps, cumulative SUM to create session identifiers, and GROUP BY to aggregate sessions with all required output columns (user_id, session_start, session_end, view_count) in a clean, well-commented solution.",
+    "usage": {
+      "prompt_tokens": 102,
+      "completion_tokens": 253,
+      "total_tokens": 355
+    },
+    "latency_s": 18.461795900017023,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "control",
+    "task_id": "sql05",
+    "domain": "sql_authoring",
+    "pattern": "gap_detection",
+    "task_index": 5,
+    "response": "```sql\n-- Use lead() to find the next heartbeat and filter gaps greater than 300 seconds.\nSELECT \n    server_id, \n    ts AS outage_start, \n    next_ts AS outage_end, \n    EXTRACT(EPOCH FROM (next_ts - ts)) AS duration_seconds\nFROM (\n    SELECT \n        server_id, \n        ts, \n        LEAD(ts) OVER (PARTITION BY server_id ORDER BY ts) AS next_ts\n    FROM heartbeats\n) t\nWHERE next_ts > ts + INTERVAL '5 minutes';\n```",
+    "score": 5.0,
+    "score_reasoning": "The SQL query correctly uses LEAD() window function to identify gaps between consecutive heartbeats per server, accurately filters for gaps >5 minutes (300 seconds), and outputs all required columns (server_id, outage_start, outage_end, duration_seconds) with proper epoch conversion for duration calculation.",
+    "usage": {
+      "prompt_tokens": 89,
+      "completion_tokens": 137,
+      "total_tokens": 226
+    },
+    "latency_s": 3.285355699714273,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "control",
+    "task_id": "sql06",
+    "domain": "sql_authoring",
+    "pattern": "gap_detection",
+    "task_index": 6,
+    "response": "```sql\n-- Use the islands-and-gaps approach: assign group IDs by checking if the interval since the previous login exceeds 24 hours (86400 seconds), then aggregate streaks.\nWITH lag_check AS (\n    SELECT \n        user_id, \n        ts,\n        CASE \n            WHEN ts - LAG(ts) OVER (PARTITION BY user_id ORDER BY ts) > INTERVAL '24 hours' \n            THEN 1 ELSE 0 \n        END as is_new_streak\n    FROM logins\n),\nstreak_groups AS (\n    SELECT \n        user_id, \n        ts, \n        SUM(is_new_streak) OVER (PARTITION BY user_id ORDER BY ts) as streak_id\n    FROM lag_check\n)\nSELECT \n    user_id, \n    MIN(ts) as streak_start, \n    MAX(ts) as streak_end, \n    COUNT(*) as login_count\nFROM streak_groups\nGROUP BY user_id, streak_id;\n```",
+    "score": 5.0,
+    "score_reasoning": "The response correctly implements the islands-and-gaps technique with proper window functions to detect gaps >24 hours, accurately groups logins into streaks, and returns all four required output columns (user_id, streak_start, streak_end, login_count) with clear, well-commented code.",
+    "usage": {
+      "prompt_tokens": 96,
+      "completion_tokens": 239,
+      "total_tokens": 335
+    },
+    "latency_s": 1.331954900175333,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "control",
+    "task_id": "sql07",
+    "domain": "sql_authoring",
+    "pattern": "upsert",
+    "task_index": 7,
+    "response": "```sql\n-- Use ON CONFLICT to increment qty and update timestamp on existing SKU\nINSERT INTO inventory (sku, qty, updated_at)\nVALUES ('example_sku', 10, NOW())\nON CONFLICT (sku) \nDO UPDATE SET \n    qty = inventory.qty + EXCLUDED.qty,\n    updated_at = EXCLUDED.updated_at;\n```",
+    "score": 4.0,
+    "score_reasoning": "The SQL syntax is correct and uses ON CONFLICT properly, but the example uses a fixed value (10) instead of demonstrating how to supply a dynamic delta parameter, which could leave users uncertain about parameterization in production code.",
+    "usage": {
+      "prompt_tokens": 98,
+      "completion_tokens": 84,
+      "total_tokens": 182
+    },
+    "latency_s": 18.118257499765605,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "control",
+    "task_id": "sql08",
+    "domain": "sql_authoring",
+    "pattern": "upsert",
+    "task_index": 8,
+    "response": "```sql\n-- Use EXCLUDED to preserve the original created_at value during an upsert\nINSERT INTO user_settings (user_id, key, value, created_at)\nVALUES (1, 'theme', '{\"mode\": \"dark\"}', CURRENT_TIMESTAMP)\nON CONFLICT (user_id, key) \nDO UPDATE SET \n    value = EXCLUDED.value;\n```",
+    "score": 2.0,
+    "score_reasoning": "The SQL syntax is correct for a basic upsert, but it critically fails the requirement to preserve the original created_at value\u2014the INSERT clause sets created_at to CURRENT_TIMESTAMP on every upsert, and the DO UPDATE clause doesn't reference EXCLUDED.created_at to maintain the original timestamp on conflict.",
+    "usage": {
+      "prompt_tokens": 104,
+      "completion_tokens": 86,
+      "total_tokens": 190
+    },
+    "latency_s": 0.897292900364846,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "control",
+    "task_id": "sql09",
+    "domain": "sql_authoring",
+    "pattern": "upsert",
+    "task_index": 9,
+    "response": "```sql\n-- Use INSERT ... ON CONFLICT with an UPDATE clause to perform an atomic upsert on the primary key constraint\nINSERT INTO daily_counters (metric, day, count)\nVALUES ('login', CURRENT_DATE, 1)\nON CONFLICT (metric, day) \nDO UPDATE SET count = daily_counters.count + 1;\n```",
+    "score": 5.0,
+    "score_reasoning": "The response provides a correct and complete PostgreSQL upsert solution using INSERT ... ON CONFLICT that atomically increments the count by 1 for existing rows or inserts with count=1 for new rows, with clear documentation and proper syntax for the given schema.",
+    "usage": {
+      "prompt_tokens": 105,
+      "completion_tokens": 77,
+      "total_tokens": 182
+    },
+    "latency_s": 1.5340486001223326,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "control",
+    "task_id": "sql10",
+    "domain": "sql_authoring",
+    "pattern": "mixed",
+    "task_index": 10,
+    "response": "```sql\n-- Generate series of the last 12 months and use an overlap condition (subscription starts before month end AND (ends after month start OR is still active)) to count unique active users.\nSELECT \n    date_trunc('month', d.month_start)::date AS month_start,\n    COUNT(DISTINCT s.user_id) AS active_users\nFROM generate_series(\n    date_trunc('month', CURRENT_DATE - INTERVAL '11 months'),\n    date_trunc('month', CURRENT_DATE),\n    INTERVAL '1 month'\n) AS d(month_start)\nLEFT JOIN subscriptions s ON \n    s.started_at < (d.month_start + INTERVAL '1 month') \n    AND (s.ended_at >= d.month_start OR s.ended_at IS NULL OR s.status = 'active')\nGROUP BY 1\nORDER BY 1;\n```",
+    "score": 4.0,
+    "score_reasoning": "The query correctly generates 12 months, uses proper overlap logic (subscription starts before month end AND ends after/during month start), and counts distinct active users, but the overlap condition could be more precise by explicitly checking `s.status = 'active'` first and the logic mixing `ended_at IS NULL OR status = 'active'` is slightly redundant since the schema suggests these should align.",
+    "usage": {
+      "prompt_tokens": 115,
+      "completion_tokens": 205,
+      "total_tokens": 320
+    },
+    "latency_s": 1.6333639998920262,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "treatment",
+    "task_id": "sql01",
+    "domain": "sql_authoring",
+    "pattern": "window_funcs_topn",
+    "task_index": 1,
+    "response": "```sql\n-- Use the DENSE_RANK() or ROW_NUMBER() window function partitioned by customer_id to identify the top 3 orders per customer.\nSELECT customer_id, id, total, created_at\nFROM (\n    SELECT customer_id, id, total, created_at,\n           ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY total DESC) as rn\n    FROM orders\n) t\nWHERE rn <= 3;\n```",
+    "score": 5.0,
+    "score_reasoning": "The SQL query correctly uses ROW_NUMBER() window function partitioned by customer_id and ordered by total DESC to identify the top 3 most expensive orders per customer, returns all requested columns in the correct format, and is syntactically valid PostgreSQL.",
+    "usage": {
+      "prompt_tokens": 95,
+      "completion_tokens": 101,
+      "total_tokens": 196
+    },
+    "latency_s": 13.900838499888778,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "treatment",
+    "task_id": "sql02",
+    "domain": "sql_authoring",
+    "pattern": "window_funcs_topn",
+    "task_index": 2,
+    "response": "```sql\n-- Use window function ROW_NUMBER() to rank employees by hire date within each department and filter for top 2.\nSELECT dept_id, id, salary, hired_at\nFROM (\n  SELECT dept_id, id, salary, hired_at,\n         ROW_NUMBER() OVER (PARTITION BY dept_id ORDER BY hired_at DESC) as rn\n  FROM employees\n) t\nWHERE rn <= 2\nORDER BY dept_id, hired_at DESC;\n```",
+    "score": 5.0,
+    "score_reasoning": "The SQL query correctly uses ROW_NUMBER() with PARTITION BY and ORDER BY to identify the 2 most recently hired employees per department, includes all required columns, has proper filtering logic, and is well-commented with appropriate ordering for readability.",
+    "usage": {
+      "prompt_tokens": 221,
+      "completion_tokens": 108,
+      "total_tokens": 329
+    },
+    "latency_s": 2.0188282001763582,
+    "learnkit_context_chars": 616
+  },
+  {
+    "arm": "treatment",
+    "task_id": "sql03",
+    "domain": "sql_authoring",
+    "pattern": "window_funcs_topn",
+    "task_index": 3,
+    "response": "```sql\n-- Use ROW_NUMBER() to identify the 5 most recent events per user, then filter and order by ts ASC\nSELECT user_id, kind, ts\nFROM (\n  SELECT user_id, kind, ts,\n         ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY ts DESC) as rank\n  FROM events\n) ranked_events\nWHERE rank <= 5\nORDER BY user_id, ts ASC;\n```",
+    "score": 5.0,
+    "score_reasoning": "The SQL query correctly uses ROW_NUMBER() with PARTITION BY user_id and ORDER BY ts DESC to identify each user's 5 most recent events, filters them with WHERE rank <= 5, and orders the results chronologically within each user using ORDER BY user_id, ts ASC, while selecting all required columns (user_id, kind, ts).",
+    "usage": {
+      "prompt_tokens": 282,
+      "completion_tokens": 98,
+      "total_tokens": 380
+    },
+    "latency_s": 8.123379500117153,
+    "learnkit_context_chars": 887
+  },
+  {
+    "arm": "treatment",
+    "task_id": "sql04",
+    "domain": "sql_authoring",
+    "pattern": "gap_detection",
+    "task_index": 4,
+    "response": "```sql\n-- Use LAG to identify gaps > 30 minutes, create a running session ID, then group by user and session\nWITH marked_gaps AS (\n    SELECT \n        user_id, \n        viewed_at,\n        CASE \n            WHEN viewed_at - LAG(viewed_at) OVER (PARTITION BY user_id ORDER BY viewed_at) > INTERVAL '30 minutes' \n            THEN 1 ELSE 0 \n        END AS is_new_session\n    FROM page_views\n),\nsession_groups AS (\n    SELECT \n        user_id, \n        viewed_at,\n        SUM(is_new_session) OVER (PARTITION BY user_id ORDER BY viewed_at) AS session_id\n    FROM marked_gaps\n)\nSELECT \n    user_id, \n    MIN(viewed_at) AS session_start, \n    MAX(viewed_at) AS session_end, \n    COUNT(*) AS view_count\nFROM session_groups\nGROUP BY user_id, session_id;\n```",
+    "score": 5.0,
+    "score_reasoning": "The solution correctly uses LAG to detect >30 minute gaps, creates session IDs via cumulative SUM, and groups by user and session to produce all required outputs (user_id, session_start, session_end, view_count) with accurate logic and syntax.",
+    "usage": {
+      "prompt_tokens": 102,
+      "completion_tokens": 247,
+      "total_tokens": 349
+    },
+    "latency_s": 5.683563299942762,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "treatment",
+    "task_id": "sql05",
+    "domain": "sql_authoring",
+    "pattern": "gap_detection",
+    "task_index": 5,
+    "response": "```sql\n-- Use lead() to find the next heartbeat and filter gaps exceeding 5 minutes.\nSELECT \n    server_id, \n    ts AS outage_start, \n    next_ts AS outage_end, \n    EXTRACT(EPOCH FROM (next_ts - ts)) AS duration_seconds\nFROM (\n    SELECT \n        server_id, \n        ts, \n        LEAD(ts) OVER (PARTITION BY server_id ORDER BY ts) AS next_ts\n    FROM heartbeats\n) sub\nWHERE next_ts - ts > INTERVAL '5 minutes';\n```",
+    "score": 5.0,
+    "score_reasoning": "The SQL correctly uses window functions (LEAD) to identify gaps between consecutive heartbeats per server, filters for gaps exceeding 5 minutes, calculates duration in seconds using EPOCH extraction, and produces all required output columns (server_id, outage_start, outage_end, duration_seconds) with clear, efficient logic.",
+    "usage": {
+      "prompt_tokens": 89,
+      "completion_tokens": 134,
+      "total_tokens": 223
+    },
+    "latency_s": 20.395526899956167,
+    "learnkit_context_chars": 0
+  },
+  {
+    "arm": "treatment",
+    "task_id": "sql06",
+    "domain": "sql_authoring",
+    "pattern": "gap_detection",
+    "task_index": 6,
+    "response": "```sql\n-- Use the difference between row numbers and date truncated days to group consecutive logins into streaks, then aggregate\nWITH grouped_logins AS (\n    SELECT \n        user_id, \n        ts,\n        ts - (ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY ts) * INTERVAL '1 day') AS grp\n    FROM (SELECT DISTINCT user_id, DATE_TRUNC('day', ts) AS ts FROM logins) AS daily_logins\n)\nSELECT \n    user_id, \n    MIN(ts) AS streak_start, \n    MAX(ts) AS streak_end, \n    COUNT(*) AS login_count\nFROM grouped_logins\nGROUP BY user_id, grp;\n```",
+    "score": 2.0,
+    "score_reasoning": "The approach of using ROW_NUMBER() difference to group consecutive dates is conceptually sound, but the implementation is fundamentally flawed: subtracting an interval from a timestamp doesn't create a valid grouping key for streaks with >24hr gaps, the logic only detects day-level gaps rather than actual 24-hour gaps in login times, and it loses precision by truncating to days before checking for gaps, failing to correctly identify streaks that should end when consecutive logins exceed 24 hours.",
+    "usage": {
+      "prompt_tokens": 335,
+      "completion_tokens": 167,
+      "total_tokens": 502
+    },
+    "latency_s": 1.3433383000083268,
+    "learnkit_context_chars": 1064
+  },
+  {
+    "arm": "treatment",
+    "task_id": "sql07",
+    "domain": "sql_authoring",
+    "pattern": "upsert",
+    "task_index": 7,
+    "response": "```sql\n-- Use ON CONFLICT (sku) DO UPDATE with the EXCLUDED table to increment existing qty and update the timestamp\nINSERT INTO inventory (sku, qty, updated_at)\nVALUES ('target_sku', 10, NOW())\nON CONFLICT (sku) \nDO UPDATE SET \n  qty = inventory.qty + EXCLUDED.qty,\n  updated_at = EXCLUDED.updated_at;\n```",
+    "score": 3.0,
+    "score_reasoning": "The solution correctly uses ON CONFLICT syntax and EXCLUDED table, but fails to properly parameterize the delta value\u2014it hardcodes qty=10 instead of accepting a delta parameter, making it incomplete for the stated requirement of 'increment qty by the supplied delta'.",
+    "usage": {
+      "prompt_tokens": 243,
+      "completion_tokens": 93,
+      "total_tokens": 336
+    },
+    "latency_s": 16.569970099721104,
+    "learnkit_context_chars": 694
+  },
+  {
+    "arm": "treatment",
+    "task_id": "sql08",
+    "domain": "sql_authoring",
+    "pattern": "upsert",
+    "task_index": 8,
+    "response": "```sql\n-- Use ON CONFLICT (user_id, key) DO UPDATE to set the new value while explicitly ignoring the created_at column to preserve its original value.\nINSERT INTO user_settings (user_id, key, value, created_at)\nVALUES (123, 'theme', '{\"mode\": \"dark\"}', CURRENT_TIMESTAMP)\nON CONFLICT (user_id, key) \nDO UPDATE SET value = EXCLUDED.value;\n```",
+    "score": 5.0,
+    "score_reasoning": "The SQL correctly uses ON CONFLICT with the composite primary key (user_id, key) and deliberately excludes created_at from the UPDATE clause to preserve the original timestamp, which is the exact solution required by the task.",
+    "usage": {
+      "prompt_tokens": 276,
+      "completion_tokens": 102,
+      "total_tokens": 378
+    },
+    "latency_s": 4.4787146002054214,
+    "learnkit_context_chars": 747
+  },
+  {
+    "arm": "treatment",
+    "task_id": "sql09",
+    "domain": "sql_authoring",
+    "pattern": "upsert",
+    "task_index": 9,
+    "response": "```sql\n-- Atomically increment count using ON CONFLICT DO UPDATE on the composite primary key\nINSERT INTO daily_counters (metric, day, count)\nVALUES ('login', CURRENT_DATE, 1)\nON CONFLICT (metric, day) \nDO UPDATE SET count = daily_counters.count + 1;\n```",
+    "score": 5.0,
+    "score_reasoning": "The SQL statement is correct, atomic, and directly addresses all requirements: it uses ON CONFLICT on the composite primary key (metric, day), inserts with count=1 when the row doesn't exist, and increments by 1 on conflict, with clear comments explaining the approach.",
+    "usage": {
+      "prompt_tokens": 319,
+      "completion_tokens": 71,
+      "total_tokens": 390
+    },
+    "latency_s": 14.516242200043052,
+    "learnkit_context_chars": 944
+  },
+  {
+    "arm": "treatment",
+    "task_id": "sql10",
+    "domain": "sql_authoring",
+    "pattern": "mixed",
+    "task_index": 10,
+    "response": "```sql\n-- Generate series of months and join with subscriptions where the interval overlaps the month range\nSELECT \n  month_start::date,\n  COUNT(DISTINCT user_id) AS active_users\nFROM generate_series(\n  date_trunc('month', current_date - INTERVAL '11 months'),\n  date_trunc('month', current_date),\n  '1 month'::interval\n) AS month_start\nLEFT JOIN subscriptions s ON \n  s.status = 'active' AND\n  s.started_at < (month_start + INTERVAL '1 month') AND \n  (s.ended_at >= month_start OR s.ended_at IS NULL)\nGROUP BY month_start\nORDER BY month_start;\n```",
+    "score": 5.0,
+    "score_reasoning": "The query correctly generates the last 12 calendar months, properly joins with subscriptions using accurate overlap logic (subscription started before month ends AND ended after/during month start or is still active), counts DISTINCT user_id for active status only, and returns the required columns in correct format.",
+    "usage": {
+      "prompt_tokens": 329,
+      "completion_tokens": 167,
+      "total_tokens": 496
+    },
+    "latency_s": 1.3001792998984456,
+    "learnkit_context_chars": 944
+  }
+]

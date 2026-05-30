@@ -10,9 +10,16 @@ Usage:
     python examples/quick_start.py
 """
 
+import sys
 from pathlib import Path
 
 import learnkit as lk
+
+# Windows consoles default to cp1252 and mangle the em-dashes / arrows
+# the composer uses in its prompt header. Force UTF-8 so the preview prints
+# cleanly. The bytes the LLM sees are always UTF-8 regardless of this.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 
 
 def part1_memory_store():
@@ -181,10 +188,13 @@ def part5_full_loop():
         return f"Agent solved: {task}"
 
     result = my_agent("Fix a Python multiprocessing deadlock on macOS")
-    import time
-
-    time.sleep(1)  # let background thread finish
     print(f"  Result: {result}")
+
+    # Drain the worker pool while the program is still healthy. If we let
+    # atexit do it, dspy/litellm's pool may already be torn down by the time
+    # the evaluator's LM call fires.
+    memory.shutdown(wait=True)
+
     print(
         "  [OK] Full loop executed (classify -> retrieve -> compose -> run -> evaluate -> distill)"
     )

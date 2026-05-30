@@ -1,0 +1,64 @@
+{
+  "rows": [
+    {
+      "arm": "control",
+      "domain": "contract_summarization",
+      "n": 10,
+      "mean_score": 4.9,
+      "stdev_score": 0.31622776601683794,
+      "mean_tokens": 299.5,
+      "mean_latency_s": 2.8456925800535826,
+      "mean_ctx_chars": 0
+    },
+    {
+      "arm": "control",
+      "domain": "python_debugging",
+      "n": 10,
+      "mean_score": 4.4,
+      "stdev_score": 0.9660917830792959,
+      "mean_tokens": 214,
+      "mean_latency_s": 1.8375346601009368,
+      "mean_ctx_chars": 0
+    },
+    {
+      "arm": "control",
+      "domain": "sql_authoring",
+      "n": 10,
+      "mean_score": 4.5,
+      "stdev_score": 0.97182531580755,
+      "mean_tokens": 227.4,
+      "mean_latency_s": 2.0568766900338233,
+      "mean_ctx_chars": 0
+    },
+    {
+      "arm": "treatment",
+      "domain": "contract_summarization",
+      "n": 10,
+      "mean_score": 4.9,
+      "stdev_score": 0.31622776601683794,
+      "mean_tokens": 354.6,
+      "mean_latency_s": 2.4088276599999516,
+      "mean_ctx_chars": 161.7
+    },
+    {
+      "arm": "treatment",
+      "domain": "python_debugging",
+      "n": 10,
+      "mean_score": 4.1,
+      "stdev_score": 0.9944289260117531,
+      "mean_tokens": 330.4,
+      "mean_latency_s": 1.7710449200123548,
+      "mean_ctx_chars": 481
+    },
+    {
+      "arm": "treatment",
+      "domain": "sql_authoring",
+      "n": 10,
+      "mean_score": 4.2,
+      "stdev_score": 1.4757295747452437,
+      "mean_tokens": 371,
+      "mean_latency_s": 1.1853012800216676,
+      "mean_ctx_chars": 628.6
+    }
+  ]
+}

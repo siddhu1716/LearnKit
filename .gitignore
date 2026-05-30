@@ -47,6 +47,19 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 .learnkit/
+# Exception: playground stores shipped with the marketing site
+# (both casings — repo history has mixed Docs/ and docs/ paths on Windows)
+!docs/data/*.db
+!Docs/data/*.db
+
+# Server runtime
+docs/server.log
+Docs/server.log
+docs/__pycache__/
+Docs/__pycache__/
+
+# Benchmark run logs (results are tracked, logs aren't)
+benchmarks/last_run.log
 
 # Secrets
 .env

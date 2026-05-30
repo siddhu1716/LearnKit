@@ -50,15 +50,30 @@ def parse_record(data_json: str) -> MemoryRecord:
 
 
 def escape_fts(query: str) -> str:
-    """Escapes special characters in FTS5 queries."""
+    """Escape an arbitrary user query into a valid FTS5 MATCH expression.
+
+    Two pitfalls this avoids:
+      1. FTS5 reserved operators (AND, OR, NOT, NEAR) in the query — if a token
+         like "and" lands unquoted in a `foo OR and OR bar` expression, FTS5
+         raises a syntax error and the whole search falls back to empty.
+      2. Punctuation like `-` (NOT prefix), `:` (column qualifier), `"`, `(`, `)`,
+         `*` — same hazard.
+
+    Strategy: strip everything but alnum/underscore/whitespace, then double-quote
+    each surviving token so reserved words become literal phrases.
+    """
     if not query:
         return ""
-    # Strip quotes and special FTS chars
-    safe = "".join(c for c in query if c.isalnum() or c.isspace() or c in "-_")
-    words = safe.split()
-    if len(words) > 1:
-        return " OR ".join(words)
-    return safe
+    safe = "".join(
+        c if (c.isalnum() or c.isspace() or c == "_") else " " for c in query
+    )
+    words = [w for w in safe.split() if w]
+    if not words:
+        return ""
+    quoted = [f'"{w}"' for w in words]
+    if len(quoted) == 1:
+        return quoted[0]
+    return " OR ".join(quoted)
 
 
 class SQLiteBackend(BaseBackend):
