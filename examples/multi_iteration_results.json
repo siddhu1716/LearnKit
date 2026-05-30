@@ -1,0 +1,33 @@
+{
+  "control_scores": [
+    4.0,
+    4.0,
+    4.0,
+    4.0,
+    4.0
+  ],
+  "learnkit_scores": [
+    5.0,
+    4.0,
+    5.0,
+    4.0,
+    5.0
+  ],
+  "modes": [
+    "EXPLORATORY",
+    "GUIDED",
+    "GUIDED",
+    "GUIDED",
+    "GUIDED"
+  ],
+  "retrieved_counts": [
+    0,
+    8,
+    7,
+    6,
+    7
+  ],
+  "avg_control": 4.0,
+  "avg_lk": 4.6,
+  "total_records": 48
+}

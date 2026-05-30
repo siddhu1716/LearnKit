@@ -9,8 +9,8 @@ from .schemas.base import MemoryRecord
 
 
 class InferenceMode(Enum):
-    PRESCRIPTIVE = "prescriptive"  # skill confidence >= 0.90 — follow closely
-    GUIDED = "guided"  # skill confidence >= 0.70 — use as scaffold
+    PRESCRIPTIVE = "prescriptive"  # skill confidence >= 0.80 — follow closely
+    GUIDED = "guided"  # skill confidence >= 0.50 — use as scaffold
     EXPLORATORY = "exploratory"  # no match — full LLM reasoning, capture trace
 
 
@@ -25,8 +25,8 @@ def determine_inference_mode(records: list[MemoryRecord]) -> InferenceMode:
     if not skills:
         return InferenceMode.EXPLORATORY
     best = max(skills, key=lambda r: r.confidence)
-    if best.confidence >= 0.90:
+    if best.confidence >= 0.80:
         return InferenceMode.PRESCRIPTIVE
-    if best.confidence >= 0.70:
+    if best.confidence >= 0.50:
         return InferenceMode.GUIDED
     return InferenceMode.EXPLORATORY

@@ -4,6 +4,7 @@ Schema validation, TraceRecord emission, and contrastive failure extraction.
 """
 
 import json
+import os
 from typing import List, Optional, Tuple
 
 import dspy
@@ -60,7 +61,15 @@ class MemoryDistiller:
     """
 
     def __init__(self, lm=None):
-        self.lm = lm or dspy.LM("anthropic/claude-haiku-4-5-20251001")
+        if lm is None:
+            model_name = os.environ.get(
+                "LEARNKIT_DISTILLER_MODEL", "anthropic/claude-haiku-4-5-20251001"
+            )
+            try:
+                lm = dspy.LM(model_name)
+            except Exception:
+                lm = dspy.LM("anthropic/claude-haiku-4-5-20251001")
+        self.lm = lm
 
     def distill(
         self,
@@ -76,10 +85,9 @@ class MemoryDistiller:
         """
         Distill trajectory into Skill, Fact, Failure, and Trace records.
         """
-        if quality_score < 3.5:
-            raise ValueError(
-                "Distillation called on low-quality trace. Evaluator should have gated this."
-            )
+        # Note: the quality gate is enforced upstream in core.py using the
+        # configurable quality_threshold. This method should not impose a
+        # second hardcoded threshold.
 
         # Flatten trajectory for the prompt
         reasoning_steps = []
