@@ -53,8 +53,8 @@ def escape_fts(query: str) -> str:
     """Escapes special characters in FTS5 queries."""
     if not query:
         return ""
-    # Strip quotes and special FTS chars
-    safe = "".join(c for c in query if c.isalnum() or c.isspace() or c in "-_")
+    # Only keep alphanumeric characters and spaces to completely avoid syntax parser errors
+    safe = "".join(c for c in query if c.isalnum() or c.isspace())
     words = safe.split()
     if len(words) > 1:
         return " OR ".join(words)

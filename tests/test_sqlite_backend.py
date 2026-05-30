@@ -425,3 +425,22 @@ def test_sqlite_passes_contract(tmp_path):
 
     backend = SQLiteBackend(db_path=str(tmp_path / "contract_memory.db"))
     run_backend_contract_suite(backend, tmp_path)
+
+
+def test_sqlite_escape_fts_hyphenated():
+    """Verify that escape_fts correctly handles hyphens and special chars without operational errors."""
+    from learnkit.backends.sqlite import escape_fts
+    
+    # Hyphens should be stripped so that words are OR'ed cleanly without FTS5 syntax errors
+    escaped = escape_fts("time-series analysis")
+    assert "OR" in escaped
+    assert "-" not in escaped
+    assert "time" in escaped
+    assert "series" in escaped
+
+    # Empty string handling
+    assert escape_fts("") == ""
+
+    # Single word FTS escaping
+    assert escape_fts("deadlock-fix") == "deadlockfix"
+

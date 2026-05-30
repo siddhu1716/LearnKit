@@ -1,0 +1,200 @@
+{
+  "timestamp": "2026-05-30T13:54:11Z",
+  "model": "gemini/gemini-flash-latest",
+  "tasks": 5,
+  "baseline": [
+    {
+      "task_id": "coding_1",
+      "domain": "coding",
+      "phase": "baseline",
+      "quality_score": 5.0,
+      "response_time": 0.0004756450653076172,
+      "inference_mode": "n/a",
+      "records_retrieved": 0,
+      "context_chars": 0,
+      "response_preview": "To build a high-performance, asynchronous web scraper in Python that limits traffic to 10 requests per second (RPS), we combine `asyncio` for concurre",
+      "judge_reasoning": "The response provides a complete, accurate, and working asynchronous scraper in Python with a well-implemented custom rate limiter that correctly limits requests to 10 RPS."
+    },
+    {
+      "task_id": "coding_2",
+      "domain": "coding",
+      "phase": "baseline",
+      "quality_score": 4.0,
+      "response_time": 0.0009520053863525391,
+      "inference_mode": "n/a",
+      "records_retrieved": 0,
+      "context_chars": 0,
+      "response_preview": "As an expert software engineer, I frequently encounter memory exhaustion issues when processing large CSV files with Pandas. This behavior is rarely a",
+      "judge_reasoning": "The response accurately diagnoses the root causes of Pandas memory bloat, provides clear profiling steps, and suggests appropriate chunking fixes, though the output is truncated."
+    },
+    {
+      "task_id": "data_1",
+      "domain": "data",
+      "phase": "baseline",
+      "quality_score": 4.0,
+      "response_time": 60.95954513549805,
+      "inference_mode": "n/a",
+      "records_retrieved": 0,
+      "context_chars": 0,
+      "response_preview": "Handling missing data in stock price time-series requires extreme care. Unlike static datasets, time-series data has strict temporal dependencies. In ",
+      "judge_reasoning": "The response is highly accurate, extremely well-structured, and correctly emphasizes the critical danger of look-ahead bias, though it is slightly incomplete due to truncation at the end."
+    },
+    {
+      "task_id": "design_1",
+      "domain": "design",
+      "phase": "baseline",
+      "quality_score": 4.0,
+      "response_time": 60.11909365653992,
+      "inference_mode": "n/a",
+      "records_retrieved": 0,
+      "context_chars": 0,
+      "response_preview": "To handle 100K req/s globally across multiple regions with sub-millisecond overhead, we must prioritize local performance while maintaining acceptable",
+      "judge_reasoning": "The response provides an exceptionally high-quality, accurate, and practical system design addressing all constraints, but is graded down slightly due to being truncated at the very end."
+    },
+    {
+      "task_id": "coding_3",
+      "domain": "coding",
+      "phase": "baseline",
+      "quality_score": 3.0,
+      "response_time": 60.213602781295776,
+      "inference_mode": "n/a",
+      "records_retrieved": 0,
+      "context_chars": 0,
+      "response_preview": "On macOS, multiprocessing deadlocks typically arise from using the **`fork`** start method. \n\n### Why It Happens\nWhen a parent process is forked, only",
+      "judge_reasoning": "The explanation of macOS deadlock issues and the 'spawn' solution is accurate, though the code template is truncated."
+    }
+  ],
+  "training": [
+    {
+      "task_id": "coding_1",
+      "domain": "coding",
+      "phase": "training",
+      "quality_score": 5.0,
+      "response_time": 44.624021768569946,
+      "inference_mode": "exploratory",
+      "records_retrieved": 0,
+      "context_chars": 0,
+      "response_preview": "To build a high-performance, asynchronous web scraper in Python that limits traffic to 10 requests per second (RPS), we combine `asyncio` for concurre",
+      "judge_reasoning": "The response provides a complete, accurate, and working asynchronous scraper in Python with a well-implemented custom rate limiter that correctly limits requests to 10 RPS."
+    },
+    {
+      "task_id": "coding_2",
+      "domain": "coding",
+      "phase": "training",
+      "quality_score": 4.0,
+      "response_time": 50.856300830841064,
+      "inference_mode": "exploratory",
+      "records_retrieved": 0,
+      "context_chars": 0,
+      "response_preview": "As an expert software engineer, I frequently encounter memory exhaustion issues when processing large CSV files with Pandas. This behavior is rarely a",
+      "judge_reasoning": "The response accurately diagnoses the root causes of Pandas memory bloat, provides clear profiling steps, and suggests appropriate chunking fixes, though the output is truncated."
+    },
+    {
+      "task_id": "data_1",
+      "domain": "data",
+      "phase": "training",
+      "quality_score": 4.0,
+      "response_time": 47.739986181259155,
+      "inference_mode": "exploratory",
+      "records_retrieved": 0,
+      "context_chars": 0,
+      "response_preview": "Handling missing data in stock price time-series requires extreme care. Unlike static datasets, time-series data has strict temporal dependencies. In ",
+      "judge_reasoning": "The response is highly accurate, extremely well-structured, and correctly emphasizes the critical danger of look-ahead bias, though it is slightly incomplete due to truncation at the end."
+    },
+    {
+      "task_id": "design_1",
+      "domain": "design",
+      "phase": "training",
+      "quality_score": 4.0,
+      "response_time": 45.6378698348999,
+      "inference_mode": "exploratory",
+      "records_retrieved": 0,
+      "context_chars": 0,
+      "response_preview": "To handle 100K req/s globally across multiple regions with sub-millisecond overhead, we must prioritize local performance while maintaining acceptable",
+      "judge_reasoning": "The response provides an exceptionally high-quality, accurate, and practical system design addressing all constraints, but is graded down slightly due to being truncated at the very end."
+    },
+    {
+      "task_id": "coding_3",
+      "domain": "coding",
+      "phase": "training",
+      "quality_score": 4.0,
+      "response_time": 168.3810031414032,
+      "inference_mode": "exploratory",
+      "records_retrieved": 3,
+      "context_chars": 849,
+      "response_preview": "On macOS, Python multiprocessing deadlocks typically stem from two root causes: the inherent thread-safety limitations of the `fork` start method and ",
+      "judge_reasoning": "The response accurately identifies the root causes of macOS multiprocessing deadlocks and provides a correct, structured solution, though the code snippet is truncated."
+    }
+  ],
+  "warm_eval": [
+    {
+      "task_id": "coding_1",
+      "domain": "coding",
+      "phase": "warm_eval",
+      "quality_score": 2.0,
+      "response_time": 104.3136978149414,
+      "inference_mode": "exploratory",
+      "records_retrieved": 8,
+      "context_chars": 1823,
+      "response_preview": "To build a highly concurrent, non-blocking async web scraper that respects a rate limit of 10 requests per second (RPS), we will combine Python's `asy",
+      "judge_reasoning": "The response is truncated and contains a critical bug where the rate limiter holds the async lock during sleep, which serializes execution and defeats concurrency."
+    },
+    {
+      "task_id": "coding_2",
+      "domain": "coding",
+      "phase": "warm_eval",
+      "quality_score": 5.0,
+      "response_time": 120.7990095615387,
+      "inference_mode": "exploratory",
+      "records_retrieved": 8,
+      "context_chars": 1797,
+      "response_preview": "To debug a Python process consuming excessive memory when processing large CSV files with Pandas, we must first distinguish between a **true memory le",
+      "judge_reasoning": "The response is highly accurate, well-structured, and provides excellent technical advice on debugging and fixing pandas memory issues, despite being truncated at the very end due to prompt limits."
+    },
+    {
+      "task_id": "data_1",
+      "domain": "data",
+      "phase": "warm_eval",
+      "quality_score": 4.0,
+      "response_time": 0.011931657791137695,
+      "inference_mode": "exploratory",
+      "records_retrieved": 0,
+      "context_chars": 0,
+      "response_preview": "Handling missing data in stock price time-series requires extreme care. Unlike static datasets, time-series data has strict temporal dependencies. In ",
+      "judge_reasoning": "The response is highly accurate, extremely well-structured, and correctly emphasizes the critical danger of look-ahead bias, though it is slightly incomplete due to truncation at the end."
+    },
+    {
+      "task_id": "design_1",
+      "domain": "design",
+      "phase": "warm_eval",
+      "quality_score": 4.0,
+      "response_time": 0.01283717155456543,
+      "inference_mode": "exploratory",
+      "records_retrieved": 0,
+      "context_chars": 0,
+      "response_preview": "To handle 100K req/s globally across multiple regions with sub-millisecond overhead, we must prioritize local performance while maintaining acceptable",
+      "judge_reasoning": "The response provides an exceptionally high-quality, accurate, and practical system design addressing all constraints, but is graded down slightly due to being truncated at the very end."
+    },
+    {
+      "task_id": "coding_3",
+      "domain": "coding",
+      "phase": "warm_eval",
+      "quality_score": 4.0,
+      "response_time": 9.283841848373413,
+      "inference_mode": "exploratory",
+      "records_retrieved": 8,
+      "context_chars": 1802,
+      "response_preview": "### Why Deadlocks Occur on macOS\n\nOn macOS, Python multiprocessing deadlocks typically stem from the thread-safety limitations of the historical defau",
+      "judge_reasoning": "The explanation of fork-related deadlocks on macOS is highly accurate and the recommended 'spawn' solution is correct, though the final code is truncated."
+    }
+  ],
+  "memory_stats": {
+    "total": 25,
+    "by_type": {
+      "skill": 5,
+      "fact": 10,
+      "failure": 5,
+      "trace": 5
+    }
+  }
+}
