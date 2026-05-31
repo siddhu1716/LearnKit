@@ -259,11 +259,11 @@ def _snippet(record) -> str:
 # --- Static assets ---
 @app.get("/", include_in_schema=False)
 def root() -> FileResponse:
-    return FileResponse(HERE / "index.html")
+    return FileResponse(ROOT / "docs" / "index.html")
 
 
 # Serve sibling files like favicon if present
-app.mount("/static", StaticFiles(directory=HERE), name="static")
+app.mount("/static", StaticFiles(directory=ROOT / "docs"), name="static")
 
 
 @app.exception_handler(Exception)
