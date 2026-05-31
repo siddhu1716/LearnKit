@@ -460,3 +460,23 @@ def test_search_with_fts5_reserved_words_in_query(tmp_path):
         results = backend.search(q, domain="legal")
         assert len(results) >= 1, f"search returned 0 for {q!r}"
         assert results[0].id == rec.id
+
+
+def test_sqlite_escape_fts_hyphenated():
+    """Verify that escape_fts correctly handles hyphens and special chars without operational errors."""
+    from learnkit.backends.sqlite import escape_fts
+    
+    # Hyphens are replaced with space so that words are double-quoted and OR'ed cleanly
+    escaped = escape_fts("time-series analysis")
+    assert "OR" in escaped
+    assert "-" not in escaped
+    assert '"time"' in escaped
+    assert '"series"' in escaped
+    assert '"analysis"' in escaped
+
+    # Empty string handling
+    assert escape_fts("") == ""
+
+    # Single word FTS escaping with hyphen
+    assert escape_fts("deadlock-fix") == '"deadlock" OR "fix"'
+
