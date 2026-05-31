@@ -18,16 +18,16 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
 
 <style>
 :root{
-  --cream:#F7F4EC; --cream-2:#F1ECE0; --ink:#141413; --gray:#5A554B;
-  --rust:#B8472E; --rust-deep:#9A3A24; --rust-soft:#E0876A;
-  --code-bg:#1A1815; --code-fg:#E8E4D8; --hair:#D9D2C0;
-  --serif:"Source Serif 4",Georgia,serif;
-  --sans:"IBM Plex Sans",system-ui,sans-serif;
-  --mono:"JetBrains Mono",ui-monospace,monospace;
+  --cream:#030303; --cream-2:#090909; --ink:#ffffff; --gray:#a1a1aa;
+  --rust:#00ff88; --rust-deep:#00d972; --rust-soft:#a78bfa;
+  --code-bg:#0d0d0d; --code-fg:#e2e8f0; --hair:rgba(255,255,255,0.08);
+  --serif:"Geist",sans-serif;
+  --sans:"Geist",sans-serif;
+  --mono:"JetBrains Mono",monospace;
   --maxw:1140px; --pad:clamp(20px,5vw,40px);
   --ease:cubic-bezier(0.16,1,0.3,1);
 }
@@ -73,9 +73,59 @@ header{
   border-bottom:1px solid transparent;
 }
 header.scrolled{
-  background:rgba(247,244,236,.80);
+  background:rgba(3,3,3,.80);
   backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
   border-bottom:1px solid var(--hair);
+}
+
+.bg-grid {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(circle at 50% 50%, black, transparent 80%);
+  z-index: -1;
+  opacity: 0.4;
+}
+
+.bg-glow {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background:
+    radial-gradient(ellipse 130% 55% at 50% -20%, rgba(139, 92, 246, 0.22), transparent 58%),
+    radial-gradient(ellipse 90% 45% at 50% 25%, rgba(0, 255, 136, 0.14), transparent 55%),
+    radial-gradient(ellipse 60% 35% at 5%  35%, rgba(167, 139, 250, 0.07), transparent 55%),
+    radial-gradient(ellipse 60% 35% at 95% 35%, rgba(0, 200, 120, 0.06), transparent 55%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1 }
+  50% { opacity: 0 }
+}
+
+.typewriter-cursor {
+  display: inline-block;
+  width: 3px;
+  height: 0.85em;
+  background: var(--rust);
+  margin-left: 4px;
+  animation: blink 1s infinite;
+  vertical-align: middle;
+  border-radius: 1px;
+}
+
+.text-gradient {
+  background: linear-gradient(to bottom right, #ffffff 40%, rgba(255, 255, 255, 0.45));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 .header-inner{max-width:var(--maxw);margin:0 auto;padding-left:var(--pad);padding-right:var(--pad);width:100%;display:flex;align-items:center;justify-content:space-between}
 .logo{display:flex;align-items:center;gap:8px;font-family:var(--serif);font-weight:600;font-size:21px;letter-spacing:-.01em;text-decoration:none;white-space:nowrap}
@@ -112,10 +162,10 @@ nav.desk a:hover{color:var(--ink)}
 .hero .sub{color:var(--gray);font-size:clamp(18px,2vw,22px);line-height:1.5;max-width:46ch;margin-top:26px}
 .cta-row{display:flex;flex-wrap:wrap;gap:14px;margin-top:36px;align-items:center}
 .btn-primary{
-  font-family:var(--mono);font-size:15px;font-weight:500;
+  font-family:var(--mono);font-size:15px;font-weight:600;
   display:inline-flex;align-items:center;gap:10px;
   padding:14px 22px;border-radius:3px;border:1px solid var(--rust);
-  background:var(--rust);color:#fff;cursor:pointer;text-decoration:none;
+  background:var(--rust);color:var(--cream);cursor:pointer;text-decoration:none;
   transition:background .15s ease,transform .15s ease;
 }
 .btn-primary:hover{background:var(--rust-deep)}
@@ -247,7 +297,7 @@ svg.chart{display:block;width:100%;height:auto}
 .pg-run{
   font-family:var(--mono);font-size:14px;font-weight:600;
   padding:14px 22px;border-radius:4px;border:1px solid var(--rust);
-  background:var(--rust);color:#fff;cursor:pointer;
+  background:var(--rust);color:var(--cream);cursor:pointer;
   display:inline-flex;align-items:center;gap:10px;
   transition:background .15s ease,opacity .15s ease;
 }
@@ -268,7 +318,7 @@ svg.chart{display:block;width:100%;height:auto}
 .pg-panel-body{padding:16px}
 .pg-empty{
   padding:48px 22px;text-align:center;color:var(--gray);font-size:14.5px;
-  border-top:1px solid var(--hair);background:repeating-linear-gradient(45deg,transparent,transparent 10px,rgba(217,210,192,.20) 10px,rgba(217,210,192,.20) 11px);
+  border-top:1px solid var(--hair);background:repeating-linear-gradient(45deg,transparent,transparent 10px,rgba(255,255,255,.02) 10px,rgba(255,255,255,.02) 11px);
 }
 .pg-empty b{display:block;font-family:var(--serif);font-weight:600;font-size:19px;color:var(--ink);margin-bottom:8px}
 
@@ -334,14 +384,14 @@ pre.code{margin:0;padding:24px 22px;color:var(--code-fg);font-size:14.5px;line-h
 
 .rec-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin-top:50px;background:var(--hair);border:1px solid var(--hair);border-radius:4px;overflow:hidden}
 .rcard{background:var(--cream);padding:24px 22px 22px;transition:transform .18s ease,background .18s ease;cursor:default;display:flex;flex-direction:column;min-height:172px}
-.rcard:hover{transform:translateY(-2px);background:#FBF9F2;z-index:2;position:relative}
+.rcard:hover{transform:translateY(-2px);background:#121212;z-index:2;position:relative}
 .rcard .rname{font-family:var(--serif);font-size:22px;font-weight:600}
 .rcard .rdesc{color:var(--gray);font-size:14px;line-height:1.5;margin-top:10px;flex:1}
 .rcard .rstate{margin-top:16px;font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;display:inline-flex;align-items:center;gap:7px;color:var(--gray)}
 .rcard .rstate .pip{width:7px;height:7px;border-radius:50%;background:var(--gray)}
 .rcard .rstate.active .pip{background:var(--rust)}
 .rcard .rstate.active{color:var(--rust)}
-.rcard.lead{background:#FBF6EC}
+.rcard.lead{background:#0e2f1b}
 
 .os{background:var(--ink);color:var(--cream);border-radius:6px;padding:clamp(36px,5vw,64px);margin-top:8px}
 .os .kicker{color:var(--rust-soft)}
@@ -417,6 +467,9 @@ footer{border-top:1px solid var(--hair);padding-block:40px}
 </head>
 <body>
 
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+
 <header id="hdr">
   <div class="header-inner">
     <a href="#top" class="logo"><span class="brace">{ }</span><span>LearnKit</span></a>
@@ -446,8 +499,8 @@ footer{border-top:1px solid var(--hair);padding-block:40px}
   <div class="wrap">
     <div class="hero-grid">
       <div class="hero-copy">
-        <h1 class="reveal" data-d="0">Fine-tuning <span class="accent-word">without</span> fine-tuning.</h1>
-        <p class="sub reveal" data-d="80">An experience-distillation layer for AI agents. Every successful run distills into typed memory. Every future run inherits it. No retraining, no GPU, no vendor lock-in.</p>
+        <h1 class="reveal text-gradient" id="headline" data-d="0" style="min-height: 2.2em; text-align: left; line-height: 1.1; font-size: clamp(2.2rem, 7vw, 4.2rem);"></h1>
+        <p class="sub reveal" data-d="80" style="margin-top: 14px;">Introducing <b><i>LearnKit</i></b> — a thin experience distillation layer that wraps any agent and makes it compound knowledge over time. No retraining, no GPU, no amnesia.</p>
         <div class="cta-row reveal" data-d="160">
           <button class="btn-primary" data-copy="pip install learnkit" aria-label="Copy pip install command">
             <span class="pre">$</span><span>pip install learnkit</span>
@@ -484,12 +537,15 @@ footer{border-top:1px solid var(--hair);padding-block:40px}
 
 <section id="problem">
   <div class="wrap">
-    <span class="kicker reveal">The state of agent memory</span>
-    <h2 class="section-title reveal">Three ways memory fails an agent today.</h2>
+    <div style="text-align:left;max-width:700px;margin:0 0 54px 0;">
+        <span class="kicker reveal">The state of agent memory</span>
+        <h2 class="section-title reveal text-gradient" style="font-size:clamp(30px,4.4vw,46px);margin-bottom:14px;">Agents are amnesiac by design.</h2>
+        <p style="color:var(--gray);font-size:1.1rem;">Retraining isn't an option. Storing raw logs isn't learning. We need a better way.</p>
+    </div>
     <div class="prob-grid">
-      <div class="prob reveal" data-d="0"><div class="pno">01</div><h3>Memory soup.</h3><p>Dump every transcript into a vector store and retrieval returns noise. The context window fills with near-duplicates and the signal that mattered drowns.</p></div>
-      <div class="prob reveal" data-d="80"><div class="pno">02</div><h3>Agent amnesia.</h3><p>Without persistence, every run starts cold. The agent re-derives the same approach, repeats the same dead ends, and learns nothing across sessions.</p></div>
-      <div class="prob reveal" data-d="160"><div class="pno">03</div><h3>Vendor lock-in.</h3><p>Hosted memory services own your data in an opaque store. You cannot read it, score it, or move it. Your agent's experience becomes someone else's moat.</p></div>
+      <div class="prob reveal" data-d="0"><div class="pno">01</div><h3>Zero-sum runs</h3><p>Your agent solved this exact problem last Tuesday. Today it's hallucinating again because it has no persistent skill layer.</p></div>
+      <div class="prob reveal" data-d="80"><div class="pno">02</div><h3>The log haystack</h3><p>Raw vector memory is just a bigger haystack. Without distillation, your agent gets lost in the noise of its own past.</p></div>
+      <div class="prob reveal" data-d="160"><div class="pno">03</div><h3>Retraining barrier</h3><p>Retraining models is slow and expensive. LearnKit gives you fine-tuning results with zero GPU hours and no model changes.</p></div>
     </div>
   </div>
 </section>
@@ -1040,8 +1096,8 @@ memory = lk.<span class="tk-fn">LearnKit</span>(memory_backend=<span class="tk-s
     return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; });
   }
   var MODE_DESC = {
-    "prescriptive": "Confidence ≥ 0.90. Agent should follow the retrieved skill closely.",
-    "guided": "Confidence ≥ 0.70. Agent uses the retrieved skill as a scaffold and adapts.",
+    "prescriptive": "Confidence ≥ 0.80. Agent should follow the retrieved skill closely.",
+    "guided": "Confidence ≥ 0.50. Agent uses the retrieved skill as a scaffold and adapts.",
     "exploratory": "No high-confidence match. Agent reasons from scratch; this run becomes training signal."
   };
 
@@ -1112,6 +1168,19 @@ memory = lk.<span class="tk-fn">LearnKit</span>(memory_backend=<span class="tk-s
     if((e.metaKey || e.ctrlKey) && e.key === "Enter"){ runInspect(); }
   });
   loadDomains();
+
+  /* ============ TYPEWRITER ============ */
+  var headline = "Your agents die at the end of every conversation.";
+  var headlineEl = document.getElementById("headline");
+  var ti = 0;
+  function type() {
+    if (ti < headline.length) {
+      headlineEl.innerHTML = headline.substring(0, ti + 1) + '<span class="typewriter-cursor"></span>';
+      ti++;
+      setTimeout(type, 42);
+    }
+  }
+  type();
 })();
 </script>
 </body>
