@@ -1,7 +1,7 @@
 # LearnKit
 
-> **Work In Progress: Pre-Release Concept**
-> LearnKit is currently in active development. This repository serves as the architectural blueprint and conceptual overview of what we are building. The code is not yet released for production use.
+> **🚀 Live Pre-Release on PyPI!**
+> LearnKit is installable via PyPI as `learnkit-ai`. It provides the complete experience-distillation layer for Python AI agents. Let your agents compound knowledge dynamically!
 
 ---
 
@@ -57,9 +57,15 @@ Memory is continuously optimized:
 
 ---
 
-# Install
+To install from PyPI (recommended):
 
-LearnKit targets **Python 3.11+**. From the repo root:
+```bash
+pip install learnkit-ai
+# Or with integration extras:
+pip install "learnkit-ai[langchain]"
+```
+
+To install from local repo root:
 
 ```bash
 pip install -e .                    # core SDK
@@ -198,7 +204,7 @@ memory.maintain_memory(weeks=1, decay_rate=0.02, quarantine_hours=24)
 Run the test suite:
 
 ```bash
-pytest tests/ -q       # 33 passing, ~1s
+pytest tests/ -q       # 48 passing, ~1s
 ```
 
 Pre-commit hooks (black / ruff / isort / whitespace / yaml / debug-statements) are enforced on commit:
@@ -212,4 +218,4 @@ pre-commit install
 
 # Status
 
-**v0.1.0 — MVP.** The full ingest / query / maintain loop runs end-to-end with SQLite + FTS5 + DSPy classifier + LLM-judge evaluator + structured distiller. See [`AGENTS_V2.md`](AGENTS_V2.md) for the production hardening plan and [`improvements.md`](improvements.md) for the open backlog.
+**v0.0.2 — Live Pre-Release.** The full ingest / query / maintain loop runs end-to-end with SQLite + FTS5 + DSPy classifier + LLM-judge evaluator + structured distiller. Published and installable from PyPI as `learnkit-ai`! See [`AGENTS_V2.md`](AGENTS_V2.md) for the production hardening plan and [`improvements.md`](improvements.md) for the open backlog.
