@@ -1185,7 +1185,7 @@
                 <a href="#solution">Solution</a>
                 <a href="#how-it-works">Mechanism</a>
                 <a href="#use-cases">Use Cases</a>
-                <a href="https://pypi.org/project/learnkit/" target="_blank" rel="noopener">PyPI</a>
+                <a href="https://pypi.org/project/learnkit-ai/" target="_blank" rel="noopener">PyPI</a>
                 <a href="https://github.com/siddhu1716/LearnKit" target="_blank" rel="noopener">GitHub</a>
             </nav>
             <a href="https://github.com/siddhu1716/LearnKit" target="_blank" rel="noopener" class="ghost-btn head-cta">↗ View GitHub</a>
@@ -1202,7 +1202,7 @@
         <a href="#solution" onclick="toggleMenu(false)">Solution</a>
         <a href="#how-it-works" onclick="toggleMenu(false)">Mechanism</a>
         <a href="#use-cases" onclick="toggleMenu(false)">Use Cases</a>
-        <a href="https://pypi.org/project/learnkit/" target="_blank" rel="noopener">PyPI Package</a>
+        <a href="https://pypi.org/project/learnkit-ai/" target="_blank" rel="noopener">PyPI Package</a>
         <a href="https://github.com/siddhu1716/LearnKit" target="_blank" rel="noopener">GitHub Repository</a>
         <a href="https://github.com/siddhu1716/LearnKit" target="_blank" rel="noopener" class="ghost-btn">↗ View GitHub</a>
     </div>
@@ -1480,36 +1480,6 @@ lk = learnkit.LearnKit()
         </div>
 
         <div class="contact-wrap" id="contact-card">
-            <!-- Developer Settings Cog -->
-            <button class="dev-settings-toggle" onclick="toggleDevSettings()" aria-label="Toggle Developer Configurations" title="Developer Configuration Settings">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="3"></circle>
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                </svg>
-            </button>
-
-            <!-- Dev Settings Panel -->
-            <div class="dev-settings-panel" id="dev-settings">
-                <h4>🛠️ Developer Integration Settings</h4>
-                <p>
-                    Since this is a static site, you can set your keys here. Submissions are saved in your browser's local cache and processed instantly. Configure your real keys below:
-                </p>
-                <div class="dev-input-group">
-                    <label for="dev-web3-key">Web3Forms Access Key (Email / Sheets Backend)</label>
-                    <input type="text" class="dev-control" id="dev-web3-key" placeholder="e.g. 1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p">
-                    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
-                        Get a free key in 30 seconds at <a href="https://web3forms.com/" target="_blank" style="color:var(--accent);">web3forms.com</a>
-                    </div>
-                </div>
-                <div class="dev-input-group">
-                    <label for="dev-webhook-url">Custom Spreadsheet Webhook (Google Sheets Webhook URL)</label>
-                    <input type="text" class="dev-control" id="dev-webhook-url" placeholder="e.g. https://script.google.com/macros/s/.../exec">
-                </div>
-                <div style="text-align:right;margin-top:14px;">
-                    <button class="ghost-btn" style="padding:6px 12px;font-size:11px;" onclick="saveDevSettings()">Save Configuration</button>
-                </div>
-            </div>
-
             <!-- Form content area -->
             <form id="contact-form" onsubmit="handleContactSubmit(event)">
                 <!-- Name input -->
@@ -1553,7 +1523,7 @@ lk = learnkit.LearnKit()
             <div class="footer-links">
                 <a href="https://github.com/siddhu1716/LearnKit">GitHub</a>
                 <a href="https://github.com/siddhu1716/LearnKit#readme">Documentation</a>
-                <a href="https://pypi.org/project/learnkit/" target="_blank" rel="noopener">PyPI Package</a>
+                <a href="https://pypi.org/project/learnkit-ai/" target="_blank" rel="noopener">PyPI Package</a>
                 <a href="https://github.com/siddhu1716/LearnKit/issues" target="_blank" rel="noopener">Support Issues</a>
             </div>
             <p style="color:var(--text-muted);font-size:14px;">© 2026 LearnKit · Built by developers for developers.</p>
@@ -2020,35 +1990,6 @@ lk = learnkit.LearnKit()
 
             ham.addEventListener('click', () => toggleMenu());
 
-            /* ── DEVELOPER CONFIGURATIONS ── */
-            window.toggleDevSettings = function () {
-                const panel = document.getElementById('dev-settings');
-                const isVisible = window.getComputedStyle(panel).display !== 'none';
-                panel.style.display = isVisible ? 'none' : 'block';
-            };
-
-            window.saveDevSettings = function () {
-                const web3Key = document.getElementById('dev-web3-key').value.trim();
-                const webhookUrl = document.getElementById('dev-webhook-url').value.trim();
-
-                localStorage.setItem('lk_web3_key', web3Key);
-                localStorage.setItem('lk_webhook_url', webhookUrl);
-
-                alert('Configuration settings saved successfully! Browser testing is now active.');
-                document.getElementById('dev-settings').style.display = 'none';
-            };
-
-            function loadDevSettings() {
-                const web3Key = localStorage.getItem('lk_web3_key') || '43a1a162-d9a3-4b9d-b45e-a4e1d36e6623';
-                const webhookUrl = localStorage.getItem('lk_webhook_url') || '';
-
-                document.getElementById('dev-web3-key').value = web3Key;
-                document.getElementById('dev-webhook-url').value = webhookUrl;
-            }
-
-            // Load on initialization
-            loadDevSettings();
-
             /* ── SUBMIT FORM HANDLERS ── */
             window.closeModal = function () {
                 document.getElementById('success-overlay').style.display = 'none';
@@ -2073,7 +2014,7 @@ lk = learnkit.LearnKit()
                 btnText.textContent = 'Sending Message...';
                 btnSubmit.disabled = true;
 
-                const web3Key = localStorage.getItem('lk_web3_key') || '43a1a162-d9a3-4b9d-b45e-a4e1d36e6623';
+                const web3Key = '43a1a162-d9a3-4b9d-b45e-a4e1d36e6623';
                 const webhookUrl = localStorage.getItem('lk_webhook_url');
 
                 const payload = {
