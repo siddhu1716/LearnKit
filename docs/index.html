@@ -746,6 +746,426 @@
                 gap: 8px;
             }
         }
+
+        /* ── HEADER STYLES ── */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 50;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        header.scrolled {
+            background: rgba(3, 3, 3, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header-inner {
+            width: 100%;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            letter-spacing: -0.02em;
+        }
+
+        .logo-brace {
+            color: var(--accent);
+            font-family: var(--font-mono);
+            font-weight: 700;
+        }
+
+        nav.desk {
+            display: flex;
+            align-items: center;
+            gap: 28px;
+        }
+
+        nav.desk a {
+            font-size: 14.5px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s ease;
+            font-weight: 500;
+        }
+
+        nav.desk a:hover {
+            color: var(--accent);
+        }
+
+        .ghost-btn {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-decoration: none;
+            padding: 8px 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            background: transparent;
+        }
+
+        .ghost-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            box-shadow: 0 0 15px var(--accent-dim);
+            transform: translateY(-1px);
+        }
+
+        .hamburger {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            flex-direction: column;
+            gap: 6px;
+            padding: 4px;
+            z-index: 60;
+        }
+
+        .hamburger span {
+            display: block;
+            width: 22px;
+            height: 2px;
+            background: var(--text-primary);
+            transition: all 0.3s ease;
+            border-radius: 2px;
+        }
+
+        .hamburger.open span:nth-child(1) {
+            transform: translateY(8px) rotate(45deg);
+        }
+
+        .hamburger.open span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .hamburger.open span:nth-child(3) {
+            transform: translateY(-8px) rotate(-45deg);
+        }
+
+        .mnav {
+            position: fixed;
+            inset: 70px 0 auto 0;
+            background: rgba(3, 3, 3, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            z-index: 49;
+            display: none;
+            flex-direction: column;
+            padding: 24px;
+            gap: 16px;
+            transform: translateY(-10px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .mnav.open {
+            display: flex;
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .mnav a {
+            font-size: 16px;
+            color: var(--text-primary);
+            text-decoration: none;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            font-weight: 500;
+        }
+
+        .mnav a:hover {
+            color: var(--accent);
+        }
+
+        .mnav .ghost-btn {
+            text-align: center;
+            margin-top: 8px;
+        }
+
+        /* ── CONTACT SECTION ── */
+        .contact-wrap {
+            max-width: 650px;
+            margin: 0 auto;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 32px;
+            position: relative;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            transition: border-color 0.3s;
+        }
+
+        .contact-wrap:focus-within {
+            border-color: rgba(167, 139, 250, 0.3);
+        }
+
+        .contact-tabs {
+            display: flex;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 4px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            margin-bottom: 28px;
+        }
+
+        .contact-tab {
+            flex: 1;
+            padding: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            font-family: var(--font-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .contact-tab.active {
+            background: var(--surface-accent);
+            color: var(--text-primary);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+        }
+
+        .contact-tab.active.email-tab {
+            border-bottom: 2px solid var(--secondary);
+        }
+
+        .contact-tab.active.wa-tab {
+            border-bottom: 2px solid var(--accent);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .form-control {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-family: var(--font-main);
+            font-size: 15px;
+            outline: none;
+            transition: all 0.25s ease;
+        }
+
+        .form-control:focus {
+            border-color: var(--secondary);
+            background: rgba(255, 255, 255, 0.04);
+            box-shadow: 0 0 15px var(--secondary-glow);
+        }
+
+        .wa-active .form-control:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        textarea.form-control {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .btn-contact {
+            width: 100%;
+            padding: 14px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            border: none;
+            transition: all 0.25s ease;
+            font-family: var(--font-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-email-submit {
+            background: var(--secondary);
+            color: var(--text-primary);
+        }
+
+        .btn-email-submit:hover {
+            background: #b59dfb;
+            transform: scale(1.01);
+            box-shadow: 0 0 20px var(--secondary-glow);
+        }
+
+        .btn-wa-submit {
+            background: var(--accent);
+            color: var(--bg);
+        }
+
+        .btn-wa-submit:hover {
+            background: #33ff9e;
+            transform: scale(1.01);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        /* ── DEVELOPER SETTINGS DRAWER ── */
+        .dev-settings-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 18px;
+            transition: color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dev-settings-toggle:hover {
+            color: var(--text-primary);
+        }
+
+        .dev-settings-panel {
+            background: var(--surface-accent);
+            border: 1px dashed var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 24px;
+            text-align: left;
+            display: none;
+            animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .dev-settings-panel h4 {
+            font-size: 13px;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dev-settings-panel p {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            line-height: 1.4;
+        }
+
+        .dev-input-group {
+            margin-bottom: 12px;
+        }
+
+        .dev-input-group label {
+            display: block;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            font-family: var(--font-mono);
+        }
+
+        .dev-control {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-family: var(--font-mono);
+            outline: none;
+        }
+
+        .dev-control:focus {
+            border-color: var(--accent);
+        }
+
+        /* ── RESPONSIVE CANVAS & OTHER FIXES ── */
+        .arch-canvas-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .arch-canvas-container canvas {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .hamburger {
+                display: flex;
+            }
+            nav.desk, .ghost-btn.head-cta {
+                display: none;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .contact-wrap {
+                padding: 20px;
+            }
+            .waitlist-form {
+                flex-direction: column;
+                gap: 10px;
+                padding: 12px;
+                background: rgba(255, 255, 255, 0.02);
+            }
+            .waitlist-form input {
+                width: 100%;
+                padding: 10px 8px;
+                text-align: center;
+            }
+            .btn-submit {
+                width: 100%;
+                padding: 12px;
+                justify-content: center;
+            }
+        }
+            .record-pills {
+                gap: 8px;
+            }
+        }
     </style>
 </head>
 
@@ -753,16 +1173,52 @@
     <div class="bg-grid"></div>
     <div class="bg-glow"></div>
 
+    <!-- HEADER & NAVIGATION -->
+    <header id="hdr">
+        <div class="header-inner">
+            <a href="#top" class="logo">
+                <span class="logo-brace">{ }</span>
+                <span>LearnKit</span>
+            </a>
+            <nav class="desk">
+                <a href="#problem">Problem</a>
+                <a href="#solution">Solution</a>
+                <a href="#how-it-works">Mechanism</a>
+                <a href="#use-cases">Use Cases</a>
+                <a href="https://pypi.org/project/learnkit/" target="_blank" rel="noopener">PyPI</a>
+                <a href="https://github.com/siddhu1716/LearnKit" target="_blank" rel="noopener">GitHub</a>
+            </nav>
+            <a href="https://github.com/siddhu1716/LearnKit" target="_blank" rel="noopener" class="ghost-btn head-cta">↗ View GitHub</a>
+            <button class="hamburger" id="ham" aria-label="Menu" aria-expanded="false">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </header>
+
+    <div class="mnav" id="mnav">
+        <a href="#problem" onclick="toggleMenu(false)">Problem</a>
+        <a href="#solution" onclick="toggleMenu(false)">Solution</a>
+        <a href="#how-it-works" onclick="toggleMenu(false)">Mechanism</a>
+        <a href="#use-cases" onclick="toggleMenu(false)">Use Cases</a>
+        <a href="https://pypi.org/project/learnkit/" target="_blank" rel="noopener">PyPI Package</a>
+        <a href="https://github.com/siddhu1716/LearnKit" target="_blank" rel="noopener">GitHub Repository</a>
+        <a href="https://github.com/siddhu1716/LearnKit" target="_blank" rel="noopener" class="ghost-btn">↗ View GitHub</a>
+    </div>
+
     <!-- HERO -->
     <section class="hero container">
-        <span class="badge-new"><span class="badge-dot"></span>Early access · Star us on GitHub</span>
+        <a href="https://github.com/siddhu1716/LearnKit" target="_blank" rel="noopener" style="text-decoration:none">
+            <span class="badge-new"><span class="badge-dot"></span>v0.1.0 · View on GitHub</span>
+        </a>
         <h1 id="headline" class="text-gradient"></h1>
         <p>Introducing <b><i>LearnKit</i></b> — a thin experience distillation layer that wraps any agent and makes it
             compound knowledge over time.</p>
 
-        <div class="waitlist-form">
-            <input type="email" id="email-hero" placeholder="Enter your work email">
-            <button class="btn-submit" onclick="submitForm('email-hero')">Join waitlist</button>
+        <div style="display:flex;gap:16px;justify-content:center;margin-top:16px;flex-wrap:wrap;">
+            <a href="#contact" class="btn-submit" style="text-decoration:none;padding:12px 32px;display:inline-flex;align-items:center;justify-content:center;min-height:48px;">Join Waitlist / Connect</a>
+            <a href="https://github.com/siddhu1716/LearnKit" target="_blank" rel="noopener" class="ghost-btn" style="padding:12px 24px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;min-height:48px;">Star on GitHub ★</a>
         </div>
 
         <p class="hero-stat">Your agent has solved this problem <span class="counter-val" id="counter">0</span> times.
@@ -1007,22 +1463,98 @@ lk = learnkit.LearnKit()
         <h2 class="text-gradient">"Agents don't learn. Until now."</h2>
         <p style="color:var(--text-secondary);margin-bottom:48px;font-size:1.2rem;margin-top:16px;">Be first to give
             your agents a memory that compounds.</p>
-        <div style="display:flex;justify-content:center;">
-            <div class="waitlist-form">
-                <input type="email" id="email-footer" placeholder="Enter your work email">
-                <button class="btn-submit" onclick="submitForm('email-footer')">Get early access</button>
-            </div>
+        <div style="display:flex;justify-content:center;margin-top:16px;">
+            <a href="#contact" class="btn-submit" style="text-decoration:none;padding:12px 32px;display:inline-flex;align-items:center;justify-content:center;min-height:48px;">Get Early Access Now</a>
         </div>
         <p style="margin-top:24px;color:var(--text-muted);font-size:14px;">Open source core · MIT license · No credit
             card</p>
+    </section>
+
+    <!-- CONTACT SECTION -->
+    <section class="section container" id="contact" style="text-align:center;">
+        <div style="text-align:center;margin-bottom:48px;">
+            <h2 class="text-gradient" style="font-size:3rem;margin-bottom:16px;">Connect with LearnKit</h2>
+            <p style="color:var(--text-secondary);font-size:1.1rem;max-width:580px;margin:0 auto;">
+                Have questions about experience distillation, custom adapters, or production integration? Reach out to us.
+            </p>
+        </div>
+
+        <div class="contact-wrap" id="contact-card">
+            <!-- Developer Settings Cog -->
+            <button class="dev-settings-toggle" onclick="toggleDevSettings()" aria-label="Toggle Developer Configurations" title="Developer Configuration Settings">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+            </button>
+
+            <!-- Dev Settings Panel -->
+            <div class="dev-settings-panel" id="dev-settings">
+                <h4>🛠️ Developer Integration Settings</h4>
+                <p>
+                    Since this is a static site, you can set your keys here. Submissions are saved in your browser's local cache and processed instantly. Configure your real keys below:
+                </p>
+                <div class="dev-input-group">
+                    <label for="dev-web3-key">Web3Forms Access Key (Email / Sheets Backend)</label>
+                    <input type="text" class="dev-control" id="dev-web3-key" placeholder="e.g. 1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p">
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
+                        Get a free key in 30 seconds at <a href="https://web3forms.com/" target="_blank" style="color:var(--accent);">web3forms.com</a>
+                    </div>
+                </div>
+                <div class="dev-input-group">
+                    <label for="dev-webhook-url">Custom Spreadsheet Webhook (Google Sheets Webhook URL)</label>
+                    <input type="text" class="dev-control" id="dev-webhook-url" placeholder="e.g. https://script.google.com/macros/s/.../exec">
+                </div>
+                <div style="text-align:right;margin-top:14px;">
+                    <button class="ghost-btn" style="padding:6px 12px;font-size:11px;" onclick="saveDevSettings()">Save Configuration</button>
+                </div>
+            </div>
+
+            <!-- Form content area -->
+            <form id="contact-form" onsubmit="handleContactSubmit(event)">
+                <!-- Name input -->
+                <div class="form-group">
+                    <label for="contact-name">Your Name</label>
+                    <input type="text" class="form-control" id="contact-name" placeholder="John Doe" required>
+                </div>
+
+                <!-- Email address input -->
+                <div class="form-group">
+                    <label for="contact-email">Email Address</label>
+                    <input type="email" class="form-control" id="contact-email" placeholder="john@organization.com" required>
+                </div>
+
+                <!-- Organization input -->
+                <div class="form-group">
+                    <label for="contact-org">Organization / Company</label>
+                    <input type="text" class="form-control" id="contact-org" placeholder="e.g. CMU or Google AI">
+                </div>
+
+                <!-- Message textarea -->
+                <div class="form-group">
+                    <label for="contact-message" id="message-label">How can we help?</label>
+                    <textarea class="form-control" id="contact-message" placeholder="Describe your agent architecture, memory goals, or custom use case..." required></textarea>
+                </div>
+
+                <!-- Submission buttons -->
+                <button type="submit" class="btn-contact btn-email-submit" id="submit-contact">
+                    <span id="btn-text-content">Submit Application</span>
+                    <svg id="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </form>
+        </div>
     </section>
 
     <footer>
         <div class="container">
             <div class="footer-links">
                 <a href="https://github.com/siddhu1716/LearnKit">GitHub</a>
-                <a href="#">Documentation</a>
-                <a href="#">Privacy</a>
+                <a href="https://github.com/siddhu1716/LearnKit#readme">Documentation</a>
+                <a href="https://pypi.org/project/learnkit/" target="_blank" rel="noopener">PyPI Package</a>
+                <a href="https://github.com/siddhu1716/LearnKit/issues" target="_blank" rel="noopener">Support Issues</a>
             </div>
             <p style="color:var(--text-muted);font-size:14px;">© 2026 LearnKit · Built by developers for developers.</p>
         </div>
@@ -1189,7 +1721,8 @@ lk = learnkit.LearnKit()
             const dpr = window.devicePixelRatio || 1;
 
             function setup() {
-                const W = canvas.parentElement.getBoundingClientRect().width;
+                const parentW = canvas.parentElement.getBoundingClientRect().width;
+                const W = Math.max(parentW, 750); // Enforce minimum width to prevent node overlapping on mobile
                 const H = 380;
                 canvas.width = W * dpr;
                 canvas.height = H * dpr;
@@ -1458,17 +1991,160 @@ lk = learnkit.LearnKit()
                 });
             }
 
-            /* ── FORM ── */
-            window.submitForm = function (inputId) {
-                const email = document.getElementById(inputId).value;
-                if (email && email.includes('@')) {
-                    document.getElementById('success-overlay').style.display = 'flex';
+            /* ── HEADER & NAVIGATION SCROLL ── */
+            const headerEl = document.getElementById('hdr');
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 20) {
+                    headerEl.classList.add('scrolled');
                 } else {
-                    alert('Please enter a valid email.');
+                    headerEl.classList.remove('scrolled');
+                }
+            });
+
+            /* ── MOBILE NAV HAMBURGER ── */
+            const ham = document.getElementById('ham');
+            const mnav = document.getElementById('mnav');
+            
+            window.toggleMenu = function (forceState) {
+                const open = forceState !== undefined ? forceState : !mnav.classList.contains('open');
+                if (open) {
+                    mnav.classList.add('open');
+                    ham.classList.add('open');
+                    ham.setAttribute('aria-expanded', 'true');
+                } else {
+                    mnav.classList.remove('open');
+                    ham.classList.remove('open');
+                    ham.setAttribute('aria-expanded', 'false');
                 }
             };
+
+            ham.addEventListener('click', () => toggleMenu());
+
+            /* ── DEVELOPER CONFIGURATIONS ── */
+            window.toggleDevSettings = function () {
+                const panel = document.getElementById('dev-settings');
+                const isVisible = window.getComputedStyle(panel).display !== 'none';
+                panel.style.display = isVisible ? 'none' : 'block';
+            };
+
+            window.saveDevSettings = function () {
+                const web3Key = document.getElementById('dev-web3-key').value.trim();
+                const webhookUrl = document.getElementById('dev-webhook-url').value.trim();
+
+                localStorage.setItem('lk_web3_key', web3Key);
+                localStorage.setItem('lk_webhook_url', webhookUrl);
+
+                alert('Configuration settings saved successfully! Browser testing is now active.');
+                document.getElementById('dev-settings').style.display = 'none';
+            };
+
+            function loadDevSettings() {
+                const web3Key = localStorage.getItem('lk_web3_key') || '43a1a162-d9a3-4b9d-b45e-a4e1d36e6623';
+                const webhookUrl = localStorage.getItem('lk_webhook_url') || '';
+
+                document.getElementById('dev-web3-key').value = web3Key;
+                document.getElementById('dev-webhook-url').value = webhookUrl;
+            }
+
+            // Load on initialization
+            loadDevSettings();
+
+            /* ── SUBMIT FORM HANDLERS ── */
             window.closeModal = function () {
                 document.getElementById('success-overlay').style.display = 'none';
+            };
+
+            window.handleContactSubmit = async function (event) {
+                event.preventDefault();
+
+                const name = document.getElementById('contact-name').value.trim();
+                const email = document.getElementById('contact-email').value.trim();
+                const org = document.getElementById('contact-org').value.trim();
+                const message = document.getElementById('contact-message').value.trim();
+
+                if (!email) {
+                    alert('Please enter your email address.');
+                    return;
+                }
+
+                const btnSubmit = document.getElementById('submit-contact');
+                const btnText = document.getElementById('btn-text-content');
+                const origText = btnText.textContent;
+                btnText.textContent = 'Sending Message...';
+                btnSubmit.disabled = true;
+
+                const web3Key = localStorage.getItem('lk_web3_key') || '43a1a162-d9a3-4b9d-b45e-a4e1d36e6623';
+                const webhookUrl = localStorage.getItem('lk_webhook_url');
+
+                const payload = {
+                    name: name,
+                    email: email,
+                    org: org,
+                    message: message,
+                    subject: `LearnKit Waitlist Application from ${name}`,
+                };
+
+                let success = false;
+
+                // 1. Submit to Webhook
+                if (webhookUrl) {
+                    try {
+                        await fetch(webhookUrl, {
+                            method: 'POST',
+                            mode: 'no-cors',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        success = true;
+                    } catch (e) {
+                        console.error('Webhook failed:', e);
+                    }
+                }
+
+                // 2. Submit to Web3Forms
+                if (web3Key) {
+                    try {
+                        const res = await fetch('https://api.web3forms.com/submit', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                            body: JSON.stringify({
+                                access_key: web3Key,
+                                name: name,
+                                email: email,
+                                org: org,
+                                message: message,
+                                subject: `LearnKit Waitlist Application from ${name}`
+                            })
+                        });
+                        const data = await res.json();
+                        if (data.success) success = true;
+                    } catch (e) {
+                        console.error('Web3Forms failed:', e);
+                    }
+                }
+
+                // 3. Fallback simulated submission
+                if (!web3Key && !webhookUrl) {
+                    // Simulate speed delay
+                    await new Promise(resolve => setTimeout(resolve, 800));
+                    success = true;
+                    // Cache locally in local storage for developer reference
+                    const localSubmissions = JSON.parse(localStorage.getItem('lk_submissions') || '[]');
+                    localSubmissions.push({ timestamp: new Date().toISOString(), ...payload });
+                    localStorage.setItem('lk_submissions', JSON.stringify(localSubmissions));
+                    console.log('Simulated form submission stored in local storage:', payload);
+                }
+
+                btnText.textContent = origText;
+                btnSubmit.disabled = false;
+
+                if (success) {
+                    document.getElementById('success-overlay').style.display = 'flex';
+                    // Reset form
+                    document.getElementById('contact-form').reset();
+                } else {
+                    alert('Submission failed. Please check your developer settings cog or network connections.');
+                }
             };
         })();
     </script>
