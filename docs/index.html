@@ -1221,6 +1221,20 @@
             <a href="https://github.com/siddhu1716/LearnKit" target="_blank" rel="noopener" class="ghost-btn" style="padding:12px 24px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;min-height:48px;">Star on GitHub ★</a>
         </div>
 
+        <!-- PyPI Installation Card -->
+        <div class="pypi-install-card" style="margin: 24px auto 0; max-width: 320px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; backdrop-filter: blur(10px); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);">
+            <div style="display: flex; align-items: center; gap: 8px; font-family: 'Fira Code', monospace; font-size: 14px; color: var(--text-primary);">
+                <span style="color: var(--accent); user-select: none;">$</span>
+                <span id="install-cmd" style="font-family: inherit;">pip install learnkit-ai</span>
+            </div>
+            <button onclick="copyInstallCommand()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; transition: color 0.2s;" title="Copy to Clipboard" id="copy-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+            </button>
+        </div>
+
         <p class="hero-stat">Your agent has solved this problem <span class="counter-val" id="counter">0</span> times.
             It doesn't know that.</p>
 
@@ -2086,6 +2100,17 @@ lk = learnkit.LearnKit()
                 } else {
                     alert('Submission failed. Please check your developer settings cog or network connections.');
                 }
+            };
+
+            window.copyInstallCommand = function () {
+                const cmdText = document.getElementById('install-cmd').innerText;
+                navigator.clipboard.writeText(cmdText).then(() => {
+                    const btn = document.getElementById('copy-btn');
+                    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                    setTimeout(() => {
+                        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+                    }, 2000);
+                });
             };
         })();
     </script>
