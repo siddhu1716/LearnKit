@@ -1,0 +1,33 @@
+{
+  "id": "slr00000-f6a7-8901-bcde-f12345678901",
+  "version": 1,
+  "type": "skill",
+  "domains": {
+    "coding": 0.95
+  },
+  "task_type": "symbolic_logic_reasoning",
+  "content": {
+    "steps": [
+      "Identify the predicate attributes of eastbound and westbound trains (e.g. has_car, car_num, car_color, car_len, has_wall)",
+      "Formulate a Prolog rule of the form 'eastbound(T) :- Body.' that covers all positive (eastbound) examples and excludes all negative (westbound) examples",
+      "Aim for the shortest correct rule using the fewest body literals",
+      "Strictly use the defined Prolog predicates and constants",
+      "Avoid introducing unbound or unneeded variables"
+    ],
+    "tools_used": ["prolog"],
+    "constraints": ["Must use 'eastbound(T) :- Body.'", "Body must use defined predicates only", "Perfect separation required"],
+    "failure_modes": ["incorrect predicate spelling", "body too general", "body too specific", "unbound variables"]
+  },
+  "outcome_quality": 4.5,
+  "confidence": 0.9,
+  "reuse_count": 0,
+  "success_rate": null,
+  "scope": "team",
+  "status": "active",
+  "created_at": "2026-06-02T10:00:00Z",
+  "expires_at": "2026-12-02T10:00:00Z",
+  "last_reinforced": null,
+  "transfer_domains": [],
+  "transfer_confidence": null,
+  "evolution_gen": 0
+}

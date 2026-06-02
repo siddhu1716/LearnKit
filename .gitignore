@@ -58,8 +58,9 @@ Docs/server.log
 docs/__pycache__/
 Docs/__pycache__/
 
-# Benchmark run logs (results are tracked, logs aren't)
+# Benchmark run logs and results
 benchmarks/last_run.log
+benchmarks/results/
 
 # Secrets
 .env

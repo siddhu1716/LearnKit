@@ -1,0 +1,33 @@
+{
+  "id": "pbe00000-f6a7-8901-bcde-f12345678901",
+  "version": 1,
+  "type": "skill",
+  "domains": {
+    "coding": 0.95
+  },
+  "task_type": "pbe_string_transformation",
+  "content": {
+    "steps": [
+      "Analyze input-output pairs to identify character mappings and string replacements",
+      "Order replace programs from most specific (longest predicate) to least specific (shortest predicate) to avoid bleeding",
+      "Handle overlapping replacements carefully to prevent unwanted side-effects from subsequent replacements",
+      "Keep replacement sequences within the maximum limit (usually 5)",
+      "Strictly format response as a Python list of replace() calls inside a ```python ``` block"
+    ],
+    "tools_used": ["str.replace"],
+    "constraints": ["Max 5 programs", "String length constraints A<=3, B<=3", "Only use replace() calls"],
+    "failure_modes": ["incorrect sequence order", "over-general replacing", "overlapping replace loops"]
+  },
+  "outcome_quality": 4.5,
+  "confidence": 0.9,
+  "reuse_count": 0,
+  "success_rate": null,
+  "scope": "team",
+  "status": "active",
+  "created_at": "2026-06-02T10:00:00Z",
+  "expires_at": "2026-12-02T10:00:00Z",
+  "last_reinforced": null,
+  "transfer_domains": [],
+  "transfer_confidence": null,
+  "evolution_gen": 0
+}
