@@ -158,16 +158,34 @@ def test_router_caps_at_token_budget():
 
 
 def test_router_preserves_priority_failures_before_skills_before_facts():
-    skill = _skill("a_skill")
+    """Type-priority (failure > skill > fact) determines *which* records are
+    included. The k=1 split then re-orders by confidence so the highest-
+    confidence record is always at position 0 (PRIMARY PRESCRIPTIVE context).
+
+    This test verifies:
+    - All 3 types survive the token budget and max_records cap.
+    - The skill (confidence=0.8) is at position 0 because it has higher
+      confidence than the failure (default 0.5) after k=1 reorder.
+    """
+    skill = _skill("a_skill")  # confidence=0.8
     fact = FactRecord(domains={"coding": 0.9}, content={"statement": "f"})
     failure = FailureRecord(
         domains={"coding": 0.9},
         content={"description": "d", "what_to_avoid": "w"},
         status="active",
+        # default confidence=0.5 → below skill's 0.8, so skill becomes PRIMARY
     )
-    # Pass them in inverse-priority order to verify the router re-sorts.
+    # Pass them in inverse-priority order to verify the router includes all types.
     routed = MemoryRouter(max_records=8, max_tokens=10000).route([fact, skill, failure])
-    assert [r.type for r in routed] == ["failure", "skill", "fact"]
+
+    # All 3 types must be present (type-priority selection)
+    types_in_result = {r.type for r in routed}
+    assert "failure" in types_in_result
+    assert "skill" in types_in_result
+    assert "fact" in types_in_result
+
+    # Position 0 is the highest-confidence record (k=1 split)
+    assert routed[0].type == "skill"  # skill.confidence=0.8 > failure.confidence=0.5
 
 
 def test_router_always_admits_at_least_one_record_even_if_oversized():

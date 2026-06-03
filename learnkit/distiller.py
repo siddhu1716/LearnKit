@@ -53,6 +53,50 @@ If no reusable skill can be extracted (task was one-off), set skill to null.
 Focus on the APPROACH, not the specific content. The skill must generalize.
 """
 
+# ReasoningBank (ICLR 2026) Finding 4 — dual-pass contrastive failure extraction.
+# "ReasoningBank explicitly extracts 'preventative lessons' from failures in a
+# dual-prompt extraction step."
+# Used by distill_failure() when quality_score < quality_threshold.
+FAILURE_CONTRASTIVE_PROMPT = """
+You are analyzing a failed AI agent execution to extract a preventative lesson.
+
+TASK: {task}
+DOMAINS: {domains}
+QUALITY SCORE: {quality}/5 (below passing threshold)
+
+FAILED OUTPUT:
+{output}
+
+EXECUTION STEPS:
+{steps}
+
+Extract a concise preventative lesson. Respond with JSON only:
+{{
+  "lesson_title": "one-line title for this failure pattern",
+  "root_cause": "why the agent failed on this task",
+  "corrective_strategy": "what a successful agent should do instead",
+  "trigger_pattern": "describe the task pattern that triggers this failure",
+  "what_to_avoid": "specific action or reasoning the agent must NOT repeat"
+}}
+
+Be specific and actionable. The lesson must generalize to similar future tasks.
+"""
+
+
+def robust_json_loads(text: str) -> dict:
+    """Safely loads JSON from string, falling back to json_repair if available."""
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        try:
+            import json_repair
+            res = json_repair.loads(text)
+            if isinstance(res, dict):
+                return res
+        except Exception:
+            pass
+        return json.loads(text.replace("'", '"'))
+
 
 class MemoryDistiller:
     """
@@ -60,7 +104,19 @@ class MemoryDistiller:
     """
 
     def __init__(self, lm=None):
-        self.lm = lm or dspy.LM("anthropic/claude-haiku-4-5-20251001")
+        import os
+        if lm is None:
+            model = os.environ.get("LEARNKIT_DISTILLER_MODEL")
+            if not model:
+                if os.environ.get("ANTHROPIC_API_KEY"):
+                    model = "anthropic/claude-haiku-4-5-20251001"
+                elif os.environ.get("GEMINI_API_KEY"):
+                    model = "gemini/gemini-2.5-flash"
+                else:
+                    model = "anthropic/claude-haiku-4-5-20251001"
+            self.lm = dspy.LM(model)
+        else:
+            self.lm = dspy.LM(lm) if isinstance(lm, str) else lm
 
     def distill(
         self,
@@ -75,11 +131,21 @@ class MemoryDistiller:
     ]:
         """
         Distill trajectory into Skill, Fact, Failure, and Trace records.
+
+        Returns (None, [], [], None) with a warning when quality_score is below
+        threshold. Callers should call distill_failure() separately for low-quality
+        traces to extract a contrastive FailureRecord.
         """
         if quality_score < 3.5:
-            raise ValueError(
-                "Distillation called on low-quality trace. Evaluator should have gated this."
+            logger.warning(
+                "Distillation skipped — quality below threshold",
+                extra={
+                    "event": "distill_quality_gate",
+                    "quality_score": quality_score,
+                    "threshold": 3.5,
+                },
             )
+            return None, [], [], None
 
         # Flatten trajectory for the prompt
         reasoning_steps = []
@@ -124,20 +190,17 @@ class MemoryDistiller:
         cleaned = cleaned.strip()
 
         try:
-            data = json.loads(cleaned)
-        except json.JSONDecodeError:
-            try:
-                data = json.loads(cleaned.replace("'", '"'))
-            except json.JSONDecodeError as e:
-                logger.warning(
-                    "Distillation JSON parsing failed, returning empty records",
-                    extra={
-                        "event": "distillation_parse_fail",
-                        "error_type": type(e).__name__,
-                        "error": str(e),
-                    },
-                )
-                data = {"skill": None, "facts": [], "failures": []}
+            data = robust_json_loads(cleaned)
+        except Exception as e:
+            logger.warning(
+                "Distillation JSON parsing failed, returning empty records",
+                extra={
+                    "event": "distillation_parse_fail",
+                    "error_type": type(e).__name__,
+                    "error": str(e),
+                },
+            )
+            data = {"skill": None, "facts": [], "failures": []}
 
         if not isinstance(data, dict):
             logger.warning(
@@ -233,3 +296,90 @@ class MemoryDistiller:
             trace_record = None
 
         return skill, facts, failures, trace_record
+
+    def distill_failure(
+        self,
+        trajectory: Trajectory,
+        domain_vector: dict[str, float],
+        quality_score: float,
+    ) -> Optional[FailureRecord]:
+        """Contrastive failure extraction (ReasoningBank dual-pass pattern).
+
+        Called when a trace fails the quality gate (score < threshold). Extracts
+        a preventative lesson — root cause, corrective strategy, and trigger pattern
+        — and returns an immediately-active FailureRecord. This record is retrieved
+        on similar future tasks, blocking the agent from repeating the same mistake.
+
+        Returns None on model call failure or JSON parse failure (safe degradation).
+        """
+        execution_steps = []
+        final_output = ""
+        for step in trajectory.steps:
+            if step.role == "assistant":
+                execution_steps.append(f"Agent: {step.content[:300]}")
+                final_output = step.content
+            elif step.role == "tool":
+                execution_steps.append(f"Tool({step.tool_name}): {step.content[:200]}")
+
+        prompt = FAILURE_CONTRASTIVE_PROMPT.format(
+            task=trajectory.task,
+            domains=list(domain_vector.keys()),
+            quality=quality_score,
+            output=final_output[:500],
+            steps="\n".join(execution_steps),
+        )
+
+        try:
+            with dspy.context(lm=self.lm):
+                raw = self.lm(prompt)[0]
+        except Exception as e:
+            logger.warning(
+                "Contrastive failure model call failed",
+                extra={"event": "distill_failure_model_fail", "error": str(e)},
+            )
+            return None
+
+        cleaned = raw.strip()
+        if cleaned.startswith("```"):
+            lines = cleaned.splitlines()
+            if lines[0].startswith("```json") or lines[0] == "```":
+                cleaned = "\n".join(lines[1:-1])
+        cleaned = cleaned.strip()
+
+        try:
+            data = robust_json_loads(cleaned)
+        except Exception as e:
+            logger.warning(
+                "Contrastive failure JSON parsing failed",
+                extra={"event": "distill_failure_parse_fail", "error_type": type(e).__name__},
+            )
+            return None
+
+        if not isinstance(data, dict):
+            return None
+
+        try:
+            failure = FailureRecord(
+                domains=domain_vector,
+                task_type=trajectory.task[:80],
+                content={
+                    "description": data.get("lesson_title", ""),
+                    "root_cause": data.get("root_cause", ""),
+                    "corrective_strategy": data.get("corrective_strategy", ""),
+                    "trigger_pattern": data.get("trigger_pattern", ""),
+                    "what_to_avoid": data.get("what_to_avoid", ""),
+                },
+                status="active",  # immediately active — no quarantine for failures
+                confidence=0.7,   # start at 0.7 so it clears the CONFIDENCE_FLOOR
+            )
+            logger.warning(
+                "Contrastive failure record created from low-quality trace",
+                extra={"event": "distill_failure_created", "task_type": failure.task_type},
+            )
+            return failure
+        except Exception as e:
+            logger.warning(
+                "Failed to construct FailureRecord from contrastive extraction",
+                extra={"error": str(e)},
+            )
+            return None

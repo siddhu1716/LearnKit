@@ -100,9 +100,14 @@ def classify_task(
 ) -> ClassificationOutput:
     """Classify task with model config, exponential backoff retries, and fallback."""
     if lm is None:
-        model_name = os.environ.get(
-            "LEARNKIT_CLASSIFIER_MODEL", "anthropic/claude-haiku-4-5-20251001"
-        )
+        model_name = os.environ.get("LEARNKIT_CLASSIFIER_MODEL")
+        if not model_name:
+            if os.environ.get("ANTHROPIC_API_KEY"):
+                model_name = "anthropic/claude-haiku-4-5-20251001"
+            elif os.environ.get("GEMINI_API_KEY"):
+                model_name = "gemini/gemini-2.5-flash"
+            else:
+                model_name = "anthropic/claude-haiku-4-5-20251001"
         try:
             lm = dspy.LM(model_name)
         except Exception as e:

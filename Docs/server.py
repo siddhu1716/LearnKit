@@ -70,12 +70,16 @@ PLAYGROUND_STORES: dict[str, dict] = {
 MEMORIES: dict[str, lk.LearnKit] = {}
 
 
-def _has_anthropic_key() -> bool:
-    return bool(os.environ.get("ANTHROPIC_API_KEY"))
+def _has_api_key() -> bool:
+    return (
+        bool(os.environ.get("ANTHROPIC_API_KEY")) or
+        bool(os.environ.get("GEMINI_API_KEY")) or
+        bool(os.environ.get("OPENAI_API_BASE"))
+    )
 
 
 def _stub_classifier(task: str) -> ClassificationOutput:
-    """Offline fallback when ANTHROPIC_API_KEY is not set.
+    """Offline fallback when no API keys are set.
 
     Picks a domain label by keyword heuristic so the Playground stays usable
     without API keys. Retrieval uses FTS5 text matching, so the displayed
@@ -184,17 +188,23 @@ def inspect(req: InspectRequest) -> InspectResponse:
     if mem is None:
         raise HTTPException(status_code=404, detail=f"unknown domain {req.domain!r}")
 
-    if _has_anthropic_key():
+    if _has_api_key():
         try:
             classification = classify_task(req.task)
         except Exception:
             classification = _stub_classifier(req.task)
             notes = {"classifier": "stub_fallback", "reason": "DSPy classifier raised"}
         else:
-            notes = {"classifier": "dspy_haiku"}
+            if os.environ.get("ANTHROPIC_API_KEY"):
+                clf_type = "dspy_haiku"
+            elif os.environ.get("GEMINI_API_KEY"):
+                clf_type = "dspy_gemini"
+            else:
+                clf_type = "dspy_qwen"
+            notes = {"classifier": clf_type}
     else:
         classification = _stub_classifier(req.task)
-        notes = {"classifier": "stub_offline", "reason": "ANTHROPIC_API_KEY not set"}
+        notes = {"classifier": "stub_offline", "reason": "No API keys or local base url configured"}
 
     # Domain labels produced by the live classifier are freeform (e.g. "Python
     # Programming") and rarely match the stored records' domain strings byte-

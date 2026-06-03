@@ -2,6 +2,7 @@ import math
 
 from .backends.base import BaseBackend
 from .logging import get_logger
+from .router import CONFIDENCE_FLOOR
 from .schemas.base import MemoryRecord
 
 logger = get_logger("retriever")
@@ -77,6 +78,24 @@ class SemanticRetriever:
                 extra={"event": "retrieval_fail", "error_type": type(e).__name__},
             )
             results = []
+
+        # Confidence floor — drop records below threshold before routing.
+        # Sprint 1 fix: prevents low-confidence records from reaching the
+        # composer regardless of their FTS5 surface-match score.
+        # sql06 regressed (5.0→2.0) because a confidence=0.5 upsert skill
+        # matched gap-detection keywords and was injected into an unrelated task.
+        before = len(results)
+        results = [r for r in results if r.confidence >= CONFIDENCE_FLOOR]
+        dropped = before - len(results)
+        if dropped:
+            logger.warning(
+                "Records dropped by confidence floor",
+                extra={
+                    "event": "confidence_floor_drop",
+                    "dropped": dropped,
+                    "floor": CONFIDENCE_FLOOR,
+                },
+            )
 
         if router:
             results = router.route(results)

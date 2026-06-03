@@ -320,8 +320,14 @@ def write_compounding_csv(records: list[dict], out_path: Path) -> None:
 def main() -> None:
     if not os.environ.get("GEMINI_API_KEY"):
         raise SystemExit("ERROR: GEMINI_API_KEY missing (check benchmarks/.env).")
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        raise SystemExit("ERROR: ANTHROPIC_API_KEY missing (judge model).")
+    
+    judge_model = os.environ.get("LEARNKIT_EVALUATOR_MODEL")
+    if not judge_model:
+        if os.environ.get("ANTHROPIC_API_KEY"):
+            judge_model = "anthropic/claude-haiku-4-5-20251001"
+        else:
+            judge_model = "gemini/gemini-2.5-flash"
+            os.environ["LEARNKIT_EVALUATOR_MODEL"] = judge_model
 
     run_id = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
     out_dir = HERE / "results" / run_id
@@ -329,7 +335,7 @@ def main() -> None:
     print(f"Run id: {run_id}")
     print(f"Output: {out_dir}")
     print(f"Agent:  {AGENT_MODEL}")
-    print("Judge:  claude-haiku-4-5-20251001 (via LearnKit Evaluator)")
+    print(f"Judge:  {judge_model} (via LearnKit Evaluator)")
 
     domains = ["python_debugging", "contract_summarization", "sql_authoring"]
     all_records: list[dict] = []

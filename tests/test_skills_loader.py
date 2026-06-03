@@ -9,11 +9,11 @@ from learnkit.skills_loader import seed_bundled_skills
 
 
 def test_seed_bundled_skills_loads_both_starter_skills():
-    """seed_bundled_skills should load the 2 bundled starter skills into the backend."""
+    """seed_bundled_skills should load the 4 bundled starter skills into the backend."""
     backend = SQLiteBackend(db_path=":memory:")
     count = seed_bundled_skills(backend)
 
-    assert count == 2, f"Expected 2 starter skills, got {count}"
+    assert count == 4, f"Expected 4 starter skills, got {count}"
     results = backend.list_all()
     task_types = {r.task_type for r in results}
     assert "contract_summarization" in task_types
@@ -27,7 +27,7 @@ def test_seed_bundled_skills_is_idempotent():
     count_second = seed_bundled_skills(backend)
 
     assert count_second == 0, "Second seed should skip already-present records"
-    assert len(backend.list_all()) == 2
+    assert len(backend.list_all()) == 4
 
 
 def test_seed_bundled_skills_overwrite_replaces():
@@ -35,7 +35,7 @@ def test_seed_bundled_skills_overwrite_replaces():
     backend = SQLiteBackend(db_path=":memory:")
     seed_bundled_skills(backend)
     count = seed_bundled_skills(backend, overwrite=True)
-    assert count == 2
+    assert count == 4
 
 
 def test_seed_bundled_skills_records_are_active_with_correct_schema():

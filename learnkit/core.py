@@ -288,18 +288,28 @@ class LearnKit:
                     trace_record.scope = self.scope
                     self.backend.add(trace_record)
             else:
-                # Low quality — store as failure record immediately
+                # Low quality — run contrastive failure extraction (ReasoningBank dual-pass).
+                # distill_failure() makes a targeted LLM call to extract root_cause,
+                # corrective_strategy, and trigger_pattern from the failed trace.
+                # Falls back to a minimal generic FailureRecord if extraction fails.
                 from .schemas.failure import FailureRecord
 
-                failure = FailureRecord(
-                    domains=domain_vector,
-                    content={
-                        "description": f"Failed task: {traj.task[:100]}",
-                        "what_to_avoid": "Approach used in this trace",
-                    },
-                    status="active",
-                    scope=self.scope,
+                failure = self.distiller.distill_failure(
+                    trajectory=traj,
+                    domain_vector=domain_vector,
+                    quality_score=eval_result.score,
                 )
+                if failure is None:
+                    # Safe fallback: at minimum record that this task/approach failed
+                    failure = FailureRecord(
+                        domains=domain_vector,
+                        content={
+                            "description": f"Failed task: {traj.task[:100]}",
+                            "what_to_avoid": "Approach used in this trace",
+                        },
+                        status="active",
+                    )
+                failure.scope = self.scope
                 self.backend.add(failure)
         except Exception as e:
             raise PostProcessError(f"Post-processing failed: {e}") from e

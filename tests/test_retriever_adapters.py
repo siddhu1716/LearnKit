@@ -59,7 +59,7 @@ def test_semantic_retriever_dense_rerank_without_lexical_overlap():
         domains={"coding": 0.9},
         task_type="multiprocessing_fix",
         content={"steps": ["set spawn start method"]},
-        confidence=0.4,
+        confidence=0.5,  # above CONFIDENCE_FLOOR (0.45); dense rerank should surface this
     )
     distractor = SkillRecord(
         domains={"coding": 0.9},
