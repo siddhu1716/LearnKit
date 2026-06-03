@@ -1398,6 +1398,11 @@ lk = learnkit.LearnKit()
     <section class="section container" id="benchmarks">
         <div style="text-align:center;margin-bottom:48px;">
             <h2 class="text-gradient" style="font-size:3rem;margin-bottom:16px;">Verified Benchmarks</h2>
+            <div style="display:flex; justify-content:center; gap:12px; margin-bottom:16px; flex-wrap:wrap;">
+                <span style="background: rgba(255,255,255,0.05); padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; color: var(--text-secondary); border: 1px solid rgba(255,255,255,0.1);">Agent: Gemini Flash Lite</span>
+                <span style="background: rgba(255,255,255,0.05); padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; color: var(--text-secondary); border: 1px solid rgba(255,255,255,0.1);">Memory/Distiller: Qwen 2.5 72B</span>
+                <span style="background: rgba(16,185,129,0.1); padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; color: #10B981; border: 1px solid rgba(16,185,129,0.2);">Up to 65% Cost Savings</span>
+            </div>
             <p style="color:var(--text-secondary);">Empirical evaluation of LearnKit on local NVIDIA H100 hardware across algorithmic and logic-reasoning tasks.</p>
         </div>
 
@@ -1511,7 +1516,7 @@ lk = learnkit.LearnKit()
         </div>
 
         <div style="margin-top: 32px; border-left: 2px solid var(--accent); padding: 8px 0 8px 24px; font-size: 0.95rem; color: var(--text-secondary); line-height: 1.6; max-width: 800px; margin-left: auto; margin-right: auto; text-align: left;">
-            <b>Performance Highlight:</b> In Simple Replace, LearnKit's cached success memories allow the model to succeed on its first try for tasks it initially failed, bypassing multiple correction attempts. This results in a <b>32% latency reduction</b> and prevents unnecessary API/inference token overhead.
+            <b>Performance Highlight:</b> In Simple Replace, LearnKit's cached success memories allow the model to succeed on its first try for tasks it initially failed, bypassing multiple correction attempts. This results in a <b>32% latency reduction</b> and <b>up to 65% API cost reduction</b> by eliminating expensive retry and exploration loops.
         </div>
     </section>
 
