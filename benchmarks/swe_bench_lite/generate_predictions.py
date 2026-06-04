@@ -11,7 +11,7 @@ import litellm
 import learnkit as lk
 from learnkit.evaluator import Evaluator, EvaluationResult, EvaluationSignal
 
-# 1. Environment configuration
+# ── Environment configuration ──────────────────────────────────────────────────
 os.environ["OPENAI_API_BASE"] = "http://localhost:8001/v1"
 os.environ["OPENAI_API_KEY"] = "dummy"
 os.environ["LEARNKIT_DISTILLER_MODEL"] = "openai/Qwen/Qwen2.5-72B-Instruct"
@@ -21,6 +21,8 @@ os.environ["LEARNKIT_CLASSIFIER_MODEL"] = "openai/Qwen/Qwen2.5-72B-Instruct"
 AGENT_MODEL = "openai/Qwen/Qwen2.5-72B-Instruct"
 REPO_DIR = Path(__file__).parent / "pytest_repo"
 
+# ── Git helpers ────────────────────────────────────────────────────────────────
+
 def run_git_cmd(args: list[str]) -> str:
     """Run a git command in the pytest repository and return stdout."""
     res = subprocess.run(
@@ -28,121 +30,226 @@ def run_git_cmd(args: list[str]) -> str:
         capture_output=True,
         text=True,
         encoding="utf-8",
-        errors="ignore"
+        errors="ignore",
     )
     if res.returncode != 0:
-        print(f"Git command failed: git {' '.join(args)}\nError: {res.stderr}")
+        print(f"  Git command failed: git {' '.join(args)}\n  Error: {res.stderr.strip()}")
     return res.stdout
 
+
 def get_modified_file(patch: str) -> str:
-    """Parse the gold patch to get the modified file path."""
+    """Parse the gold patch to get the first modified file path."""
     for line in patch.splitlines():
         if line.startswith("--- a/"):
             return line[6:]
     return ""
 
+
+# ── File-windowing helper ──────────────────────────────────────────────────────
+
+def _extract_keywords(problem: str, fail_to_pass: list[str]) -> list[str]:
+    """Pull candidate function / class names from the problem and test IDs."""
+    keywords = []
+    # From test IDs: e.g. "test_foo_bar" → ["test_foo_bar", "foo_bar"]
+    for test_id in fail_to_pass:
+        # last part after "::" is the test function name
+        parts = test_id.split("::")
+        if parts:
+            keywords.append(parts[-1])
+    # From problem statement: grab all snake_case and CamelCase identifiers > 4 chars
+    for token in re.findall(r"\b[A-Za-z_][A-Za-z0-9_]{4,}\b", problem):
+        keywords.append(token)
+    # deduplicate, keep order
+    seen: set[str] = set()
+    result = []
+    for k in keywords:
+        if k not in seen:
+            seen.add(k)
+            result.append(k)
+    return result[:20]  # cap at 20
+
+
+def window_file(content: str, problem: str, fail_to_pass: list[str], window: int = 80) -> str:
+    """
+    Return a focused slice of the file around the most relevant lines.
+
+    Strategy:
+    1. Search for lines containing keywords derived from the failing test name
+       and problem statement.
+    2. Take a ±window-line window around the best match.
+    3. If nothing found, return the first 150 lines with a tail note.
+    """
+    lines = content.splitlines()
+    total = len(lines)
+
+    keywords = _extract_keywords(problem, fail_to_pass)
+
+    # Score each line by how many keywords it contains
+    best_line = -1
+    best_score = 0
+    for idx, line in enumerate(lines):
+        score = sum(1 for kw in keywords if kw in line)
+        if score > best_score:
+            best_score = score
+            best_line = idx
+
+    if best_line == -1 or best_score == 0:
+        # Fallback: first 150 lines
+        excerpt = "\n".join(lines[:150])
+        if total > 150:
+            excerpt += f"\n\n[... {total - 150} more lines omitted — show full file if needed ...]"
+        return excerpt
+
+    start = max(0, best_line - window)
+    end = min(total, best_line + window)
+
+    parts = []
+    if start > 0:
+        parts.append(f"[... {start} lines above omitted ...]")
+    parts.append("\n".join(f"{start + i + 1}: {l}" for i, l in enumerate(lines[start:end])))
+    if end < total:
+        parts.append(f"[... {total - end} lines below omitted ...]")
+
+    return "\n".join(parts)
+
+
+# ── Search-and-Replace applicator ─────────────────────────────────────────────
+
 def apply_search_replace(file_content: str, response: str) -> str:
-    """Apply a Search-and-Replace block to the file content with robust fuzzy and line-matching fallback."""
-    # 1. Parse all blocks in format <<<<<<< ORIGINAL ... ======= ... >>>>>>> SUGGESTED
-    pattern = re.compile(r"<<<<<<<.*?\n(.*?)\n=======\n(.*?)\n>>>>>>>", re.DOTALL)
+    """
+    Apply Search-and-Replace blocks from the LLM response.
+
+    Tries four strategies in order of decreasing strictness:
+      A. Exact match of stripped text
+      B. Exact match including original whitespace
+      C. Normalised line-endings match
+      D. Fuzzy line-based match (≥70 % lines must match)
+    """
+    # Strip line numbers if the model echoed them ("42: def foo():")
+    def strip_line_numbers(block: str) -> str:
+        return re.sub(r"^\s*\d+:\s", "", block, flags=re.MULTILINE)
+
+    pattern = re.compile(
+        r"<{7}.*?\n(.*?)\n={7}\n(.*?)\n>{7}", re.DOTALL
+    )
     matches = pattern.findall(response)
     if not matches:
-        pattern = re.compile(r"<<<<<<<[^\n]*\s*(.*?)\s*=======\s*(.*?)\s*>>>>>>>", re.DOTALL)
+        # Relaxed: allow optional whitespace around markers
+        pattern = re.compile(
+            r"<{7}[^\n]*\s*(.*?)\s*={7}\s*(.*?)\s*>{7}", re.DOTALL
+        )
         matches = pattern.findall(response)
-        
+
     if not matches:
-        print("  WARNING: No Search-and-Replace block matches found in response.")
+        print("  WARNING: No Search-and-Replace block found in response.")
         return file_content
-        
+
     new_content = file_content
-    for original, replacement in matches:
-        original_stripped = original.strip()
-        replacement_stripped = replacement.strip()
-        
-        # Scenario A: Exact match of stripped text
-        if original_stripped in new_content:
-            new_content = new_content.replace(original_stripped, replacement_stripped, 1)
-            print("  Successfully applied search-replace block.")
-            continue
-            
-        # Scenario B: Match with exact original block including whitespace
-        if original in new_content:
+    for original_raw, replacement_raw in matches:
+        original = strip_line_numbers(original_raw).strip()
+        replacement = strip_line_numbers(replacement_raw).strip()
+
+        # A — exact stripped match
+        if original and original in new_content:
             new_content = new_content.replace(original, replacement, 1)
-            print("  Successfully applied exact search-replace block.")
+            print("  Applied: exact match.")
             continue
 
-        # Scenario C: Normalize line endings and match
-        original_normalized = original_stripped.replace("\r\n", "\n")
-        new_content_normalized = new_content.replace("\r\n", "\n")
-        if original_normalized in new_content_normalized:
-            new_content = new_content_normalized.replace(original_normalized, replacement_stripped.replace("\r\n", "\n"), 1)
-            print("  Successfully applied normalized search-replace block.")
+        # B — with original whitespace
+        if original_raw in new_content:
+            new_content = new_content.replace(original_raw, replacement_raw, 1)
+            print("  Applied: exact-whitespace match.")
             continue
-            
-        # Scenario D: Fuzzy line-based match to tolerate minor LLM typos in ORIGINAL block
-        orig_lines = [line.strip() for line in original_stripped.splitlines() if line.strip()]
+
+        # C — normalise line endings
+        orig_nl = original.replace("\r\n", "\n")
+        nc_nl = new_content.replace("\r\n", "\n")
+        if orig_nl and orig_nl in nc_nl:
+            new_content = nc_nl.replace(orig_nl, replacement.replace("\r\n", "\n"), 1)
+            print("  Applied: normalised line-endings match.")
+            continue
+
+        # D — fuzzy line-based match
+        orig_lines = [l.strip() for l in original.splitlines() if l.strip()]
         if not orig_lines:
             continue
-            
+
         file_lines = new_content.splitlines()
-        n_orig = len(orig_lines)
-        best_start_idx = -1
-        best_match_count = 0
-        
-        for idx in range(len(file_lines) - n_orig + 1):
-            match_count = 0
-            for j in range(n_orig):
-                f_line = file_lines[idx + j].strip()
-                o_line = orig_lines[j]
-                # Match if identical, or if one is a substring of the other (allowing minor typos/punctuation differences)
-                if o_line == f_line or o_line in f_line or f_line in o_line:
-                    match_count += 1
-            if match_count > best_match_count:
-                best_match_count = match_count
-                best_start_idx = idx
-                
-        # If at least 70% of lines match, apply fuzzy replacement
-        if best_match_count > 0 and (best_match_count / n_orig) >= 0.7:
-            print(f"  Successfully applied fuzzy search-replace block (matched {best_match_count}/{n_orig} lines).")
-            new_lines = file_lines[:best_start_idx] + replacement_stripped.splitlines() + file_lines[best_start_idx + n_orig:]
+        n = len(orig_lines)
+        best_start, best_hits = -1, 0
+
+        for idx in range(len(file_lines) - n + 1):
+            hits = sum(
+                1 for j in range(n)
+                if (
+                    orig_lines[j] == file_lines[idx + j].strip()
+                    or orig_lines[j] in file_lines[idx + j]
+                    or file_lines[idx + j].strip() in orig_lines[j]
+                )
+            )
+            if hits > best_hits:
+                best_hits, best_start = hits, idx
+
+        if best_hits > 0 and (best_hits / n) >= 0.70:
+            print(f"  Applied: fuzzy match ({best_hits}/{n} lines).")
+            new_lines = (
+                file_lines[:best_start]
+                + replacement.splitlines()
+                + file_lines[best_start + n:]
+            )
             new_content = "\n".join(new_lines)
         else:
-            print("  WARNING: ORIGINAL block not found in file content (even with fuzzy match)!")
-            
+            print("  WARNING: ORIGINAL block not found in file (fuzzy match failed).")
+
     return new_content
 
-def call_agent(system_prompt: str, user_prompt: str) -> str:
-    """Call the local Qwen model to generate predictions."""
-    try:
-        r = litellm.completion(
-            model=AGENT_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=0.1,
-            max_tokens=1000,
-        )
-        return r.choices[0].message.content or ""
-    except Exception as e:
-        print(f"Error calling agent: {e}")
-        return ""
 
-def evaluate_patch_llm(problem_statement: str, rel_path: str, agent_patch: str, gold_patch: str) -> float:
-    """Compare agent patch with gold patch using local Qwen as a judge."""
-    system = (
-        "You are an expert code reviewer. Compare the agent's proposed patch with the gold (correct) patch "
-        "for the given issue. Determine if the agent's patch is semantically equivalent and correctly fixes "
-        "the bug. Output a score from 1.0 (completely wrong) to 5.0 (perfect fix). "
-        "Reply with a single line containing only the numeric score, e.g., 5.0 or 1.0."
+# ── LLM helpers ───────────────────────────────────────────────────────────────
+
+# Concrete worked example kept OUT of the bracket-style to avoid the model
+# copying placeholder text literally.
+_FORMAT_EXAMPLE = """
+Here is an example of the correct format:
+
+<<<<<<< ORIGINAL
+    return x + y
+=======
+    return x + y + z
+>>>>>>> SUGGESTED
+
+Rules:
+- The ORIGINAL block must match the file content character-for-character (use the line numbers shown in the file excerpt to copy exact text).
+- Output ONLY the search-and-replace block — no explanations, no surrounding prose.
+- If you need to make multiple changes, output multiple blocks back-to-back.
+""".strip()
+
+
+def build_system_prompt(with_context: str = "") -> str:
+    base = (
+        "You are an expert Python software engineer specialising in debugging and patching open-source libraries.\n"
+        "Your task: given an issue description, failing test names, and a file excerpt, produce a minimal patch "
+        "that makes the failing tests pass without breaking any existing tests.\n\n"
+        f"{_FORMAT_EXAMPLE}"
     )
-    user = (
-        f"ISSUE:\n{problem_statement}\n\n"
-        f"FILE: {rel_path}\n\n"
-        f"GOLD PATCH:\n{gold_patch}\n\n"
-        f"AGENT PROPOSED PATCH:\n{agent_patch}\n\n"
-        "Output the numeric score now:"
+    if with_context:
+        base += f"\n\n{with_context}"
+    return base
+
+
+def build_user_prompt(problem: str, fail_to_pass: list[str], rel_path: str, file_excerpt: str) -> str:
+    tests_block = "\n".join(f"  - {t}" for t in fail_to_pass)
+    return (
+        f"## Issue\n{problem}\n\n"
+        f"## Tests that MUST pass after your fix\n{tests_block}\n\n"
+        f"## File to patch: {rel_path}\n"
+        f"(Line numbers are shown for reference — do NOT include them in the ORIGINAL block.)\n\n"
+        f"{file_excerpt}\n\n"
+        "Now output the search-and-replace patch:"
     )
+
+
+def call_agent(system: str, user: str) -> str:
+    """Call the local Qwen model."""
     try:
         r = litellm.completion(
             model=AGENT_MODEL,
@@ -150,56 +257,87 @@ def evaluate_patch_llm(problem_statement: str, rel_path: str, agent_patch: str, 
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
             ],
+            temperature=0.1,
+            max_tokens=2000,
+        )
+        return r.choices[0].message.content or ""
+    except Exception as e:
+        print(f"  Error calling agent: {e}")
+        return ""
+
+
+def evaluate_patch_llm(problem: str, rel_path: str, agent_patch: str, gold_patch: str) -> float:
+    """Score the agent patch against the gold patch using local Qwen as judge."""
+    system = (
+        "You are an expert code reviewer. Compare the agent's proposed patch with the gold patch. "
+        "Give a score 1.0–5.0: 5.0 = semantically equivalent and correct, 1.0 = completely wrong. "
+        "Reply with a single number only."
+    )
+    user = (
+        f"ISSUE:\n{problem}\n\n"
+        f"FILE: {rel_path}\n\n"
+        f"GOLD PATCH:\n{gold_patch}\n\n"
+        f"AGENT PATCH:\n{agent_patch if agent_patch else '(empty — no change made)'}\n\n"
+        "Score:"
+    )
+    try:
+        r = litellm.completion(
+            model=AGENT_MODEL,
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
             temperature=0.0,
             max_tokens=10,
         )
         content = r.choices[0].message.content or "1.0"
-        match = re.search(r"\b([1-5](?:\.\d+)?)\b", content)
-        if match:
-            return float(match.group(1))
-        return 1.0
+        m = re.search(r"\b([1-5](?:\.\d+)?)\b", content)
+        return float(m.group(1)) if m else 1.0
     except Exception as e:
-        print(f"Error calling LLM judge: {e}")
+        print(f"  Error calling judge: {e}")
         return 1.0
 
+
+# ── Custom LearnKit Evaluator ─────────────────────────────────────────────────
 
 class GoldPatchEvaluator(Evaluator):
-    """Custom Evaluator that evaluates the agent's generated patch against the gold patch."""
+    """Evaluates agent patches against the gold patch via LLM judge."""
+
     def __init__(self):
         super().__init__()
-        self.problem_statement = ""
-        self.rel_path = ""
-        self.gold_patch = ""
-        self.agent_patch = ""
+        self.problem_statement: str = ""
+        self.rel_path: str = ""
+        self.gold_patch: str = ""
+        self.agent_patch: str = ""
 
-    def evaluate_with_llm_judge(self, task: str, response: str, reasoning_trace: str = None, lm=None) -> EvaluationResult:
-        score = evaluate_patch_llm(self.problem_statement, self.rel_path, self.agent_patch, self.gold_patch)
+    def evaluate_with_llm_judge(
+        self, task: str, response: str, reasoning_trace: str = None, lm=None
+    ) -> EvaluationResult:
+        score = evaluate_patch_llm(
+            self.problem_statement, self.rel_path, self.agent_patch, self.gold_patch
+        )
         return EvaluationResult(
             score=score,
             signal=EvaluationSignal.LLM_JUDGE,
-            reasoning=f"LLM compared generated diff against gold patch. Score: {score}/5.0"
+            reasoning=f"LLM judge score vs gold patch: {score}/5.0",
         )
 
+
+# ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--arm", choices=["control", "treatment"], default="control")
-    parser.add_argument("--limit", type=int, default=17, help="Limit number of tasks to run")
+    parser.add_argument("--limit", type=int, default=17)
     args = parser.parse_args()
 
-    # Load dataset
     print("Loading SWE-bench Lite dataset...")
     dataset = load_dataset("swe-bench/SWE-bench_Lite", split="test")
     pytest_tasks = [t for t in dataset if t["repo"] == "pytest-dev/pytest"]
-    # Sort chronologically by instance_id
     pytest_tasks.sort(key=lambda t: t["instance_id"])
-    pytest_tasks = pytest_tasks[:args.limit]
-    print(f"Loaded {len(pytest_tasks)} pytest tasks for arm={args.arm}")
+    pytest_tasks = pytest_tasks[: args.limit]
+    print(f"Loaded {len(pytest_tasks)} pytest tasks  [arm={args.arm}]")
 
-    # Set up custom evaluator
     evaluator = GoldPatchEvaluator()
 
-    # Set up LearnKit memory if treatment arm
+    # ── Treatment arm: wrap with LearnKit memory ──────────────────────────────
     memory = None
     if args.arm == "treatment":
         db_path = Path(__file__).parent / "learnkit_swebench_pytest.db"
@@ -210,133 +348,115 @@ def main():
             db_path=str(db_path),
             scope="user",
             evaluator=evaluator,
-            background_postprocess=False,  # sync distillation
+            background_postprocess=False,
         )
 
-        @memory.agent(domain="pytest")
-        def ask(task_prompt: str, file_context: str, file_path_obj: Path, rel_path_str: str, original_content_str: str, _learnkit_context: str = "") -> str:
-            system = (
-                "You are a senior Python software engineer. Your task is to fix a bug in a file.\n"
-                "You are given the issue description, the path of the file, and the file's content.\n\n"
-                "Propose the change using a Search-and-Replace block. Format:\n\n"
-                "<<<<<<< ORIGINAL\n"
-                "[lines of original code to replace]\n"
-                "=======\n"
-                "[lines of replacement code]\n"
-                ">>>>>>> SUGGESTED\n\n"
-                "Ensure the ORIGINAL block matches the file content exactly, including whitespace.\n"
-                "Do not output the entire file. Output ONLY the search-and-replace block."
-            )
-            if _learnkit_context:
-                system += f"\n\n{_learnkit_context}"
-                
-            response_text = call_agent(system, f"{task_prompt}\n\n{file_context}")
-            new_content = apply_search_replace(original_content_str, response_text)
-            
-            # Write agent change
+        @memory.agent(domain="swe_pytest")
+        def ask(
+            problem: str,
+            fail_to_pass: list[str],
+            rel_path: str,
+            file_excerpt: str,
+            file_path_obj: Path,
+            original_content: str,
+            _learnkit_context: str = "",
+        ) -> str:
+            system = build_system_prompt(with_context=_learnkit_context)
+            user = build_user_prompt(problem, fail_to_pass, rel_path, file_excerpt)
+            response = call_agent(system, user)
+            new_content = apply_search_replace(original_content, response)
             file_path_obj.write_text(new_content, encoding="utf-8")
-            
-            # Generate diff using git
-            agent_diff = run_git_cmd(["diff", rel_path_str])
-            
-            # Set diff on custom evaluator
-            memory.evaluator.agent_patch = agent_diff
-            
-            return response_text
+            diff = run_git_cmd(["diff", rel_path])
+            memory.evaluator.agent_patch = diff
+            return response
+
     else:
-        def ask(task_prompt: str, file_context: str, file_path_obj: Path, rel_path_str: str, original_content_str: str) -> str:
-            system = (
-                "You are a senior Python software engineer. Your task is to fix a bug in a file.\n"
-                "You are given the issue description, the path of the file, and the file's content.\n\n"
-                "Propose the change using a Search-and-Replace block. Format:\n\n"
-                "<<<<<<< ORIGINAL\n"
-                "[lines of original code to replace]\n"
-                "=======\n"
-                "[lines of replacement code]\n"
-                ">>>>>>> SUGGESTED\n\n"
-                "Ensure the ORIGINAL block matches the file content exactly, including whitespace.\n"
-                "Do not output the entire file. Output ONLY the search-and-replace block."
-            )
-            response_text = call_agent(system, f"{task_prompt}\n\n{file_context}")
-            new_content = apply_search_replace(original_content_str, response_text)
-            
-            # Write agent change
+        def ask(
+            problem: str,
+            fail_to_pass: list[str],
+            rel_path: str,
+            file_excerpt: str,
+            file_path_obj: Path,
+            original_content: str,
+        ) -> str:
+            system = build_system_prompt()
+            user = build_user_prompt(problem, fail_to_pass, rel_path, file_excerpt)
+            response = call_agent(system, user)
+            new_content = apply_search_replace(original_content, response)
             file_path_obj.write_text(new_content, encoding="utf-8")
-            
-            # Generate diff using git
-            agent_diff = run_git_cmd(["diff", rel_path_str])
-            
-            return agent_diff
+            return run_git_cmd(["diff", rel_path])
 
     predictions = []
-    run_id = f"swebench_pytest_{args.arm}_{int(time.time())}"
 
     for i, task in enumerate(pytest_tasks, 1):
         instance_id = task["instance_id"]
         base_commit = task["base_commit"]
         problem = task["problem_statement"]
         gold_patch = task["patch"]
-        
+        fail_to_pass: list[str] = json.loads(task.get("FAIL_TO_PASS", "[]"))
+
         rel_path = get_modified_file(gold_patch)
         if not rel_path:
-            print(f"[{i:2d}/{len(pytest_tasks)}] Skipping {instance_id}: no modified file parsed from gold patch.")
+            print(f"\n[{i:2d}/{len(pytest_tasks)}] SKIP {instance_id}: no file parsed from gold patch.")
             continue
-            
-        print(f"\n[{i:2d}/{len(pytest_tasks)}] Processing {instance_id}...")
-        print(f"  File to modify: {rel_path}")
-        print(f"  Checking out base commit: {base_commit[:8]}...")
-        
-        # Reset and checkout the repo at base commit
+
+        print(f"\n[{i:2d}/{len(pytest_tasks)}] {instance_id}")
+        print(f"  file  : {rel_path}")
+        print(f"  commit: {base_commit[:8]}")
+        print(f"  tests : {fail_to_pass[:2]}{'...' if len(fail_to_pass) > 2 else ''}")
+
+        # Checkout and reset to base commit
         run_git_cmd(["checkout", "-f", base_commit])
         run_git_cmd(["clean", "-fdx"])
-        
+
         file_path = REPO_DIR / rel_path
         if not file_path.exists():
-            print(f"  ERROR: File {rel_path} does not exist at base commit!")
+            print(f"  ERROR: {rel_path} not found at base commit.")
             continue
-            
+
         original_content = file_path.read_text(encoding="utf-8", errors="ignore")
-        
-        file_context = f"FILE: {rel_path}\nORIGINAL CONTENT:\n{original_content}"
-        task_prompt = f"ISSUE:\n{problem}"
-        
-        # Call agent
+
+        # Window the file to keep context tight
+        file_excerpt = window_file(original_content, problem, fail_to_pass, window=80)
+        excerpt_lines = file_excerpt.count("\n") + 1
+        total_lines = original_content.count("\n") + 1
+        print(f"  context: {excerpt_lines} lines shown / {total_lines} total")
+
         if args.arm == "treatment":
-            # Set up inputs for custom evaluator
             evaluator.problem_statement = problem
             evaluator.rel_path = rel_path
             evaluator.gold_patch = gold_patch
-            
-            # Call wrapped agent function
-            ask(task_prompt, file_context, file_path, rel_path, original_content)
-            
+            ask(problem, fail_to_pass, rel_path, file_excerpt, file_path, original_content)
             agent_diff = evaluator.agent_patch
-            print(f"  LLM Judge Score: {memory.last_trajectory.quality_score if memory.last_trajectory else 0.0}/5.0")
+            score = memory.last_trajectory.quality_score if memory.last_trajectory else 0.0
         else:
-            agent_diff = ask(task_prompt, file_context, file_path, rel_path, original_content)
+            agent_diff = ask(problem, fail_to_pass, rel_path, file_excerpt, file_path, original_content)
             score = evaluate_patch_llm(problem, rel_path, agent_diff, gold_patch)
-            print(f"  LLM Judge Score: {score}/5.0")
 
-        # Record prediction
+        print(f"  judge : {score}/5.0  |  patch lines: {len(agent_diff.splitlines())}")
+
         predictions.append({
             "model_name_or_path": f"learnkit_{args.arm}",
             "instance_id": instance_id,
-            "model_patch": agent_diff
+            "model_patch": agent_diff,
         })
-        
-        # Reset the git repo
+
+        # Reset the modified file
         run_git_cmd(["checkout", "-f", rel_path])
 
     if memory:
         memory.shutdown(wait=True)
 
-    # Save predictions file
     out_file = Path(__file__).parent / f"predictions_{args.arm}.jsonl"
     with open(out_file, "w", encoding="utf-8") as f:
         for p in predictions:
             f.write(json.dumps(p) + "\n")
-            
-    print(f"\nCompleted run! Predictions saved to: {out_file}")
+
+    non_empty = sum(1 for p in predictions if p["model_patch"])
+    print(f"\n{'─'*60}")
+    print(f"Done [{args.arm}]  {len(predictions)} tasks  |  {non_empty} non-empty patches")
+    print(f"Saved: {out_file}")
+
 
 if __name__ == "__main__":
     main()
