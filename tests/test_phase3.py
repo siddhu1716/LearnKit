@@ -279,3 +279,103 @@ def test_learnkit_maintain_memory(tmp_path):
     assert lk.backend.read(active.id).confidence == pytest.approx(0.48)
     assert lk.backend.read(expired.id).status == "stale"
     assert lk.backend.read(quarantined.id).status == "active"
+
+
+def test_auto_promote_bypasses_quarantine_for_distilled_skills():
+    """auto_promote=True writes distilled skills as `active` so the next task can retrieve them."""
+
+    class FakeEvaluator:
+        def evaluate_with_llm_judge(self, task, response, reasoning_trace=None, lm=None):
+            return EvaluationResult(4.5, EvaluationSignal.LLM_JUDGE, "good")
+
+    class FakeDistiller:
+        def __init__(self):
+            self.skill = None
+
+        def distill(self, trajectory, domain_vector, quality_score):
+            self.skill = SkillRecord(
+                domains=domain_vector,
+                task_type="distilled_skill",
+                content={"steps": ["step one general approach", "step two follow up"]},
+                status="quarantine",
+            )
+            return self.skill, [], [], None
+
+    def fake_classifier(task):
+        return ClassificationOutput(
+            task_type="t", domains={"coding": 0.9}, complexity="medium"
+        )
+
+    distiller = FakeDistiller()
+    lk = LearnKit(
+        memory_backend="sqlite",
+        db_path=":memory:",
+        classifier=fake_classifier,
+        evaluator=FakeEvaluator(),
+        distiller=distiller,
+        background_postprocess=False,
+        auto_promote=True,
+    )
+
+    @lk.agent(domain="coding")
+    def agent(task, _learnkit_context=None):
+        return "done"
+
+    agent("a task")
+
+    stored = lk.backend.read(distiller.skill.id)
+    assert stored is not None
+    assert stored.status == "active"
+
+
+def test_last_attribution_exposes_retrieved_records():
+    """last_attribution returns the records LearnKit actually injected for the latest run."""
+
+    class FakeEvaluator:
+        def evaluate_with_llm_judge(self, task, response, reasoning_trace=None, lm=None):
+            return EvaluationResult(4.5, EvaluationSignal.LLM_JUDGE, "ok")
+
+    class NoopDistiller:
+        def distill(self, trajectory, domain_vector, quality_score):
+            return None, [], [], None
+
+        def distill_failure(self, trajectory, domain_vector, quality_score):
+            return None
+
+    def fake_classifier(task):
+        return ClassificationOutput(
+            task_type="debug_python_error",
+            domains={"coding": 0.9},
+            complexity="medium",
+        )
+
+    lk = LearnKit(
+        memory_backend="sqlite",
+        db_path=":memory:",
+        classifier=fake_classifier,
+        evaluator=FakeEvaluator(),
+        distiller=NoopDistiller(),
+        background_postprocess=False,
+    )
+    seeded = SkillRecord(
+        domains={"coding": 0.9},
+        task_type="debug_python_error",
+        content={"steps": ["inspect traceback first to locate the failing frame"]},
+        confidence=0.9,
+        status="active",
+    )
+    lk.backend.add(seeded)
+
+    @lk.agent(domain="coding")
+    def agent(task, _learnkit_context=None):
+        return "fixed"
+
+    assert lk.last_attribution is None
+    agent("debug this python traceback")
+
+    attribution = lk.last_attribution
+    assert attribution is not None
+    assert attribution["records_retrieved"] >= 1
+    assert attribution["primary_record_id"] == seeded.id
+    assert attribution["records"][0]["primary"] is True
+    assert attribution["records"][0]["task_type"] == "debug_python_error"

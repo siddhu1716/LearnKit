@@ -24,6 +24,26 @@ class StoreDecision:
     fingerprint: str = ""
 
 
+# Threshold at which a memory that keeps hurting retrieved-task outcomes is
+# moved to quarantine so it stops being injected. Empirical: 3 consecutive
+# harmful retrievals is a strong enough signal to silence the record.
+HARMFUL_HITS_QUARANTINE = 3
+
+# Heuristic stop-list for the generality check. These are common English
+# function words that should not count as "task-specific tokens" even when
+# they appear in both the trace and the candidate skill.
+_GENERIC_TOKENS = frozenset({
+    "the", "and", "for", "with", "from", "this", "that", "into", "then",
+    "when", "should", "must", "list", "string", "number", "value", "input",
+    "output", "result", "task", "step", "steps", "use", "using", "check",
+    "first", "next", "last", "code", "function", "method", "class", "data",
+    "case", "test", "tests", "true", "false", "none", "null", "type",
+    "error", "errors", "fail", "failed", "succeed", "succeeded", "given",
+    "return", "returns", "call", "calls", "after", "before", "apply",
+    "applies", "make", "makes", "user", "system", "agent", "prompt",
+})
+
+
 def record_text(record: MemoryRecord) -> str:
     parts = [record.type, record.task_type or "", " ".join(record.domains.keys())]
     for value in record.content.values():
@@ -41,24 +61,63 @@ def content_fingerprint(record: MemoryRecord) -> str:
     return hashlib.sha256(normalized.encode()).hexdigest()
 
 
+def is_general(
+    record: MemoryRecord,
+    task_text: str | None,
+    overlap_threshold: float = 0.5,
+) -> tuple[bool, float]:
+    """Reject skills whose distinctive tokens are mostly lifted from the task.
+
+    A distilled skill is supposed to generalise — its `steps` should describe
+    an *approach*, not parrot back identifiers from the specific trace that
+    produced it. We flag a record as non-general when more than
+    ``overlap_threshold`` of its long, non-generic tokens also appear in the
+    task prompt. Returns (is_general, overlap_ratio).
+    """
+    if not task_text:
+        return True, 0.0
+    distinctive = {
+        t for t in _tokens(record_text(record))
+        if len(t) >= 6 and t not in _GENERIC_TOKENS
+    }
+    if len(distinctive) < 4:
+        # Too few distinctive tokens to make a confident judgement either way.
+        return True, 0.0
+    task_tokens = set(_tokens(task_text))
+    overlap = distinctive & task_tokens
+    ratio = len(overlap) / len(distinctive)
+    return ratio < overlap_threshold, ratio
+
+
 def decide_storage(
     record: MemoryRecord,
     backend: BaseBackend,
     scope: str | None,
     min_confidence: float = 0.0,
     duplicate_threshold: float = 0.72,
+    task_text: str | None = None,
 ) -> StoreDecision:
     """Decide whether a distilled record should be inserted.
 
     The check is intentionally conservative: a record with no substantive text
     is dropped; a near-duplicate is returned to the caller so it can reinforce
-    the existing row instead of bloating the store.
+    the existing row instead of bloating the store. When ``task_text`` is
+    supplied, a generality check rejects skills that look like trace summaries
+    instead of reusable approaches.
     """
     text = record_text(record)
     if len(_tokens(text)) < 4:
         return StoreDecision(False, "too little substantive content")
     if record.confidence < min_confidence:
         return StoreDecision(False, "below minimum confidence")
+
+    # Generality gate only applies to skills — facts and failures are allowed
+    # to be specific (a fact about a particular API or a failure about a
+    # particular pattern is still valuable).
+    if record.type == "skill":
+        general, ratio = is_general(record, task_text)
+        if not general:
+            return StoreDecision(False, f"not general (task overlap {ratio:.0%})")
 
     fp = content_fingerprint(record)
     duplicate = find_duplicate(record, backend, scope, duplicate_threshold)
@@ -107,9 +166,31 @@ def reinforce_existing(backend: BaseBackend, record: MemoryRecord, delta: float 
     backend.update_confidence(record.id, min(0.95, record.confidence + delta))
 
 
-def demote_existing(backend: BaseBackend, record: MemoryRecord, delta: float = 0.05) -> None:
-    new_conf = max(0.0, record.confidence - delta)
-    backend.update_confidence(record.id, new_conf)
+def demote_existing(
+    backend: BaseBackend,
+    record: MemoryRecord,
+    delta: float = 0.05,
+    harm_threshold: int = HARMFUL_HITS_QUARANTINE,
+) -> None:
+    """Lower confidence and track repeated harm.
+
+    Each call increments a persistent ``_harmful_hits`` counter on the record's
+    content. Once the counter reaches ``harm_threshold``, the record is moved
+    to ``quarantine`` so it stops being retrieved — addressing the sql06-style
+    failure mode where a related-but-wrong skill keeps degrading downstream
+    tasks. The record can still be promoted back later by ``maintain_memory``.
+    """
+    current = backend.read(record.id)
+    if current is None:
+        # Fall back to a confidence-only update if we can't round-trip the record.
+        backend.update_confidence(record.id, max(0.0, record.confidence - delta))
+        return
+    hits = int(current.content.get("_harmful_hits", 0)) + 1
+    current.content["_harmful_hits"] = hits
+    current.confidence = max(0.0, current.confidence - delta)
+    if hits >= harm_threshold and current.status == "active":
+        current.status = "quarantine"
+    backend.replace(current)
 
 
 def _tokens(text: str) -> list[str]:

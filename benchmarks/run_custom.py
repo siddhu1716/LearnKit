@@ -176,6 +176,7 @@ def run_treatment(domain: str, tasks: list[dict], db_path: Path, seed: int = 0) 
         db_path=str(db_path),
         scope="user",
         background_postprocess=False,  # sync so task N+1 sees task N's distillation
+        auto_promote=True,  # bypass 24h quarantine for online benchmark learning
     )
 
     context_holder: dict = {"chars": 0}
@@ -205,6 +206,7 @@ def run_treatment(domain: str, tasks: list[dict], db_path: Path, seed: int = 0) 
             "usage", {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
         )
         latency = context_holder.get("latency_s", 0.0)
+        attribution = memory.last_attribution or {}
         print(
             f"  score={s:.1f}  ctx={ctx}  tokens={usage['total_tokens']}  latency={latency:.1f}s"
         )
@@ -222,6 +224,7 @@ def run_treatment(domain: str, tasks: list[dict], db_path: Path, seed: int = 0) 
                 "latency_s": latency,
                 "learnkit_context_chars": ctx,
                 "seed": seed,
+                "attribution": attribution,
             }
         )
 

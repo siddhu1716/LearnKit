@@ -34,8 +34,8 @@ from learnkit.classifier import ClassificationOutput
 from learnkit.evaluator import Evaluator, EvaluationResult, EvaluationSignal
 from learnkit.skills_loader import seed_bundled_skills
 
-AGENT_MODEL = "openai/Qwen/Qwen2.5-Coder-32B-Instruct"
-API_BASE = "http://localhost:8001/v1"
+AGENT_MODEL = os.environ.get("LEARNKIT_AGENT_MODEL", "openai/Qwen/Qwen2.5-Coder-32B-Instruct")
+API_BASE = os.environ.get("LEARNKIT_API_BASE", "http://localhost:8001/v1")
 
 SYSTEM_PROMPT = (
     "You are a logic programming assistant. Output ONLY a single Prolog rule of the form "
@@ -272,11 +272,18 @@ def run_control(tasks: list[dict]) -> list[dict]:
 def run_treatment(tasks: list[dict], db_path: Path, seed: bool) -> list[dict]:
     arm_name = "warmed_start" if seed else "cold_start"
     print(f"\n  [{arm_name.upper()}]  (db: {db_path.name})")
-    
-    # Initialize LearnKit with Gemini Flash for distillation
+
     import dspy
     from learnkit.distiller import MemoryDistiller
-    distill_lm = dspy.LM("gemini/gemini-flash-lite-latest")
+    distill_model = os.environ.get("LEARNKIT_DISTILLER_MODEL")
+    if distill_model:
+        distill_lm = dspy.LM(distill_model, api_base=API_BASE, api_key="anything")
+    elif os.environ.get("ANTHROPIC_API_KEY"):
+        distill_lm = dspy.LM("anthropic/claude-haiku-4-5-20251001")
+    elif os.environ.get("GEMINI_API_KEY"):
+        distill_lm = dspy.LM("gemini/gemini-flash-lite-latest")
+    else:
+        distill_lm = dspy.LM(AGENT_MODEL, api_base=API_BASE, api_key="anything")
     distiller = MemoryDistiller(lm=distill_lm)
     
     # Initialize LearnKit
@@ -288,6 +295,7 @@ def run_treatment(tasks: list[dict], db_path: Path, seed: bool) -> list[dict]:
         classifier=slr_classifier,
         evaluator=ProgrammaticSLREvaluator(),
         distiller=distiller,
+        auto_promote=True,  # bypass 24h quarantine for online benchmark learning
     )
     
     if seed:
@@ -317,6 +325,7 @@ def run_treatment(tasks: list[dict], db_path: Path, seed: bool) -> list[dict]:
         # Retrieve score from trajectory post-processing
         traj = memory.last_trajectory
         s = traj.quality_score if traj else 0.0
+        attribution = memory.last_attribution or {}
         
         ctx = context_holder.get("chars", 0)
         usage = context_holder.get("usage", {"total_tokens": 0})
@@ -332,6 +341,7 @@ def run_treatment(tasks: list[dict], db_path: Path, seed: bool) -> list[dict]:
             "usage": usage,
             "latency_s": latency,
             "learnkit_context_chars": ctx,
+            "attribution": attribution,
         })
         
     memory.shutdown(wait=True)

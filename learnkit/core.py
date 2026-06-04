@@ -51,6 +51,7 @@ class LearnKit:
         embedder: Optional[Callable] = None,
         background_postprocess: bool = True,
         max_workers: int = 4,
+        auto_promote: bool = False,
         **backend_kwargs,
     ):
         self.backend = get_backend(memory_backend, **backend_kwargs)
@@ -64,9 +65,14 @@ class LearnKit:
         self.quality_threshold = quality_threshold
         self.evaluation_mode = evaluation
         self.background_postprocess = background_postprocess
+        # When True, distilled skill/fact/strategy/etc. records skip the 24h
+        # quarantine window and are stored as `active` so they're retrievable
+        # on the next task. Use for benchmark/online-learning scenarios.
+        self.auto_promote = auto_promote
 
         # Concurrency safety: trajectory registry and bounded worker pool
         self._trajectories: Dict[str, Trajectory] = {}
+        self._attributions: Dict[str, dict] = {}
         self._trajectory_lock = threading.Lock()
         self._last_run_id: Optional[str] = None
         self._worker_pool = ThreadPoolExecutor(
@@ -101,6 +107,28 @@ class LearnKit:
         """Thread-safe access to a specific run's trajectory."""
         with self._trajectory_lock:
             return self._trajectories.get(run_id)
+
+    @property
+    def last_attribution(self) -> Optional[dict]:
+        """Attribution dict for the most recent prepared run, if any."""
+        with self._trajectory_lock:
+            if self._last_run_id and self._last_run_id in self._attributions:
+                return self._attributions[self._last_run_id]
+        return None
+
+    def get_attribution(self, run_id: str) -> Optional[dict]:
+        """Thread-safe access to a specific run's retrieval attribution."""
+        with self._trajectory_lock:
+            return self._attributions.get(run_id)
+
+    def _maybe_promote(self, record):
+        """If auto_promote is enabled, store distilled records as `active` so
+        they're retrievable on the next task instead of waiting out the 24h
+        quarantine window. Failures already arrive as `active` and are untouched.
+        """
+        if self.auto_promote and record is not None and record.status == "quarantine":
+            record.status = "active"
+        return record
 
     def shutdown(self, wait: bool = True) -> None:
         """Drain the post-processing worker pool. Safe to call multiple times."""
@@ -177,6 +205,7 @@ class LearnKit:
 
         with self._trajectory_lock:
             self._trajectories[traj.id] = traj
+            self._attributions[traj.id] = attribution
             self._last_run_id = traj.id
 
         return {
@@ -271,7 +300,9 @@ class LearnKit:
                     # AWM + Voyager pattern: skip if a near-duplicate skill already exists
                     # (same step-sequence fingerprint). Reinforce the existing record instead.
                     fp = _skill_fingerprint(skill)
-                    storage_decision = decide_storage(skill, self.backend, self.scope)
+                    storage_decision = decide_storage(
+                        skill, self.backend, self.scope, task_text=traj.task
+                    )
                     existing_fp = self.backend.search(
                         query=f"fingerprint:{fp}",
                         domain=None,
@@ -309,19 +340,24 @@ class LearnKit:
                     else:
                         skill.content["_fingerprint"] = fp
                         skill.content["_quality_score"] = eval_result.score
+                        self._maybe_promote(skill)
                         self.backend.add(skill)
                 for fact in facts:
                     fact.scope = self.scope
-                    storage_decision = decide_storage(fact, self.backend, self.scope)
+                    storage_decision = decide_storage(
+                        fact, self.backend, self.scope, task_text=traj.task
+                    )
                     if storage_decision.duplicate:
                         reinforce_existing(self.backend, storage_decision.duplicate, delta=0.01)
                     elif storage_decision.should_store:
+                        self._maybe_promote(fact)
                         self.backend.add(fact)
                 for failure in failures:
                     failure.scope = self.scope
                     self._add_failure_deduped(failure)
                 if trace_record:
                     trace_record.scope = self.scope
+                    self._maybe_promote(trace_record)
                     self.backend.add(trace_record)
             else:
                 # Low quality — run contrastive failure extraction (ReasoningBank dual-pass).

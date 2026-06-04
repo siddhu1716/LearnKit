@@ -10,6 +10,31 @@ from .schemas.base import MemoryRecord
 # a PRESCRIPTIVE label. All remaining records (up to 7) are SECONDARY.
 CONFIDENCE_FLOOR: float = 0.45
 
+# Type bonus for PRIMARY-slot ranking. Prescriptive records (skills/heuristics/
+# strategies) get a small additive bonus so a comparable-confidence skill
+# beats a same-confidence failure. A clearly higher-confidence failure
+# (e.g. 0.95 vs skill 0.75) still wins. Window ~0.1.
+_TYPE_BONUS: dict[str, float] = {
+    "skill": 0.10,
+    "heuristic": 0.08,
+    "strategy": 0.06,
+    "preference": 0.04,
+    "fact": 0.02,
+    "trace": 0.0,
+    "failure": 0.0,
+}
+
+
+def _injection_score(record: MemoryRecord) -> float:
+    """Effective ranking score for the PRIMARY slot.
+
+    confidence + small additive bonus by type. Skills/heuristics/strategies
+    are preferred as PRIMARY when scores are within ~0.1 — a failure must
+    be meaningfully more confident to win the PRESCRIPTIVE slot, since
+    failures are warnings, not instructions.
+    """
+    return record.confidence + _TYPE_BONUS.get(record.type, 0.0)
+
 
 class MemoryRouter:
     """
@@ -68,11 +93,16 @@ def rank_for_injection(
     (SECONDARY, capped at 7). Called by the composer to inject PRIMARY first
     with the PRESCRIPTIVE label and SECONDARY as compact guidelines.
 
+    The PRIMARY slot uses a type-weighted score (_injection_score) so a
+    distilled skill at confidence 0.75 beats a contrastive failure at 0.75 —
+    failures are warnings, skills are instructions. A clearly higher-confidence
+    failure (e.g. 0.95 vs skill 0.75) still wins.
+
     Returns (primary, secondary_list). primary is None when records is empty.
     """
     if not records:
         return None, []
-    sorted_records = sorted(records, key=lambda r: r.confidence, reverse=True)
+    sorted_records = sorted(records, key=_injection_score, reverse=True)
     primary = sorted_records[0]
     secondary = sorted_records[1:7]  # cap at 7; total injected <= 8
     return primary, secondary

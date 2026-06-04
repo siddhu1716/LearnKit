@@ -216,6 +216,7 @@ class MemoryDistiller:
                     domains=domain_vector,
                     task_type=trajectory.task[:80],
                     content=data["skill"],
+                    confidence=0.75,  # above CONFIDENCE_FLOOR + distilled-failure default (0.7)
                     status="quarantine",  # 24h quarantine before becoming active
                 )
             except Exception as e:
@@ -359,11 +360,13 @@ class MemoryDistiller:
             return None
 
         try:
+            lesson_title = (data.get("lesson_title") or "").strip()
+            failure_label = lesson_title[:80] if lesson_title else "failure_pattern"
             failure = FailureRecord(
                 domains=domain_vector,
-                task_type=trajectory.task[:80],
+                task_type=failure_label,
                 content={
-                    "description": data.get("lesson_title", ""),
+                    "description": lesson_title,
                     "root_cause": data.get("root_cause", ""),
                     "corrective_strategy": data.get("corrective_strategy", ""),
                     "trigger_pattern": data.get("trigger_pattern", ""),
