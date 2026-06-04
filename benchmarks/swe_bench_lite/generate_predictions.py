@@ -326,14 +326,23 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--arm", choices=["control", "treatment"], default="control")
     parser.add_argument("--limit", type=int, default=17)
+    parser.add_argument("--task-ids", type=str, default="")
     args = parser.parse_args()
 
     print("Loading SWE-bench Lite dataset...")
     dataset = load_dataset("swe-bench/SWE-bench_Lite", split="test")
     pytest_tasks = [t for t in dataset if t["repo"] == "pytest-dev/pytest"]
-    pytest_tasks.sort(key=lambda t: t["instance_id"])
-    pytest_tasks = pytest_tasks[: args.limit]
-    print(f"Loaded {len(pytest_tasks)} pytest tasks  [arm={args.arm}]")
+
+    if args.task_ids:
+        target_ids = [tid.strip() for tid in args.task_ids.split(",")]
+        task_map = {t["instance_id"]: t for t in pytest_tasks}
+        pytest_tasks = [task_map[tid] for tid in target_ids if tid in task_map]
+        print(f"Loaded {len(pytest_tasks)} curated pytest tasks  [arm={args.arm}]")
+    else:
+        # Group tasks by the target file they modify to cluster similar tasks
+        pytest_tasks.sort(key=lambda t: (get_modified_file(t["patch"]), t["instance_id"]))
+        pytest_tasks = pytest_tasks[: args.limit]
+        print(f"Loaded {len(pytest_tasks)} pytest tasks  [arm={args.arm}]")
 
     evaluator = GoldPatchEvaluator()
 
@@ -341,8 +350,7 @@ def main():
     memory = None
     if args.arm == "treatment":
         db_path = Path(__file__).parent / "learnkit_swebench_pytest.db"
-        if db_path.exists():
-            db_path.unlink()
+        # Keep the database if it exists to allow pre-populating skills or cumulative learning
         memory = lk.LearnKit(
             memory_backend="sqlite",
             db_path=str(db_path),
@@ -361,6 +369,9 @@ def main():
             original_content: str,
             _learnkit_context: str = "",
         ) -> str:
+            print(f"  [LearnKit] Retrieved context length: {len(_learnkit_context)} chars")
+            if _learnkit_context:
+                print(f"  [LearnKit] Context content:\n{_learnkit_context}")
             system = build_system_prompt(with_context=_learnkit_context)
             user = build_user_prompt(problem, fail_to_pass, rel_path, file_excerpt)
             response = call_agent(system, user)
@@ -429,6 +440,9 @@ def main():
             ask(problem, fail_to_pass, rel_path, file_excerpt, file_path, original_content)
             agent_diff = evaluator.agent_patch
             score = memory.last_trajectory.quality_score if memory.last_trajectory else 0.0
+            # Immediately promote quarantined memories so they can be retrieved in subsequent tasks
+            promoted_stats = memory.maintain_memory(quarantine_hours=0.0)
+            print(f"  [LearnKit] Promoted quarantined memories: {promoted_stats.get('promoted', 0)}")
         else:
             agent_diff = ask(problem, fail_to_pass, rel_path, file_excerpt, file_path, original_content)
             score = evaluate_patch_llm(problem, rel_path, agent_diff, gold_patch)
