@@ -200,13 +200,16 @@ def test_distilled_records_inherit_instance_scope():
         def distill(self, trajectory, domain_vector, quality_score):
             skill = SkillRecord(
                 domains=domain_vector,
-                task_type="t",
-                content={"steps": ["s"]},
+                task_type="distilled_debug_skill",
+                content={"steps": ["always inspect the traceback first to locate failures"]},
                 status="quarantine",
             )
             failure = FailureRecord(
                 domains=domain_vector,
-                content={"description": "d", "what_to_avoid": "w"},
+                content={
+                    "description": "avoid using empty lists without checking bounds",
+                    "what_to_avoid": "index error by checking lengths first",
+                },
                 status="active",
             )
             produced["skill_id"] = skill.id
@@ -215,7 +218,7 @@ def test_distilled_records_inherit_instance_scope():
 
     def fake_classifier(task):
         return ClassificationOutput(
-            task_type="t", domains={"coding": 0.9}, complexity="medium"
+            task_type="distilled_debug_skill", domains={"coding": 0.9}, complexity="medium"
         )
 
     lk = LearnKit(

@@ -7,6 +7,7 @@ import weakref
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, Dict, Optional
 
+from .attribution import build_attribution
 from .backends.registry import get_backend
 from .classifier import classify_task
 from .composer import compose_context
@@ -15,6 +16,7 @@ from .errors import PostProcessError
 from .evaluator import Evaluator
 from .inference_mode import determine_inference_mode
 from .logging import get_logger
+from .memory_quality import decide_storage, demote_existing, reinforce_existing
 from .retriever import SemanticRetriever
 from .router import MemoryRouter
 from .schemas.base import MemoryScope
@@ -168,6 +170,7 @@ class LearnKit:
 
         mode = determine_inference_mode(records)
         context_block = compose_context(records, task, mode)
+        attribution = build_attribution(records, context_block)
 
         traj = Trajectory(task=task)
         traj.add_step("user", task)
@@ -182,6 +185,7 @@ class LearnKit:
             "records": records,
             "mode": mode,
             "context": context_block,
+            "attribution": attribution,
             "trajectory": traj,
         }
 
@@ -189,25 +193,29 @@ class LearnKit:
         traj = run["trajectory"]
         traj.add_step("assistant", response)
 
-        self._post_process(traj, run["domain_vector"])
+        self._post_process(traj, run["domain_vector"], run.get("records", []))
         return response
 
-    def _post_process(self, traj: Trajectory, domain_vector: dict):
+    def _post_process(self, traj: Trajectory, domain_vector: dict, retrieved_records=None):
         if not self.background_postprocess:
-            self._post_process_now(traj, domain_vector)
+            self._post_process_now(traj, domain_vector, retrieved_records or [])
             return
-        self._post_process_async(traj, domain_vector)
+        self._post_process_async(traj, domain_vector, retrieved_records or [])
 
-    def _post_process_async(self, traj: Trajectory, domain_vector: dict) -> None:
+    def _post_process_async(
+        self, traj: Trajectory, domain_vector: dict, retrieved_records: list
+    ) -> None:
         """
         Quality gate + distillation. Runs after response returned to user.
         Uses a bounded thread pool to avoid unbound thread growth and logs exceptions.
         Falls back to sync if the pool has been drained (e.g. after shutdown).
         """
         if self._is_shutdown:
-            self._post_process_now(traj, domain_vector)
+            self._post_process_now(traj, domain_vector, retrieved_records)
             return
-        future = self._worker_pool.submit(self._post_process_now, traj, domain_vector)
+        future = self._worker_pool.submit(
+            self._post_process_now, traj, domain_vector, retrieved_records
+        )
 
         # Add a done callback to catch and log silent failures in the thread
         def _handle_result(fut):
@@ -224,7 +232,9 @@ class LearnKit:
 
         future.add_done_callback(_handle_result)
 
-    def _post_process_now(self, traj: Trajectory, domain_vector: dict) -> None:
+    def _post_process_now(
+        self, traj: Trajectory, domain_vector: dict, retrieved_records: list | None = None
+    ) -> None:
         # Interpreter is shutting down — dspy/litellm's own thread pool may already
         # be torn down (their atexit runs first since they're imported lazily on
         # the first LM call). Calling the judge here would fail with "cannot
@@ -246,6 +256,9 @@ class LearnKit:
             traj.outcome = (
                 "success" if eval_result.score >= self.quality_threshold else "failure"
             )
+            self._reinforce_or_demote_retrieved(
+                retrieved_records or [], eval_result.score >= self.quality_threshold
+            )
 
             if eval_result.score >= self.quality_threshold:
                 skill, facts, failures, trace_record = self.distiller.distill(
@@ -258,6 +271,7 @@ class LearnKit:
                     # AWM + Voyager pattern: skip if a near-duplicate skill already exists
                     # (same step-sequence fingerprint). Reinforce the existing record instead.
                     fp = _skill_fingerprint(skill)
+                    storage_decision = decide_storage(skill, self.backend, self.scope)
                     existing_fp = self.backend.search(
                         query=f"fingerprint:{fp}",
                         domain=None,
@@ -275,15 +289,37 @@ class LearnKit:
                             "Skill dedup: reinforced existing record instead of inserting duplicate",
                             extra={"event": "skill_dedup", "fingerprint": fp[:16]},
                         )
+                    elif storage_decision.duplicate:
+                        reinforce_existing(self.backend, storage_decision.duplicate)
+                        logger.info(
+                            "Skill dedup: reinforced near-duplicate record",
+                            extra={
+                                "event": "skill_dedup_near",
+                                "record_id": storage_decision.duplicate.id,
+                            },
+                        )
+                    elif not storage_decision.should_store:
+                        logger.info(
+                            "Skill storage skipped by quality gate",
+                            extra={
+                                "event": "skill_store_skip",
+                                "reason": storage_decision.reason,
+                            },
+                        )
                     else:
                         skill.content["_fingerprint"] = fp
+                        skill.content["_quality_score"] = eval_result.score
                         self.backend.add(skill)
                 for fact in facts:
                     fact.scope = self.scope
-                    self.backend.add(fact)
+                    storage_decision = decide_storage(fact, self.backend, self.scope)
+                    if storage_decision.duplicate:
+                        reinforce_existing(self.backend, storage_decision.duplicate, delta=0.01)
+                    elif storage_decision.should_store:
+                        self.backend.add(fact)
                 for failure in failures:
                     failure.scope = self.scope
-                    self.backend.add(failure)
+                    self._add_failure_deduped(failure)
                 if trace_record:
                     trace_record.scope = self.scope
                     self.backend.add(trace_record)
@@ -310,9 +346,57 @@ class LearnKit:
                         status="active",
                     )
                 failure.scope = self.scope
-                self.backend.add(failure)
+                self._add_failure_deduped(failure)
         except Exception as e:
             raise PostProcessError(f"Post-processing failed: {e}") from e
+
+    def _reinforce_or_demote_retrieved(self, records: list, success: bool) -> None:
+        """Update confidence for memories that were actually used in a run."""
+        seen: set[str] = set()
+        for record in records:
+            if record.id in seen:
+                continue
+            seen.add(record.id)
+            try:
+                if success:
+                    current = self.backend.read(record.id) or record
+                    current.reinforce(quality=5.0)
+                    self.backend.replace(current)
+                else:
+                    demote_existing(self.backend, record, delta=0.05)
+            except Exception as e:
+                logger.warning(
+                    "Retrieved-memory confidence update failed",
+                    extra={
+                        "event": "retrieved_confidence_update_fail",
+                        "record_id": getattr(record, "id", ""),
+                        "error_type": type(e).__name__,
+                    },
+                )
+
+    def _add_failure_deduped(self, failure) -> None:
+        storage_decision = decide_storage(
+            failure,
+            self.backend,
+            self.scope,
+            duplicate_threshold=0.58,
+        )
+        if storage_decision.duplicate:
+            reinforce_existing(self.backend, storage_decision.duplicate, delta=0.03)
+            logger.info(
+                "Failure dedup: reinforced existing failure record",
+                extra={
+                    "event": "failure_dedup",
+                    "record_id": storage_decision.duplicate.id,
+                },
+            )
+        elif storage_decision.should_store:
+            self.backend.add(failure)
+        else:
+            logger.info(
+                "Failure storage skipped by quality gate",
+                extra={"event": "failure_store_skip", "reason": storage_decision.reason},
+            )
 
     def inspect(self, task: str) -> dict:
         """Readonly view of the LearnKit loop's first three stages for a task.
@@ -358,6 +442,7 @@ class LearnKit:
 
         mode = determine_inference_mode(records)
         context_block = compose_context(records, task, mode)
+        attribution = build_attribution(records, context_block)
 
         return {
             "task": task,
@@ -380,6 +465,7 @@ class LearnKit:
                 }
                 for r in records
             ],
+            "attribution": attribution,
             "context": context_block,
             "context_chars": len(context_block),
         }
