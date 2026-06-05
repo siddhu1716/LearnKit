@@ -33,7 +33,10 @@ from .schemas.trace import TraceRecord
 from .skills_loader import seed_bundled_skills
 from .trajectory import Trajectory, TrajectoryStep
 
+__version__ = "0.0.3"
+
 __all__ = [
+    "__version__",
     "LearnKit",
     "Trajectory",
     "TrajectoryStep",

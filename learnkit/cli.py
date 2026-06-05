@@ -1,10 +1,16 @@
 import argparse
 import sys
 from pathlib import Path
+from learnkit import __version__
 from learnkit.core import LearnKit
 
 def main():
     parser = argparse.ArgumentParser(description="LearnKit Command Line Interface")
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"learnkit-ai {__version__}",
+    )
     subparsers = parser.add_subparsers(dest="command", help="Sub-commands")
 
     # Maintain command
