@@ -43,43 +43,58 @@ class MemoryRouter:
     """
 
     def __init__(self, max_records: int = 8, max_tokens: int = 1200):
+        if max_records < 1:
+            raise ValueError("max_records must be >= 1")
+        if max_tokens < 1:
+            raise ValueError("max_tokens must be >= 1")
         self.max_records = max_records
         self.max_tokens = max_tokens
 
     def route(self, records: List[MemoryRecord]) -> List[MemoryRecord]:
         """
-        Returns a priority-sorted, count-capped, token-budgeted slice of records.
+        Returns a deduplicated, score-ranked, count-capped, token-budgeted slice.
 
-        Priority order (Hermes/ReaComp): failure > skill > fact > others. Within
-        each tier the retriever's score order is preserved. We cap both at
-        max_records and at max_tokens (~1,200 by default) so the composer never
-        has to truncate a record mid-way. At least the highest-priority record
+        Records are admitted in descending ``_injection_score`` order rather than
+        by strict type tiers. The score already encodes the type preference
+        (skills/heuristics are prescriptive; failures are warnings), so a strong
+        failure still gets in first while a stack of low-confidence failures can
+        no longer starve a high-confidence skill out of the budget — the
+        contamination failure mode seen on SLR/PBE runs.
+
+        We cap at both max_records and max_tokens (~1,200 by default) so the
+        composer never has to truncate a record mid-way. At least the top record
         is always admitted even if it exceeds the budget on its own — losing it
-        would defeat the point of running the retriever.
-
-        After type-priority ordering, rank_for_injection() is applied so the
-        single highest-confidence record is always first (PRIMARY). The composer
-        uses position-0 to inject the PRESCRIPTIVE block.
+        would defeat the point of running the retriever. rank_for_injection() is
+        then applied so the single highest-confidence record is first (PRIMARY),
+        which the composer injects as the PRESCRIPTIVE block.
         """
-        failures = [r for r in records if r.type == "failure"]
-        skills = [r for r in records if r.type == "skill"]
-        facts = [r for r in records if r.type == "fact"]
-        others = [r for r in records if r.type not in ("failure", "skill", "fact")]
+        # Deduplicate by id — overlapping lexical/semantic searches can surface
+        # the same record more than once. Preserve first-seen order.
+        seen: set[str] = set()
+        unique: List[MemoryRecord] = []
+        for r in records:
+            rid = getattr(r, "id", None)
+            if rid is not None and rid in seen:
+                continue
+            if rid is not None:
+                seen.add(rid)
+            unique.append(r)
+
+        ranked = sorted(unique, key=_injection_score, reverse=True)
 
         max_chars = self.max_tokens * CHARS_PER_TOKEN
         routed: List[MemoryRecord] = []
         budget_used = 0
 
-        for r_list in (failures, skills, facts, others):
-            for r in r_list:
-                if len(routed) >= self.max_records:
-                    break
-                cost = _estimated_chars(r)
-                if budget_used + cost > max_chars and routed:
-                    # Hit token budget. Stop adding (but keep what we have).
-                    return _apply_k1_split(routed)
-                routed.append(r)
-                budget_used += cost
+        for r in ranked:
+            if len(routed) >= self.max_records:
+                break
+            cost = _estimated_chars(r)
+            if budget_used + cost > max_chars and routed:
+                # Hit token budget. Stop adding (but keep what we have).
+                break
+            routed.append(r)
+            budget_used += cost
 
         return _apply_k1_split(routed)
 

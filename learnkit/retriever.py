@@ -17,6 +17,11 @@ class SemanticRetriever:
         self.backend = backend
         self.embedder = embedder
         self.dense_weight = dense_weight
+        # Cache of record embeddings keyed by record id. Each entry stores the
+        # text that was embedded so a record whose content changed is re-embedded
+        # rather than served a stale vector. Bounded to avoid unbounded growth.
+        self._embed_cache: dict[str, tuple[str, list[float]]] = {}
+        self._embed_cache_max = 512
 
     def retrieve(
         self,
@@ -25,6 +30,10 @@ class SemanticRetriever:
         scope: str | None = None,
         router=None,
     ) -> list:
+        # Empty/whitespace query — nothing meaningful to retrieve against.
+        if not task or not task.strip():
+            return []
+
         # Get top domains (confidence > 0.5)
         top_domains = [d for d, c in domain_vector.items() if c > 0.5]
         domain = top_domains[0] if top_domains else None
@@ -117,8 +126,7 @@ class SemanticRetriever:
             scored = []
 
             for record in candidates:
-                record_text = self._record_text(record)
-                record_vec = self.embedder(record_text)
+                record_vec = self._embed_record(record)
                 dense_score = _cosine(query_vec, record_vec)
 
                 # Fetch actual bm25 score if attached by backend, otherwise use proxy
@@ -139,6 +147,25 @@ class SemanticRetriever:
                 extra={"event": "rerank_fail", "error_type": type(e).__name__},
             )
             return candidates
+
+    def _embed_record(self, record: MemoryRecord) -> list[float]:
+        """Embed a record's text, caching the vector by record id.
+
+        Avoids re-embedding the same candidate on every retrieval — the dominant
+        cost when the same records resurface across tasks. The cached entry is
+        invalidated when the record's text changes.
+        """
+        text = self._record_text(record)
+        key = getattr(record, "id", None) or text
+        cached = self._embed_cache.get(key)
+        if cached is not None and cached[0] == text:
+            return cached[1]
+        vec = self.embedder(text)
+        if len(self._embed_cache) >= self._embed_cache_max:
+            # Simple bound — evict the oldest inserted entry.
+            self._embed_cache.pop(next(iter(self._embed_cache)))
+        self._embed_cache[key] = (text, vec)
+        return vec
 
     def _record_text(self, record: MemoryRecord) -> str:
         parts = [record.task_type or "", " ".join(record.domains.keys())]

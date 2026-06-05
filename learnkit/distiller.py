@@ -36,6 +36,7 @@ FINAL OUTPUT:
 Extract reusable knowledge. Respond with JSON only:
 {{
   "skill": {{
+    "pattern_name": "short reusable label for this approach (3-6 words, no task-specific identifiers)",
     "steps": ["step 1", "step 2"],
     "tools_used": ["tool_name"],
     "constraints": ["constraint"],
@@ -96,6 +97,16 @@ def robust_json_loads(text: str) -> dict:
         except Exception:
             pass
         return json.loads(text.replace("'", '"'))
+
+
+def _extract_json_block(raw: str) -> str:
+    """Strip surrounding markdown code fences from an LLM JSON response."""
+    cleaned = raw.strip()
+    if cleaned.startswith("```"):
+        lines = cleaned.splitlines()
+        if lines and (lines[0].startswith("```json") or lines[0] == "```"):
+            cleaned = "\n".join(lines[1:-1])
+    return cleaned.strip()
 
 
 class MemoryDistiller:
@@ -182,12 +193,7 @@ class MemoryDistiller:
             return None, [], [], None
 
         # Basic json extraction
-        cleaned = raw.strip()
-        if cleaned.startswith("```"):
-            lines = cleaned.splitlines()
-            if lines[0].startswith("```json") or lines[0] == "```":
-                cleaned = "\n".join(lines[1:-1])
-        cleaned = cleaned.strip()
+        cleaned = _extract_json_block(raw)
 
         try:
             data = robust_json_loads(cleaned)
@@ -210,19 +216,41 @@ class MemoryDistiller:
 
         # Build records
         skill = None
-        if data.get("skill"):
-            try:
-                skill = SkillRecord(
-                    domains=domain_vector,
-                    task_type=trajectory.task[:80],
-                    content=data["skill"],
-                    confidence=0.75,  # above CONFIDENCE_FLOOR + distilled-failure default (0.7)
-                    status="quarantine",  # 24h quarantine before becoming active
+        skill_data = data.get("skill")
+        if isinstance(skill_data, dict):
+            steps = skill_data.get("steps")
+            has_steps = isinstance(steps, list) and any(
+                isinstance(s, str) and s.strip() for s in steps
+            )
+            if not has_steps:
+                logger.info(
+                    "Skill skipped — no non-empty steps",
+                    extra={"event": "distill_skill_empty"},
                 )
-            except Exception as e:
-                logger.warning(
-                    "Failed to validate skill schema", extra={"error": str(e)}
+            else:
+                # Use a generalized pattern label as task_type rather than the
+                # raw task prefix. Storing trajectory.task[:80] turned every
+                # skill into a BM25 magnet for its originating task, so skills
+                # only ever matched the exact task that produced them. A short
+                # pattern name keeps the record retrievable for *similar* tasks.
+                pattern_name = (skill_data.get("pattern_name") or "").strip()
+                skill_task_type = (
+                    pattern_name[:80]
+                    if pattern_name
+                    else f"{next(iter(domain_vector), 'general')}_skill"
                 )
+                try:
+                    skill = SkillRecord(
+                        domains=domain_vector,
+                        task_type=skill_task_type,
+                        content=skill_data,
+                        confidence=0.75,  # above CONFIDENCE_FLOOR + distilled-failure default (0.7)
+                        status="quarantine",  # 24h quarantine before becoming active
+                    )
+                except Exception as e:
+                    logger.warning(
+                        "Failed to validate skill schema", extra={"error": str(e)}
+                    )
 
         facts = []
         for f in data.get("facts", []):
@@ -340,12 +368,7 @@ class MemoryDistiller:
             )
             return None
 
-        cleaned = raw.strip()
-        if cleaned.startswith("```"):
-            lines = cleaned.splitlines()
-            if lines[0].startswith("```json") or lines[0] == "```":
-                cleaned = "\n".join(lines[1:-1])
-        cleaned = cleaned.strip()
+        cleaned = _extract_json_block(raw)
 
         try:
             data = robust_json_loads(cleaned)

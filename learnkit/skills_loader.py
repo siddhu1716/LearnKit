@@ -60,8 +60,16 @@ def seed_bundled_skills(
         try:
             data = json.loads(metadata_path.read_text())
 
+            skill_id = data.get("id")
+            if not skill_id:
+                logger.warning(
+                    "Skill metadata missing 'id', skipping",
+                    extra={"event": "skill_seed_no_id", "path": str(metadata_path)},
+                )
+                continue
+
             # Skip records already in backend (idempotent)
-            if not overwrite and backend.read(data["id"]) is not None:
+            if not overwrite and backend.read(skill_id) is not None:
                 continue
 
             # Build SkillRecord from metadata.json
