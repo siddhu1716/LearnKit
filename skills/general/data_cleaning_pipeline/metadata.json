@@ -1,0 +1,46 @@
+{
+  "id": "c9d0e1f2-a3b4-5678-2345-890123456789",
+  "version": 1,
+  "type": "skill",
+  "domains": {
+    "data": 0.92,
+    "coding": 0.6
+  },
+  "task_type": "data_cleaning_pipeline",
+  "content": {
+    "steps": [
+      "Profile the raw dataset: row count, null rates, type distributions, value ranges",
+      "Define expected schema: types, nullability, value constraints per column",
+      "Handle missing values: drop, impute, or flag — decide per column, document reasoning",
+      "Standardise formats: dates to ISO 8601, strings stripped and lowercased if appropriate",
+      "Deduplicate: define the primary key, resolve conflicts by recency or confidence score",
+      "Validate against the schema and reject or quarantine non-conforming rows",
+      "Log a cleaning report: rows in, rows out, rows quarantined, changes per column",
+      "Write idempotent pipeline — running twice must produce identical output"
+    ],
+    "tools_used": ["pandas", "pydantic", "great_expectations", "duckdb"],
+    "constraints": [
+      "never modify raw data in place — always write to a new output",
+      "pipeline must be idempotent",
+      "quarantine bad rows — do not silently drop them"
+    ],
+    "failure_modes": [
+      "silently dropping rows that fail validation, hiding data quality issues",
+      "imputing missing values without documenting the assumption",
+      "non-idempotent deduplication producing different row counts on re-runs",
+      "treating encoding errors as empty strings instead of flagging them"
+    ]
+  },
+  "outcome_quality": 4.2,
+  "confidence": 0.87,
+  "reuse_count": 0,
+  "success_rate": null,
+  "scope": "team",
+  "status": "active",
+  "created_at": "2026-05-25T10:00:00Z",
+  "expires_at": "2026-11-25T10:00:00Z",
+  "last_reinforced": null,
+  "transfer_domains": [],
+  "transfer_confidence": null,
+  "evolution_gen": 0
+}

@@ -1,0 +1,46 @@
+{
+  "id": "f6a7b8c9-d0e1-2345-f012-567890123456",
+  "version": 1,
+  "type": "skill",
+  "domains": {
+    "legal": 0.93,
+    "compliance": 0.85
+  },
+  "task_type": "gdpr_clause_check",
+  "content": {
+    "steps": [
+      "Identify all parties and their roles: controller, processor, or sub-processor",
+      "Check for a lawful basis clause (consent, legitimate interest, contractual necessity, etc.)",
+      "Verify data subject rights are addressed: access, erasure, portability, objection",
+      "Check for data retention limits and deletion obligations",
+      "Identify international transfer mechanisms (SCCs, adequacy decision, BCRs)",
+      "Flag any clauses that transfer GDPR liability without corresponding controls",
+      "Confirm a Data Processing Agreement (DPA) is present if one party processes for the other",
+      "Summarise gaps as a numbered list with article references"
+    ],
+    "tools_used": ["pdf_reader", "clause_extractor", "regex"],
+    "constraints": [
+      "cite GDPR article numbers for each finding",
+      "distinguish critical gaps from advisory findings",
+      "do not give legal advice — flag for qualified review"
+    ],
+    "failure_modes": [
+      "missing sub-processor clauses that create downstream liability",
+      "confusing data controller with data processor obligations",
+      "overlooking implicit transfers via cloud provider data centres",
+      "treating boilerplate GDPR language as compliant without verifying substance"
+    ]
+  },
+  "outcome_quality": 4.4,
+  "confidence": 0.89,
+  "reuse_count": 0,
+  "success_rate": null,
+  "scope": "team",
+  "status": "active",
+  "created_at": "2026-05-25T10:00:00Z",
+  "expires_at": "2026-11-25T10:00:00Z",
+  "last_reinforced": null,
+  "transfer_domains": [],
+  "transfer_confidence": null,
+  "evolution_gen": 0
+}
