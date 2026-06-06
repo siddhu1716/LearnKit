@@ -43,13 +43,49 @@ def grade_contract_task(prompt: str, response: str) -> float:
             
     return round((matched / len(facts)) * 5.0, 2)
 
-def grade_python_task(task_id: str, prompt: str, response: str) -> float:
+def _grade_python_by_pattern(pattern: str, prompt: str, code_lower: str) -> float:
+    """Grade a Python answer against the construct its correct pattern requires."""
+    if pattern == "mutable_default_arg":
+        if "none" in code_lower and ("is none" in code_lower or "== none" in code_lower or "not" in code_lower):
+            return 5.0
+        return 0.0
+    if pattern == "closure_late_binding":
+        if any(
+            tok in code_lower
+            for tok in ("=i", "=name", "=val", "=url", "=x", "partial", "def make_", "def create_")
+        ):
+            return 5.0
+        return 0.0
+    if pattern == "concurrency_default_start_method":
+        if "logging" in prompt.lower():
+            if any(tok in code_lower for tok in ("queue", "listener", "handler", "config", "initialize")):
+                return 5.0
+            return 0.0
+        if any(tok in code_lower for tok in ("set_start_method", "spawn", "__main__", "freeze_support")):
+            return 5.0
+        return 0.0
+    if pattern == "mixed":
+        if any(tok in code_lower for tok in ("return_exceptions", "gather", "exception", "catch", "try")):
+            return 5.0
+        return 0.0
+    return 5.0
+
+
+def grade_python_task(task_id: str, prompt: str, response: str, pattern: str | None = None) -> float:
     code = extract_python_code(response)
     if not code or ("import" not in code and "def " not in code and "class " not in code):
         code = response
-        
+
     code_lower = code.lower()
-    
+
+    # When an explicit pattern is supplied (contamination tasks use ids outside
+    # the py01..py30 ranges), grade against the construct that the *correct*
+    # pattern requires — independent of the task id heuristic below. This is what
+    # makes harm measurable: a contamination task baits the wrong skill via
+    # surface vocabulary, but the grader still rewards only the right fix.
+    if pattern:
+        return _grade_python_by_pattern(pattern, prompt, code_lower)
+
     # Identify pattern type
     # mutable default arg
     if any(p in task_id for p in ["py04", "py05", "py06", "py15", "py16", "py17", "py29", "py30"]):

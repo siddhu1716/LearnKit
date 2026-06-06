@@ -41,8 +41,52 @@ import learnkit as lk  # noqa: E402
 from learnkit.evaluator import Evaluator  # noqa: E402
 from benchmarks.graders import grade_contract_task, grade_python_task, grade_sql_task
 
-AGENT_MODEL = "gemini/gemini-flash-lite-latest"
-JUDGE = Evaluator()  # uses claude-haiku-4-5 by default
+# Agent + distiller default to the same self-hosted Qwen (vLLM, OpenAI-compatible
+# endpoint), matching run_slr_bench.py / run_pbebench.py. Override via env:
+#   LEARNKIT_AGENT_MODEL, LEARNKIT_API_BASE, LEARNKIT_DISTILLER_MODEL.
+AGENT_MODEL = os.environ.get("LEARNKIT_AGENT_MODEL", "openai/Qwen/Qwen2.5-72B-Instruct")
+API_BASE = os.environ.get("LEARNKIT_API_BASE", "http://localhost:8001/v1")
+
+# Pass api_base/api_key only for local OpenAI-compatible endpoints (vLLM). A
+# hosted model id (e.g. "gemini/...") routes through litellm's own credentials.
+_USE_LOCAL_ENDPOINT = AGENT_MODEL.startswith("openai/") or bool(
+    os.environ.get("LEARNKIT_API_BASE")
+)
+
+# Route every LearnKit model slot (distiller, evaluator, classifier) to the same
+# local Qwen endpoint. The distiller/agent get an explicit api_base, but the
+# Evaluator and classifier build dspy.LM(...) without one — so we export the
+# OpenAI-compatible base/key env vars that litellm honors, and point their model
+# envs at the Qwen id. This makes a fully self-hosted, no-cloud run work.
+if _USE_LOCAL_ENDPOINT:
+    os.environ.setdefault("OPENAI_API_BASE", API_BASE)
+    os.environ.setdefault("OPENAI_API_KEY", "anything")
+    os.environ.setdefault("LEARNKIT_EVALUATOR_MODEL", AGENT_MODEL)
+    os.environ.setdefault("LEARNKIT_CLASSIFIER_MODEL", AGENT_MODEL)
+
+
+def _judge():
+    """Lazily build the LLM judge (only used by non-deterministic domains)."""
+    return Evaluator()
+
+
+def _build_distiller():
+    """Distiller on the same model/endpoint as the agent (matches SLR/PBE runners).
+
+    Honors LEARNKIT_DISTILLER_MODEL when set, else uses the agent model. For a
+    local vLLM endpoint the api_base/api_key are passed through; otherwise the
+    distiller falls back to LearnKit's default credential routing.
+    """
+    import dspy
+    from learnkit.distiller import MemoryDistiller
+
+    distill_model = os.environ.get("LEARNKIT_DISTILLER_MODEL", AGENT_MODEL)
+    if _USE_LOCAL_ENDPOINT:
+        lm = dspy.LM(distill_model, api_base=API_BASE, api_key="anything", temperature=0.0)
+    else:
+        lm = dspy.LM(distill_model)
+    return MemoryDistiller(lm=lm)
+
 
 DOMAIN_SYSTEM_PROMPTS = {
     "python_debugging": (
@@ -76,6 +120,11 @@ def call_agent(
         time.sleep(min_interval - elapsed)
         
     last_err: Optional[Exception] = None
+    completion_kwargs: dict = (
+        {"api_base": API_BASE, "api_key": "anything", "temperature": 0.0}
+        if _USE_LOCAL_ENDPOINT
+        else {}
+    )
     for attempt in range(max_retries):
         try:
             t0 = time.perf_counter()
@@ -86,6 +135,7 @@ def call_agent(
                     {"role": "user", "content": user},
                 ],
                 max_tokens=600,
+                **completion_kwargs,
             )
             latency = time.perf_counter() - t0
             _last_call_time = time.time()
@@ -110,16 +160,28 @@ def call_agent(
     return "", {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}, 0.0
 
 
-def load_tasks(domain: str) -> list[dict]:
+def load_tasks(domain: str, splits: Optional[set[str]] = None) -> list[dict]:
+    """Load tasks for a domain, optionally filtered to specific splits.
+
+    ``splits=None`` excludes the contamination split so the default reuse run
+    (train + eval) is unchanged. Pass an explicit set (e.g. {"contamination"})
+    to select a split for transfer/contamination experiments. Tasks without a
+    ``split`` field are always included (back-compat).
+    """
     p = HERE / "tasks" / f"{domain}.jsonl"
-    return [
+    tasks = [
         json.loads(line)
         for line in p.read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
+    if splits is None:
+        return [t for t in tasks if t.get("split") != "contamination"]
+    return [t for t in tasks if t.get("split") in splits or "split" not in t]
 
 
-def score(domain: str, task_id: str, task_prompt: str, response: str) -> tuple[float, str]:
+def score(
+    domain: str, task_id: str, task_prompt: str, response: str, pattern: Optional[str] = None
+) -> tuple[float, str]:
     if not response.strip():
         return 0.0, "empty response"
     try:
@@ -127,13 +189,13 @@ def score(domain: str, task_id: str, task_prompt: str, response: str) -> tuple[f
             s = grade_contract_task(task_prompt, response)
             return s, f"Deterministic recall facts score: {s}/5"
         elif domain == "python_debugging":
-            s = grade_python_task(task_id, task_prompt, response)
+            s = grade_python_task(task_id, task_prompt, response, pattern=pattern)
             return s, f"Deterministic python syntax score: {s}/5"
         elif domain == "sql_authoring":
             s = grade_sql_task(task_id, task_prompt, response)
             return s, f"Deterministic SQL execution score: {s}/5"
         else:
-            result = JUDGE.evaluate_with_llm_judge(task=task_prompt, response=response)
+            result = _judge().evaluate_with_llm_judge(task=task_prompt, response=response)
             return result.score, result.reasoning
     except Exception as e:
         return 0.0, f"grader error: {type(e).__name__}: {str(e)[:80]}"
@@ -146,7 +208,7 @@ def run_control(domain: str, tasks: list[dict], seed: int = 0) -> list[dict]:
     for i, t in enumerate(tasks, 1):
         print(f"    {i:2d}/{len(tasks)} {t['id']}", end="", flush=True)
         resp, usage, latency = call_agent(system, t["prompt"])
-        s, reason = score(domain, t["id"], t["prompt"], resp)
+        s, reason = score(domain, t["id"], t["prompt"], resp, pattern=t.get("pattern"))
         print(
             f"  score={s:.1f}  tokens={usage['total_tokens']}  latency={latency:.1f}s"
         )
@@ -164,12 +226,20 @@ def run_control(domain: str, tasks: list[dict], seed: int = 0) -> list[dict]:
                 "latency_s": latency,
                 "learnkit_context_chars": 0,
                 "seed": seed,
+                "split": t.get("split"),
+                "contaminant": t.get("contaminant"),
             }
         )
     return out
 
 
-def run_treatment(domain: str, tasks: list[dict], db_path: Path, seed: int = 0) -> list[dict]:
+def run_treatment(
+    domain: str,
+    tasks: list[dict],
+    db_path: Path,
+    seed: int = 0,
+    warm_tasks: Optional[list[dict]] = None,
+) -> list[dict]:
     system_base = DOMAIN_SYSTEM_PROMPTS[domain]
     memory = lk.LearnKit(
         memory_backend="sqlite",
@@ -177,6 +247,7 @@ def run_treatment(domain: str, tasks: list[dict], db_path: Path, seed: int = 0) 
         scope="user",
         background_postprocess=False,  # sync so task N+1 sees task N's distillation
         auto_promote=True,  # bypass 24h quarantine for online benchmark learning
+        distiller=_build_distiller(),
     )
 
     context_holder: dict = {"chars": 0}
@@ -197,10 +268,16 @@ def run_treatment(domain: str, tasks: list[dict], db_path: Path, seed: int = 0) 
 
     out = []
     print(f"\n  [TREATMENT] {domain}  (db: {db_path.name}, seed {seed})")
+    # Warm phase: pre-populate the store with prior-split skills (unscored) so a
+    # contamination/transfer eval has a learned pattern to be retrieved/baited by.
+    if warm_tasks:
+        print(f"    [warm] seeding {len(warm_tasks)} tasks into memory")
+        for wt in warm_tasks:
+            ask(wt["prompt"])
     for i, t in enumerate(tasks, 1):
         print(f"    {i:2d}/{len(tasks)} {t['id']}", end="", flush=True)
         resp = ask(t["prompt"])
-        s, reason = score(domain, t["id"], t["prompt"], resp)
+        s, reason = score(domain, t["id"], t["prompt"], resp, pattern=t.get("pattern"))
         ctx = context_holder.get("chars", 0)
         usage = context_holder.get(
             "usage", {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
@@ -224,6 +301,8 @@ def run_treatment(domain: str, tasks: list[dict], db_path: Path, seed: int = 0) 
                 "latency_s": latency,
                 "learnkit_context_chars": ctx,
                 "seed": seed,
+                "split": t.get("split"),
+                "contaminant": t.get("contaminant"),
                 "attribution": attribution,
             }
         )
@@ -375,13 +454,34 @@ def write_compounding_csv(records: list[dict], out_path: Path) -> None:
 
 
 def main() -> None:
-    if not os.environ.get("GEMINI_API_KEY"):
-        raise SystemExit("ERROR: GEMINI_API_KEY missing (check benchmarks/.env).")
-        
+    # Require credentials for the chosen backend: a local vLLM endpoint needs no
+    # cloud key; otherwise fall back to expecting GEMINI_API_KEY.
+    if not _USE_LOCAL_ENDPOINT and not os.environ.get("GEMINI_API_KEY"):
+        raise SystemExit(
+            "ERROR: no model endpoint configured. Set LEARNKIT_API_BASE for a "
+            "local Qwen/vLLM endpoint, or GEMINI_API_KEY (check benchmarks/.env)."
+        )
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--seeds", type=int, default=3, help="Number of seeds to run")
     parser.add_argument("--tasks", type=int, default=50, help="Number of tasks per domain")
+    parser.add_argument(
+        "--splits",
+        type=str,
+        default="train,eval",
+        help="Comma-separated splits to RUN and score (e.g. 'contamination' or 'train,eval').",
+    )
+    parser.add_argument(
+        "--warm-splits",
+        type=str,
+        default="",
+        help="Comma-separated splits used ONLY to pre-populate the treatment store "
+        "before the scored run (e.g. 'train' for a contamination experiment).",
+    )
     args = parser.parse_args()
+
+    run_splits = {s.strip() for s in args.splits.split(",") if s.strip()}
+    warm_splits = {s.strip() for s in args.warm_splits.split(",") if s.strip()}
 
     run_id = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
     out_dir = HERE / "results" / run_id
@@ -391,12 +491,14 @@ def main() -> None:
     print(f"Agent:  {AGENT_MODEL}")
     print(f"Seeds:  {args.seeds}")
     print(f"Tasks:  {args.tasks} per domain")
+    print(f"Splits: run={sorted(run_splits)} warm={sorted(warm_splits) or 'none'}")
 
     domains = ["python_debugging", "contract_summarization", "sql_authoring"]
     all_records: list[dict] = []
 
     for domain in domains:
-        all_tasks = load_tasks(domain)[:args.tasks]
+        all_tasks = load_tasks(domain, splits=run_splits)[:args.tasks]
+        warm_all = load_tasks(domain, splits=warm_splits) if warm_splits else []
         print(f"\n{'=' * 72}\nDOMAIN: {domain}  ({len(all_tasks)} tasks)\n{'=' * 72}")
         
         for s in range(args.seeds):
@@ -412,7 +514,11 @@ def main() -> None:
             db_path = out_dir / f"learnkit_{domain}_seed_{s}.db"
             if db_path.exists():
                 db_path.unlink()
-            all_records.extend(run_treatment(domain, shuffled_tasks, db_path, seed=s))
+            all_records.extend(
+                run_treatment(
+                    domain, shuffled_tasks, db_path, seed=s, warm_tasks=warm_all
+                )
+            )
 
     summary = summarize(all_records)
 
