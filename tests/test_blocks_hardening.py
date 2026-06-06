@@ -16,13 +16,18 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from learnkit.distiller import MemoryDistiller
+from learnkit.distiller import (
+    MAX_DISTILL_FACTS,
+    MAX_DISTILL_FIELD_CHARS,
+    MAX_DISTILL_PAYLOAD_BYTES,
+    sanitize_distilled_payload,
+)
 from learnkit.retriever import SemanticRetriever
 from learnkit.router import MemoryRouter
 from learnkit.schemas.failure import FailureRecord
 from learnkit.schemas.skill import SkillRecord
 from learnkit.skills_loader import seed_bundled_skills
 from learnkit.trajectory import Trajectory
-
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -256,3 +261,71 @@ class TestSkillsLoaderHardening:
         seeded = seed_bundled_skills(backend, skills_dir=tmp_path)
         assert seeded == 1
         assert backend.added[0].content.get("skill_md") == "# Good skill"
+
+
+# ── 5. Distiller payload validation boundary ─────────────────────────────────
+
+
+class TestDistillerPayloadValidation:
+    """Untrusted distiller LLM output must be bounded before becoming memory."""
+
+    def test_non_dict_payload_rejected(self):
+        cleaned, errors = sanitize_distilled_payload(["not", "a", "dict"])
+        assert cleaned is None
+        assert errors
+
+    def test_oversized_payload_rejected(self):
+        huge = {"facts": [{"statement": "x" * (MAX_DISTILL_PAYLOAD_BYTES + 1)}]}
+        cleaned, errors = sanitize_distilled_payload(huge)
+        assert cleaned is None
+        assert errors and "bytes" in errors[0]
+
+    def test_facts_list_truncated_to_cap(self):
+        payload = {
+            "facts": [{"statement": f"fact {i}"} for i in range(MAX_DISTILL_FACTS + 10)]
+        }
+        cleaned, errors = sanitize_distilled_payload(payload)
+        assert cleaned is not None
+        assert len(cleaned["facts"]) == MAX_DISTILL_FACTS
+        assert any("facts list truncated" in e for e in errors)
+
+    def test_non_list_facts_dropped(self):
+        cleaned, errors = sanitize_distilled_payload({"facts": "oops"})
+        assert cleaned is not None
+        assert cleaned["facts"] == []
+        assert any("facts is not a list" in e for e in errors)
+
+    def test_string_fields_clamped(self):
+        payload = {
+            "facts": [{"statement": "y" * (MAX_DISTILL_FIELD_CHARS + 500)}],
+        }
+        cleaned, _ = sanitize_distilled_payload(payload)
+        assert cleaned is not None
+        assert len(cleaned["facts"][0]["statement"]) == MAX_DISTILL_FIELD_CHARS
+
+    def test_facts_missing_statement_dropped(self):
+        cleaned, _ = sanitize_distilled_payload(
+            {"facts": [{"source": "nowhere"}, {"statement": "keep me"}]}
+        )
+        assert cleaned is not None
+        assert len(cleaned["facts"]) == 1
+        assert cleaned["facts"][0]["statement"] == "keep me"
+
+    def test_valid_small_payload_structurally_preserved(self):
+        payload = {
+            "skill": {"pattern_name": "do_x", "steps": ["step one", "step two"]},
+            "facts": [{"statement": "the sky is blue", "source": "trace"}],
+            "failures": [{"description": "broke", "what_to_avoid": "do not break"}],
+        }
+        cleaned, errors = sanitize_distilled_payload(payload)
+        assert errors == []
+        assert cleaned["skill"]["pattern_name"] == "do_x"
+        assert cleaned["skill"]["steps"] == ["step one", "step two"]
+        assert cleaned["facts"][0]["statement"] == "the sky is blue"
+        assert cleaned["facts"][0]["source"] == "trace"
+        assert cleaned["failures"][0]["description"] == "broke"
+
+    def test_fact_default_source_applied(self):
+        cleaned, _ = sanitize_distilled_payload({"facts": [{"statement": "lone fact"}]})
+        assert cleaned is not None
+        assert cleaned["facts"][0]["source"] == "agent trace"

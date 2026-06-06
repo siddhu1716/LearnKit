@@ -109,6 +109,121 @@ def _extract_json_block(raw: str) -> str:
     return cleaned.strip()
 
 
+# ── Untrusted distiller-output validation boundary ────────────────────────────
+# Adapted from Graphify's validate_semantic_fragment pattern: distilled records
+# come straight from an LLM and become *persistent* memory, so a runaway or
+# adversarial model must not be able to pollute the store with oversized or
+# malformed payloads. These bounds are deliberately generous for real traces but
+# hard-cap pathological output before it is ever written.
+MAX_DISTILL_PAYLOAD_BYTES = 256 * 1024
+MAX_DISTILL_FACTS = 20
+MAX_DISTILL_FAILURES = 20
+MAX_DISTILL_LIST_ITEMS = 50
+MAX_DISTILL_FIELD_CHARS = 2000
+
+
+def _clamp_str(value: object, limit: int = MAX_DISTILL_FIELD_CHARS) -> str:
+    """Coerce to a stripped string capped at ``limit`` characters."""
+    if not isinstance(value, str):
+        value = "" if value is None else str(value)
+    return value.strip()[:limit]
+
+
+def _clamp_str_list(
+    value: object,
+    max_items: int = MAX_DISTILL_LIST_ITEMS,
+    limit: int = MAX_DISTILL_FIELD_CHARS,
+) -> list[str]:
+    """Coerce to a list of non-empty stripped strings, capped at ``max_items``."""
+    if not isinstance(value, list):
+        return []
+    out: list[str] = []
+    for item in value:
+        s = _clamp_str(item, limit)
+        if s:
+            out.append(s)
+        if len(out) >= max_items:
+            break
+    return out
+
+
+def sanitize_distilled_payload(data: object) -> tuple[dict | None, list[str]]:
+    """Validate and defensively clamp an untrusted distiller JSON payload.
+
+    Returns ``(sanitized, errors)``. ``sanitized`` is ``None`` only when the
+    payload is fundamentally untrustworthy (not an object, not serializable, or
+    larger than ``MAX_DISTILL_PAYLOAD_BYTES``) — those are dropped wholesale.
+    Otherwise it is a bounded copy containing only the known schema keys, with
+    over-long strings truncated and over-long lists capped. ``errors`` lists the
+    clamping actions taken (empty when the payload passed through unchanged).
+    """
+    if not isinstance(data, dict):
+        return None, ["payload is not a JSON object"]
+    try:
+        size = len(json.dumps(data, ensure_ascii=False).encode("utf-8"))
+    except (TypeError, ValueError):
+        return None, ["payload is not JSON-serializable"]
+    if size > MAX_DISTILL_PAYLOAD_BYTES:
+        return None, [f"payload is {size} bytes; max is {MAX_DISTILL_PAYLOAD_BYTES}"]
+
+    errors: list[str] = []
+    clean: dict = {"skill": None, "facts": [], "failures": []}
+
+    skill = data.get("skill")
+    if isinstance(skill, dict):
+        clean_skill: dict = {}
+        pattern = _clamp_str(skill.get("pattern_name"), 120)
+        if pattern:
+            clean_skill["pattern_name"] = pattern
+        raw_steps = skill.get("steps")
+        if isinstance(raw_steps, list) and len(raw_steps) > MAX_DISTILL_LIST_ITEMS:
+            errors.append("skill.steps truncated")
+        clean_skill["steps"] = _clamp_str_list(raw_steps)
+        clean_skill["tools_used"] = _clamp_str_list(skill.get("tools_used"))
+        clean_skill["constraints"] = _clamp_str_list(skill.get("constraints"))
+        clean_skill["failure_modes"] = _clamp_str_list(skill.get("failure_modes"))
+        clean["skill"] = clean_skill
+    elif skill is not None:
+        errors.append("skill is not an object; dropped")
+
+    facts = data.get("facts")
+    if isinstance(facts, list):
+        if len(facts) > MAX_DISTILL_FACTS:
+            errors.append("facts list truncated")
+        for f in facts[:MAX_DISTILL_FACTS]:
+            if not isinstance(f, dict):
+                continue
+            statement = _clamp_str(f.get("statement"))
+            if not statement:
+                continue
+            clean["facts"].append(
+                {
+                    "statement": statement,
+                    "source": _clamp_str(f.get("source"), 200) or "agent trace",
+                }
+            )
+    elif facts is not None:
+        errors.append("facts is not a list; dropped")
+
+    failures = data.get("failures")
+    if isinstance(failures, list):
+        if len(failures) > MAX_DISTILL_FAILURES:
+            errors.append("failures list truncated")
+        for f in failures[:MAX_DISTILL_FAILURES]:
+            if not isinstance(f, dict):
+                continue
+            clean["failures"].append(
+                {
+                    "description": _clamp_str(f.get("description")),
+                    "what_to_avoid": _clamp_str(f.get("what_to_avoid")),
+                }
+            )
+    elif failures is not None:
+        errors.append("failures is not a list; dropped")
+
+    return clean, errors
+
+
 class MemoryDistiller:
     """
     Converts successful execution traces into typed memory records.
@@ -213,6 +328,24 @@ class MemoryDistiller:
                 "Distillation output is not a JSON object, returning empty records"
             )
             data = {"skill": None, "facts": [], "failures": []}
+
+        # Bound + sanitize the untrusted LLM payload before it becomes memory.
+        cleaned_data, payload_errors = sanitize_distilled_payload(data)
+        if cleaned_data is None:
+            logger.warning(
+                "Distilled payload rejected by validator, returning empty records",
+                extra={
+                    "event": "distill_payload_rejected",
+                    "reason": payload_errors[0] if payload_errors else "invalid",
+                },
+            )
+            return None, [], [], None
+        if payload_errors:
+            logger.info(
+                "Distilled payload sanitized before storage",
+                extra={"event": "distill_payload_sanitized", "actions": payload_errors[:5]},
+            )
+        data = cleaned_data
 
         # Build records
         skill = None
@@ -382,18 +515,30 @@ class MemoryDistiller:
         if not isinstance(data, dict):
             return None
 
+        # Bound the untrusted payload before constructing a persistent record.
         try:
-            lesson_title = (data.get("lesson_title") or "").strip()
+            payload_size = len(json.dumps(data, ensure_ascii=False).encode("utf-8"))
+        except (TypeError, ValueError):
+            return None
+        if payload_size > MAX_DISTILL_PAYLOAD_BYTES:
+            logger.warning(
+                "Contrastive failure payload too large; rejected",
+                extra={"event": "distill_failure_payload_rejected", "bytes": payload_size},
+            )
+            return None
+
+        try:
+            lesson_title = _clamp_str(data.get("lesson_title"))
             failure_label = lesson_title[:80] if lesson_title else "failure_pattern"
             failure = FailureRecord(
                 domains=domain_vector,
                 task_type=failure_label,
                 content={
                     "description": lesson_title,
-                    "root_cause": data.get("root_cause", ""),
-                    "corrective_strategy": data.get("corrective_strategy", ""),
-                    "trigger_pattern": data.get("trigger_pattern", ""),
-                    "what_to_avoid": data.get("what_to_avoid", ""),
+                    "root_cause": _clamp_str(data.get("root_cause")),
+                    "corrective_strategy": _clamp_str(data.get("corrective_strategy")),
+                    "trigger_pattern": _clamp_str(data.get("trigger_pattern")),
+                    "what_to_avoid": _clamp_str(data.get("what_to_avoid")),
                 },
                 status="active",  # immediately active — no quarantine for failures
                 confidence=0.7,   # start at 0.7 so it clears the CONFIDENCE_FLOOR

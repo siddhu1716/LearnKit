@@ -19,6 +19,7 @@ def main():
     maintain_parser.add_argument("--weeks", type=int, default=1, help="Number of weeks for confidence decay threshold")
     maintain_parser.add_argument("--decay-rate", type=float, default=0.02, help="Rate of confidence decay")
     maintain_parser.add_argument("--quarantine-hours", type=float, default=24.0, help="Minimum age in hours to promote quarantined records")
+    maintain_parser.add_argument("--consolidate", action="store_true", help="Merge overlapping skills into umbrellas (archives near-duplicates)")
 
     args = parser.parse_args()
 
@@ -30,11 +31,15 @@ def main():
                 weeks=args.weeks,
                 decay_rate=args.decay_rate,
                 quarantine_hours=args.quarantine_hours,
+                consolidate=args.consolidate,
             )
             print("Maintenance completed successfully:")
             print(f"  Decayed records:    {stats.get('decayed', 0)}")
             print(f"  Expired/stale marked: {stats.get('stale', 0)}")
             print(f"  Quarantine promoted: {stats.get('promoted', 0)}")
+            if args.consolidate:
+                print(f"  Skill clusters merged: {stats.get('consolidated_clusters', 0)}")
+                print(f"  Skills archived:    {stats.get('consolidated_archived', 0)}")
             lk.shutdown()
         except Exception as e:
             print(f"ERROR: Maintenance failed: {e}", file=sys.stderr)

@@ -11,6 +11,7 @@ from .attribution import build_attribution
 from .backends.registry import get_backend
 from .classifier import classify_task
 from .composer import compose_context
+from .consolidation import consolidate_skills
 from .distiller import MemoryDistiller
 from .errors import PostProcessError
 from .evaluator import Evaluator
@@ -511,9 +512,15 @@ class LearnKit:
         weeks: int = 1,
         decay_rate: float = 0.02,
         quarantine_hours: float = 24.0,
+        consolidate: bool = False,
     ) -> dict[str, int]:
-        """Run the local maintenance loop: decay, stale marking, quarantine promotion."""
-        return {
+        """Run the local maintenance loop: decay, stale marking, quarantine promotion.
+
+        When ``consolidate`` is set, also run the umbrella-merge pass that folds
+        overlapping active skills into a single canonical skill (archiving the
+        rest as ``deprecated``) so the store doesn't bloat with near-duplicates.
+        """
+        stats = {
             "decayed": self.backend.decay_confidence(
                 weeks=weeks, decay_rate=decay_rate
             ),
@@ -522,3 +529,8 @@ class LearnKit:
                 min_age_hours=quarantine_hours
             ),
         }
+        if consolidate:
+            merged = consolidate_skills(self.backend)
+            stats["consolidated_clusters"] = merged["clusters"]
+            stats["consolidated_archived"] = merged["archived"]
+        return stats
