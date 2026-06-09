@@ -1,0 +1,20 @@
+flowchart TD
+    A[User Task] -->|task string| B[LearnKit.agent wrapper]
+    B -->|prepare_run task| C[Classifier classify_task]
+    C -->|ClassificationOutput domains/task_type| D[SemanticRetriever.retrieve]
+    D -->|query/domain/scope| E[Backend search/hybrid_search]
+    E -->|candidate MemoryRecords| F[MemoryRouter.route]
+    F -->|top records bounded by count and token budget| G[determine_inference_mode]
+    G -->|mode value| H[compose_context]
+    H -->|_learnkit_context string| I[Wrapped agent function]
+    I -->|system+user prompt| J[LLM Provider]
+    J -->|response text| K[finalize_run]
+    K -->|trajectory + response| L[Evaluator.evaluate_with_llm_judge]
+    L -->|score/reasoning| M{score >= threshold}
+    M -->|yes| N[MemoryDistiller.distill]
+    N -->|skill/facts/failures/trace| O[memory_quality.decide_storage]
+    M -->|no| P[MemoryDistiller.distill_failure]
+    P -->|FailureRecord active| O
+    O -->|store/reinforce/demote decisions| Q[Backend add/replace/update]
+    Q -->|persisted records| R[(SQLite records + FTS + optional vec)]
+    K -->|final response| S[Caller receives output]

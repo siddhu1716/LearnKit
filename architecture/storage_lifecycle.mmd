@@ -1,0 +1,23 @@
+flowchart LR
+    A[Distilled Record Candidate] -->|Pydantic schema validation| B[Typed MemoryRecord]
+    B -->|initial status by type| C{Record type}
+
+    C -->|skill/fact/strategy/preference/heuristic| D[status quarantine]
+    C -->|failure/trace| E[status active]
+
+    D -->|maintain_memory promote_quarantined after min hours| F[status active]
+    E --> F
+
+    F -->|retrieval usage successful| G[reinforce confidence/reuse_count]
+    F -->|retrieval usage harmful| H[demote confidence]
+    H -->|harmful hits threshold| I[status quarantine]
+
+    F -->|TTL expired| J[status stale]
+    J -->|maintenance decay or revive by update| K[may return active]
+
+    F -->|consolidation merge losers| L[status deprecated]
+
+    G --> M[(Backend persisted row)]
+    I --> M
+    J --> M
+    L --> M

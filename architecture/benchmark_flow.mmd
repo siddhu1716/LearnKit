@@ -1,0 +1,24 @@
+flowchart TD
+    A[CLI python -m benchmarks.run_custom] -->|args seeds/tasks/splits/warm-splits| B[load_tasks from benchmarks/tasks]
+    B -->|domain task lists| C[Loop domains and seeds]
+
+    C --> D[Control Arm]
+    D -->|system prompt + task prompt| E[call_agent litellm]
+    E -->|response usage latency| F[score via graders]
+    F -->|record row| G[append control record]
+
+    C --> H[Treatment Arm]
+    H -->|initialize LearnKit sqlite db| I[warm phase optional]
+    I -->|warm task prompts| J[memory.agent ask]
+    J -->|distilled memory persisted| K[scored treatment loop]
+    K -->|response + attribution + context chars| F
+    F -->|record row| L[append treatment record]
+
+    G --> M[summarize]
+    L --> M
+    M -->|raw rows| N[results run_id raw.json]
+    M -->|aggregates| O[results run_id summary.json]
+    M -->|human report| P[results run_id summary.md]
+    M -->|time series| Q[results run_id compounding.csv]
+    N -->|post hoc| R[attribution_summary.py]
+    R -->|harmful_retrieval_rate wrong_primary_rate| S[contamination diagnostics]

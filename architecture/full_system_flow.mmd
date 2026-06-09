@@ -1,0 +1,70 @@
+flowchart TB
+    subgraph Entry[Entry and Integration]
+        A1[User App or Framework]
+        A2[Adapters langchain langgraph autogen openai_raw]
+        A3[LearnKit.agent decorator]
+        A1 --> A2 --> A3
+    end
+
+    subgraph Online[Online Request Path]
+        B1[prepare_run]
+        B2[classifier.py TaskClassifier]
+        B3[retriever.py SemanticRetriever]
+        B4[router.py MemoryRouter]
+        B5[inference_mode.py]
+        B6[composer.py compose_context]
+        B7[Agent function call]
+        B8[LLM call via provider]
+        B9[finalize_run]
+        A3 --> B1
+        B1 --> B2 --> B3 --> B4 --> B5 --> B6 --> B7 --> B8 --> B9
+    end
+
+    subgraph Post[Post Process and Learning]
+        C1[evaluator.py score]
+        C2{Quality pass}
+        C3[distiller.py distill]
+        C4[distiller.py distill_failure]
+        C5[memory_quality.py decide_storage]
+        C6[attribution.py build_attribution]
+        C7[trajectory.py capture]
+        B9 --> C1 --> C2
+        C2 -->|yes| C3 --> C5
+        C2 -->|no| C4 --> C5
+        B1 --> C6
+        B1 --> C7
+    end
+
+    subgraph Storage[Persistence and Retrieval Substrate]
+        D1[backends.registry get_backend]
+        D2[backends.sqlite SQLiteBackend]
+        D3[(records table)]
+        D4[(records_fts FTS5)]
+        D5[(records_vec optional sqlite-vec)]
+        D6[skills_loader seed_bundled_skills]
+        D7[consolidation consolidate_skills]
+        D8[cli maintain command]
+        C5 --> D1 --> D2
+        D2 --> D3
+        D2 --> D4
+        D2 --> D5
+        D6 --> D2
+        D8 --> D2
+        D8 --> D7 --> D2
+        D2 -->|search results| B3
+    end
+
+    subgraph Benchmark[Benchmark Harness]
+        E1[benchmarks run_custom run_slr_bench run_pbebench]
+        E2[tasks jsonl]
+        E3[graders deterministic scoring]
+        E4[attribution_summary]
+        E5[results raw json summary md csv]
+        E1 --> E2
+        E1 -->|control and treatment outputs| E3
+        E3 --> E5
+        E5 --> E4
+        E1 -->|treatment uses| A3
+    end
+
+    B9 -->|response text| A1
