@@ -1,6 +1,7 @@
 from typing import List, Optional, Tuple
 
 from .compressor import CHARS_PER_TOKEN
+from .diversity import mmr_order
 from .schemas.base import MemoryRecord
 
 # ReasoningBank (ICLR 2026, arXiv 2509.25140) Finding 1:
@@ -42,13 +43,24 @@ class MemoryRouter:
     Filters and limits the retrieved records before injection into context.
     """
 
-    def __init__(self, max_records: int = 8, max_tokens: int = 1200):
+    def __init__(
+        self,
+        max_records: int = 8,
+        max_tokens: int = 1200,
+        diversity_lambda: float = 0.7,
+    ):
         if max_records < 1:
             raise ValueError("max_records must be >= 1")
         if max_tokens < 1:
             raise ValueError("max_tokens must be >= 1")
+        if not 0.0 <= diversity_lambda <= 1.0:
+            raise ValueError("diversity_lambda must be in [0.0, 1.0]")
         self.max_records = max_records
         self.max_tokens = max_tokens
+        # MMR relevance/diversity trade-off applied before the bounded-budget
+        # admission loop. 1.0 disables diversity (pure confidence order); lower
+        # values spend the budget on less-redundant records. See diversity.py.
+        self.diversity_lambda = diversity_lambda
 
     def route(self, records: List[MemoryRecord]) -> List[MemoryRecord]:
         """
@@ -81,6 +93,18 @@ class MemoryRouter:
             unique.append(r)
 
         ranked = sorted(unique, key=_injection_score, reverse=True)
+
+        # Diversity-aware admission (ported from ruflo SmartRetrieval / ADR-090).
+        # Re-order candidates by MMR so near-duplicate records don't fill the
+        # bounded budget and crowd out complementary context. The seed is still
+        # the highest-_injection_score record, so the PRIMARY slot is preserved.
+        if self.diversity_lambda < 1.0 and len(ranked) > 1:
+            ranked = mmr_order(
+                ranked,
+                relevance_of=_injection_score,
+                text_of=_record_text,
+                lambda_=self.diversity_lambda,
+            )
 
         max_chars = self.max_tokens * CHARS_PER_TOKEN
         routed: List[MemoryRecord] = []
@@ -137,6 +161,23 @@ def _apply_k1_split(records: List[MemoryRecord]) -> List[MemoryRecord]:
     if primary is None:
         return records
     return [primary] + secondary
+
+
+def _record_text(record: MemoryRecord) -> str:
+    """Flatten a record's task type, domains and content into one string.
+
+    Used by the MMR diversity pass to measure token-Jaccard overlap between
+    candidate records. Mirrors the retriever's record-text extraction.
+    """
+    parts = [record.task_type or "", " ".join(record.domains.keys())]
+    for value in record.content.values():
+        if isinstance(value, list):
+            parts.append(" ".join(str(item) for item in value))
+        elif isinstance(value, dict):
+            parts.append(" ".join(str(item) for item in value.values()))
+        else:
+            parts.append(str(value))
+    return " ".join(parts)
 
 
 def _estimated_chars(record: MemoryRecord) -> int:

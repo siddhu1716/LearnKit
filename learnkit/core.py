@@ -53,10 +53,13 @@ class LearnKit:
         background_postprocess: bool = True,
         max_workers: int = 4,
         auto_promote: bool = False,
+        diversity_lambda: float = 0.7,
         **backend_kwargs,
     ):
         self.backend = get_backend(memory_backend, **backend_kwargs)
-        self.router = MemoryRouter(max_records=8, max_tokens=1200)
+        self.router = MemoryRouter(
+            max_records=8, max_tokens=1200, diversity_lambda=diversity_lambda
+        )
         self.retriever = SemanticRetriever(backend=self.backend, embedder=embedder)
         self.classifier = classifier or classify_task
         self.evaluator = evaluator or Evaluator()
