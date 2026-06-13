@@ -1,0 +1,28 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+
+.small .label { font-size: 0.75rem; }
+.medium .label { font-size: 0.875rem; }
+.large .label { font-size: 1rem; }
+
+.barTrack {
+  height: 3px;
+  background: var(--border);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  min-width: 60px;
+}
+
+.barFill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.4s var(--ease);
+}
