@@ -1,3 +1,5 @@
+import math
+from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 
 from .compressor import CHARS_PER_TOKEN
@@ -33,16 +35,49 @@ _TYPE_BONUS: dict[str, float] = {
     "failure": 0.0,
 }
 
+# Recency tie-breaker (ported from ruflo's importance ranking,
+# context-persistence-hook.computeImportance: recency x frequency x richness).
+# Among comparable-confidence records, prefer the one reinforced/created more
+# recently. Exponential decay with a 7-day half-life. The weight is kept well
+# below _TYPE_BONUS so confidence and type still dominate — a clearly
+# higher-confidence record always wins regardless of age. Set RECENCY_WEIGHT to
+# 0.0 to disable.
+RECENCY_WEIGHT: float = 0.05
+RECENCY_HALF_LIFE_DAYS: float = 7.0
+
+
+def _recency_boost(record: MemoryRecord, now: Optional[datetime] = None) -> float:
+    """Small freshness boost based on last_reinforced (or created_at) age.
+
+    Returns a value in [0, RECENCY_WEIGHT]; a brand-new/just-reinforced record
+    gets the full weight, decaying with a 7-day half-life. Returns 0.0 when no
+    usable timestamp is present so the score gracefully degrades to
+    confidence + type bonus.
+    """
+    if RECENCY_WEIGHT <= 0.0:
+        return 0.0
+    ts = getattr(record, "last_reinforced", None) or getattr(record, "created_at", None)
+    if not ts:
+        return 0.0
+    try:
+        when = datetime.fromisoformat(ts).replace(tzinfo=None)
+    except (ValueError, TypeError):
+        return 0.0
+    now = now or datetime.now(timezone.utc).replace(tzinfo=None)
+    age_days = max(0.0, (now - when).total_seconds() / 86400.0)
+    return RECENCY_WEIGHT * math.exp(-0.693 * age_days / RECENCY_HALF_LIFE_DAYS)
+
 
 def _injection_score(record: MemoryRecord) -> float:
     """Effective ranking score for the PRIMARY slot.
 
-    confidence + small additive bonus by type. Skills/heuristics/strategies
-    are preferred as PRIMARY when scores are within ~0.1 — a failure must
-    be meaningfully more confident to win the PRESCRIPTIVE slot, since
-    failures are warnings, not instructions.
+    confidence + small additive type bonus + small recency tie-breaker.
+    Skills/heuristics/strategies are preferred as PRIMARY when scores are
+    within ~0.1 — a failure must be meaningfully more confident to win the
+    PRESCRIPTIVE slot, since failures are warnings, not instructions. The
+    recency term only separates otherwise near-equal records.
     """
-    return record.confidence + _TYPE_BONUS.get(record.type, 0.0)
+    return record.confidence + _TYPE_BONUS.get(record.type, 0.0) + _recency_boost(record)
 
 
 class MemoryRouter:

@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import re
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 from .backends.base import BaseBackend
 from .schemas.base import MemoryRecord
@@ -163,7 +164,21 @@ def find_duplicate(
 
 
 def reinforce_existing(backend: BaseBackend, record: MemoryRecord, delta: float = 0.02) -> None:
-    backend.update_confidence(record.id, min(0.95, record.confidence + delta))
+    """Reinforce a record: raise confidence and refresh its recency signal.
+
+    Bumping ``last_reinforced`` (and ``reuse_count``) keeps the recency-aware
+    injection ranking meaningful — a memory that keeps proving useful stays
+    "fresh" instead of decaying on creation age alone. Falls back to a
+    confidence-only update if the record can't be round-tripped.
+    """
+    current = backend.read(record.id)
+    if current is None:
+        backend.update_confidence(record.id, min(0.95, record.confidence + delta))
+        return
+    current.confidence = min(0.95, current.confidence + delta)
+    current.reuse_count += 1
+    current.last_reinforced = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
+    backend.replace(current)
 
 
 def recover_existing_harm(backend: BaseBackend, record: MemoryRecord, step: int = 1) -> None:
@@ -211,6 +226,34 @@ def demote_existing(
     backend.replace(current)
 
 
+# recursive-improve's confidence-with-denominator principle
+# (recursive_improve/eval/detectors.py + harbor_compute_baselines.py): a single
+# bad outcome is weak evidence against a memory that already has a long,
+# successful track record. Below this many reuses a record is treated as
+# "directional-only" and demoted at full strength (new records must prove
+# themselves); once it crosses the threshold, transient negative signals are
+# damped in proportion to its historical success so one noisy task-mismatch
+# can't tank an established skill.
+MIN_TRIALS_FOR_FULL_CONFIDENCE = 5
+
+
+def _demotion_scale(record: MemoryRecord) -> float:
+    """Return a demotion multiplier in [0.4, 1.0] based on the record's history.
+
+    New/unproven records demote at full strength. A well-reused record with a
+    high rolling ``success_rate`` resists single-trial demotion (floored at
+    0.4 so a genuinely-degrading skill still loses confidence over time).
+    """
+    reuse = getattr(record, "reuse_count", 0) or 0
+    if reuse < MIN_TRIALS_FOR_FULL_CONFIDENCE:
+        return 1.0
+    success = getattr(record, "success_rate", None)
+    if success is None:
+        return 1.0
+    # success in [0,1]: a 0.9-success skill gets ~0.46 demotion, 0.5 gets ~0.7.
+    return max(0.4, 1.0 - 0.6 * float(success))
+
+
 def apply_retrieval_feedback(
     backend: BaseBackend,
     record: MemoryRecord,
@@ -227,7 +270,9 @@ def apply_retrieval_feedback(
     - < 2.5: strong negative signal, stronger demotion.
 
     PRIMARY records receive slightly larger absolute updates because they have
-    disproportionate influence on downstream behavior.
+    disproportionate influence on downstream behavior. Demotions are scaled by
+    the record's track record (see ``_demotion_scale``) so a proven memory isn't
+    punished for a single noisy outcome.
     """
     if eval_score >= 4.5:
         reinforce_existing(backend, record, delta=0.03 if primary else 0.02)
@@ -237,10 +282,11 @@ def apply_retrieval_feedback(
         reinforce_existing(backend, record, delta=0.02 if primary else 0.01)
         recover_existing_harm(backend, record, step=1)
         return
+    scale = _demotion_scale(record)
     if eval_score >= 2.5:
-        demote_existing(backend, record, delta=0.05 if primary else 0.03)
+        demote_existing(backend, record, delta=(0.05 if primary else 0.03) * scale)
         return
-    demote_existing(backend, record, delta=0.08 if primary else 0.05)
+    demote_existing(backend, record, delta=(0.08 if primary else 0.05) * scale)
 
 
 def _tokens(text: str) -> list[str]:
