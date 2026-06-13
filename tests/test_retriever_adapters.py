@@ -76,6 +76,58 @@ def test_semantic_retriever_dense_rerank_without_lexical_overlap():
     assert results[0].id == target.id
 
 
+def test_semantic_retriever_rrf_fusion_prefers_cross_signal_candidate():
+    def embedder(text):
+        text = text.lower()
+        if "deadlock" in text:
+            return [1.0, 0.0]
+        if "spawn" in text:
+            return [0.95, 0.05]
+        if "contract" in text:
+            return [0.0, 1.0]
+        return [0.0, 0.0]
+
+    backend = SQLiteBackend(":memory:")
+    lexical_dense_overlap = SkillRecord(
+        domains={"coding": 0.9},
+        task_type="spawn_deadlock_fix",
+        content={"steps": ["set spawn start method to avoid deadlocks"]},
+        confidence=0.7,
+    )
+    lexical_only = SkillRecord(
+        domains={"coding": 0.9},
+        task_type="deadlock_keyword_only",
+        content={"steps": ["deadlock deadlock deadlock"]},
+        confidence=0.6,
+    )
+    dense_only = SkillRecord(
+        domains={"coding": 0.9},
+        task_type="spawn_semantic_only",
+        content={"steps": ["set spawn multiprocessing method"]},
+        confidence=0.6,
+    )
+    distractor = SkillRecord(
+        domains={"coding": 0.9},
+        task_type="contract_summary",
+        content={"steps": ["extract contract terms"]},
+        confidence=0.9,
+    )
+    backend.add(lexical_dense_overlap)
+    backend.add(lexical_only)
+    backend.add(dense_only)
+    backend.add(distractor)
+
+    retriever = SemanticRetriever(
+        backend=backend,
+        embedder=embedder,
+        dense_weight=0.5,
+        fusion_strategy="rrf",
+    )
+    results = retriever.retrieve("thread deadlock", {"coding": 0.9})
+
+    assert results[0].id == lexical_dense_overlap.id
+
+
 def test_openai_raw_adapter_injects_context_and_finalizes():
     lk = build_learnkit()
     seen = {}

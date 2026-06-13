@@ -1,6 +1,7 @@
 import math
 
 from .backends.base import BaseBackend
+from .diversity import reciprocal_rank_fusion
 from .logging import get_logger
 from .router import CONFIDENCE_FLOOR
 from .schemas.base import MemoryRecord
@@ -13,10 +14,17 @@ class SemanticRetriever:
     Semantic Retriever for fetching past memories relevant to a task.
     """
 
-    def __init__(self, backend: BaseBackend, embedder=None, dense_weight: float = 0.5):
+    def __init__(
+        self,
+        backend: BaseBackend,
+        embedder=None,
+        dense_weight: float = 0.5,
+        fusion_strategy: str = "weighted",
+    ):
         self.backend = backend
         self.embedder = embedder
         self.dense_weight = dense_weight
+        self.fusion_strategy = fusion_strategy
         # Cache of record embeddings keyed by record id. Each entry stores the
         # text that was embedded so a record whose content changed is re-embedded
         # rather than served a stale vector. Bounded to avoid unbounded growth.
@@ -93,8 +101,15 @@ class SemanticRetriever:
         # composer regardless of their FTS5 surface-match score.
         # sql06 regressed (5.0→2.0) because a confidence=0.5 upsert skill
         # matched gap-detection keywords and was injected into an unrelated task.
+        floor = CONFIDENCE_FLOOR
+        if router is not None and hasattr(router, "confidence_floor_for_domain"):
+            try:
+                floor = float(router.confidence_floor_for_domain(domain))
+            except Exception:
+                floor = CONFIDENCE_FLOOR
+
         before = len(results)
-        results = [r for r in results if r.confidence >= CONFIDENCE_FLOOR]
+        results = [r for r in results if r.confidence >= floor]
         dropped = before - len(results)
         if dropped:
             logger.warning(
@@ -102,7 +117,8 @@ class SemanticRetriever:
                 extra={
                     "event": "confidence_floor_drop",
                     "dropped": dropped,
-                    "floor": CONFIDENCE_FLOOR,
+                    "floor": floor,
+                    "domain": domain,
                 },
             )
 
@@ -124,6 +140,8 @@ class SemanticRetriever:
                 record.id: 1.0 / (i + 1) for i, record in enumerate(candidates)
             }
             scored = []
+            lexical_ranked: list[tuple[float, MemoryRecord]] = []
+            dense_ranked: list[tuple[float, MemoryRecord]] = []
 
             for record in candidates:
                 record_vec = self._embed_record(record)
@@ -133,11 +151,32 @@ class SemanticRetriever:
                 lexical_score = getattr(
                     record, "_bm25_score", bm25_rank.get(record.id, 0.0)
                 )
+                lexical_ranked.append((lexical_score, record))
+                dense_ranked.append((dense_score, record))
 
                 score = ((1 - self.dense_weight) * lexical_score) + (
                     self.dense_weight * dense_score
                 )
                 scored.append((score, record.confidence, record))
+
+            if self.fusion_strategy == "rrf":
+                lexical_order = [
+                    record
+                    for _, record in sorted(
+                        lexical_ranked, key=lambda item: (item[0], item[1].confidence), reverse=True
+                    )
+                ]
+                dense_order = [
+                    record
+                    for _, record in sorted(
+                        dense_ranked, key=lambda item: (item[0], item[1].confidence), reverse=True
+                    )
+                ]
+                fused = reciprocal_rank_fusion(
+                    [lexical_order, dense_order],
+                    key_of=lambda r: r.id,
+                )
+                return fused[:limit]
 
             scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
             return [record for _, _, record in scored[:limit]]

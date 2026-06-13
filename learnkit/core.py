@@ -17,7 +17,7 @@ from .errors import PostProcessError
 from .evaluator import Evaluator
 from .inference_mode import determine_inference_mode
 from .logging import get_logger
-from .memory_quality import decide_storage, demote_existing, reinforce_existing
+from .memory_quality import apply_retrieval_feedback, decide_storage, demote_existing, reinforce_existing
 from .retriever import SemanticRetriever
 from .router import MemoryRouter
 from .schemas.base import MemoryScope
@@ -54,13 +54,18 @@ class LearnKit:
         max_workers: int = 4,
         auto_promote: bool = False,
         diversity_lambda: float = 0.7,
+        retrieval_fusion: str = "weighted",
         **backend_kwargs,
     ):
         self.backend = get_backend(memory_backend, **backend_kwargs)
         self.router = MemoryRouter(
             max_records=8, max_tokens=1200, diversity_lambda=diversity_lambda
         )
-        self.retriever = SemanticRetriever(backend=self.backend, embedder=embedder)
+        self.retriever = SemanticRetriever(
+            backend=self.backend,
+            embedder=embedder,
+            fusion_strategy=retrieval_fusion,
+        )
         self.classifier = classifier or classify_task
         self.evaluator = evaluator or Evaluator()
         self.distiller = distiller or MemoryDistiller()
@@ -290,7 +295,7 @@ class LearnKit:
                 "success" if eval_result.score >= self.quality_threshold else "failure"
             )
             self._reinforce_or_demote_retrieved(
-                retrieved_records or [], eval_result.score >= self.quality_threshold
+                retrieved_records or [], eval_result.score
             )
 
             if eval_result.score >= self.quality_threshold:
@@ -390,20 +395,21 @@ class LearnKit:
         except Exception as e:
             raise PostProcessError(f"Post-processing failed: {e}") from e
 
-    def _reinforce_or_demote_retrieved(self, records: list, success: bool) -> None:
-        """Update confidence for memories that were actually used in a run."""
+    def _reinforce_or_demote_retrieved(self, records: list, eval_score: float) -> None:
+        """Update retrieved-memory confidence with graded outcome feedback."""
         seen: set[str] = set()
-        for record in records:
+        for idx, record in enumerate(records):
             if record.id in seen:
                 continue
             seen.add(record.id)
             try:
-                if success:
-                    current = self.backend.read(record.id) or record
-                    current.reinforce(quality=5.0)
-                    self.backend.replace(current)
-                else:
-                    demote_existing(self.backend, record, delta=0.05)
+                apply_retrieval_feedback(
+                    self.backend,
+                    record,
+                    eval_score=eval_score,
+                    quality_threshold=self.quality_threshold,
+                    primary=(idx == 0),
+                )
             except Exception as e:
                 logger.warning(
                     "Retrieved-memory confidence update failed",

@@ -166,6 +166,24 @@ def reinforce_existing(backend: BaseBackend, record: MemoryRecord, delta: float 
     backend.update_confidence(record.id, min(0.95, record.confidence + delta))
 
 
+def recover_existing_harm(backend: BaseBackend, record: MemoryRecord, step: int = 1) -> None:
+    """Decrease harmful-hit pressure for a record after a strong positive outcome.
+
+    Harmful-hit quarantine is sticky by design, but a memory that starts helping
+    again should be able to recover gradually rather than staying permanently
+    penalized. This function decrements ``_harmful_hits`` (if present) and keeps
+    the value non-negative.
+    """
+    current = backend.read(record.id)
+    if current is None:
+        return
+    hits = int(current.content.get("_harmful_hits", 0))
+    if hits <= 0:
+        return
+    current.content["_harmful_hits"] = max(0, hits - max(1, step))
+    backend.replace(current)
+
+
 def demote_existing(
     backend: BaseBackend,
     record: MemoryRecord,
@@ -191,6 +209,38 @@ def demote_existing(
     if hits >= harm_threshold and current.status == "active":
         current.status = "quarantine"
     backend.replace(current)
+
+
+def apply_retrieval_feedback(
+    backend: BaseBackend,
+    record: MemoryRecord,
+    eval_score: float,
+    quality_threshold: float,
+    primary: bool = False,
+) -> None:
+    """Apply graded, outcome-aware confidence updates for a retrieved record.
+
+    Score bands:
+    - >= 4.5: strong positive signal, reinforce and recover harmful pressure.
+    - >= quality_threshold: positive signal, light reinforce.
+    - >= 2.5: weak negative signal, light demotion.
+    - < 2.5: strong negative signal, stronger demotion.
+
+    PRIMARY records receive slightly larger absolute updates because they have
+    disproportionate influence on downstream behavior.
+    """
+    if eval_score >= 4.5:
+        reinforce_existing(backend, record, delta=0.03 if primary else 0.02)
+        recover_existing_harm(backend, record, step=2 if primary else 1)
+        return
+    if eval_score >= quality_threshold:
+        reinforce_existing(backend, record, delta=0.02 if primary else 0.01)
+        recover_existing_harm(backend, record, step=1)
+        return
+    if eval_score >= 2.5:
+        demote_existing(backend, record, delta=0.05 if primary else 0.03)
+        return
+    demote_existing(backend, record, delta=0.08 if primary else 0.05)
 
 
 def _tokens(text: str) -> list[str]:

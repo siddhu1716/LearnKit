@@ -11,6 +11,14 @@ from .schemas.base import MemoryRecord
 # a PRESCRIPTIVE label. All remaining records (up to 7) are SECONDARY.
 CONFIDENCE_FLOOR: float = 0.45
 
+DOMAIN_CONFIDENCE_FLOORS: dict[str, float] = {
+    # Higher-risk domains where wrong pattern retrievals can be expensive.
+    "sql_authoring": 0.55,
+    "database": 0.55,
+    # Coding tasks often have many near-matches; modestly stricter floor.
+    "coding": 0.50,
+}
+
 # Type bonus for PRIMARY-slot ranking. Prescriptive records (skills/heuristics/
 # strategies) get a small additive bonus so a comparable-confidence skill
 # beats a same-confidence failure. A clearly higher-confidence failure
@@ -48,6 +56,7 @@ class MemoryRouter:
         max_records: int = 8,
         max_tokens: int = 1200,
         diversity_lambda: float = 0.7,
+        domain_confidence_floors: Optional[dict[str, float]] = None,
     ):
         if max_records < 1:
             raise ValueError("max_records must be >= 1")
@@ -61,6 +70,15 @@ class MemoryRouter:
         # admission loop. 1.0 disables diversity (pure confidence order); lower
         # values spend the budget on less-redundant records. See diversity.py.
         self.diversity_lambda = diversity_lambda
+        self.domain_confidence_floors = dict(DOMAIN_CONFIDENCE_FLOORS)
+        if domain_confidence_floors:
+            self.domain_confidence_floors.update(domain_confidence_floors)
+
+    def confidence_floor_for_domain(self, domain: Optional[str]) -> float:
+        """Return the confidence floor for a top domain (or global default)."""
+        if not domain:
+            return CONFIDENCE_FLOOR
+        return self.domain_confidence_floors.get(domain, CONFIDENCE_FLOOR)
 
     def route(self, records: List[MemoryRecord]) -> List[MemoryRecord]:
         """

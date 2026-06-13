@@ -5,9 +5,11 @@ from __future__ import annotations
 from learnkit.backends.sqlite import SQLiteBackend
 from learnkit.memory_quality import (
     HARMFUL_HITS_QUARANTINE,
+    apply_retrieval_feedback,
     decide_storage,
     demote_existing,
     is_general,
+    recover_existing_harm,
 )
 from learnkit.schemas.fact import FactRecord
 from learnkit.schemas.skill import SkillRecord
@@ -129,3 +131,81 @@ def test_demote_existing_quarantines_after_repeated_harm():
     assert final.status == "quarantine"
     assert final.content.get("_harmful_hits") == HARMFUL_HITS_QUARANTINE
     assert final.confidence < skill.confidence
+
+
+def test_recover_existing_harm_decrements_counter():
+    backend = _backend()
+    skill = SkillRecord(
+        domains={"coding": 0.9},
+        task_type="sql_upsert",
+        content={"steps": ["use INSERT ON CONFLICT for upserts"], "_harmful_hits": 3},
+        confidence=0.8,
+        status="active",
+    )
+    backend.add(skill)
+
+    recover_existing_harm(backend, skill, step=2)
+    refreshed = backend.read(skill.id)
+    assert refreshed.content.get("_harmful_hits") == 1
+
+
+def test_apply_retrieval_feedback_strong_success_reinforces_and_recovers_harm():
+    backend = _backend()
+    skill = SkillRecord(
+        domains={"coding": 0.9},
+        task_type="debug_python_error",
+        content={"steps": ["inspect traceback"], "_harmful_hits": 2},
+        confidence=0.6,
+        status="active",
+    )
+    backend.add(skill)
+
+    apply_retrieval_feedback(
+        backend,
+        skill,
+        eval_score=4.8,
+        quality_threshold=3.5,
+        primary=True,
+    )
+    refreshed = backend.read(skill.id)
+    assert refreshed.confidence > 0.6
+    assert refreshed.content.get("_harmful_hits") == 0
+
+
+def test_apply_retrieval_feedback_strong_failure_demotes_more_for_primary():
+    backend = _backend()
+    primary = SkillRecord(
+        domains={"coding": 0.9},
+        task_type="primary",
+        content={"steps": ["primary step"]},
+        confidence=0.8,
+        status="active",
+    )
+    secondary = SkillRecord(
+        domains={"coding": 0.9},
+        task_type="secondary",
+        content={"steps": ["secondary step"]},
+        confidence=0.8,
+        status="active",
+    )
+    backend.add(primary)
+    backend.add(secondary)
+
+    apply_retrieval_feedback(
+        backend,
+        primary,
+        eval_score=2.0,
+        quality_threshold=3.5,
+        primary=True,
+    )
+    apply_retrieval_feedback(
+        backend,
+        secondary,
+        eval_score=2.0,
+        quality_threshold=3.5,
+        primary=False,
+    )
+
+    p_after = backend.read(primary.id)
+    s_after = backend.read(secondary.id)
+    assert p_after.confidence < s_after.confidence

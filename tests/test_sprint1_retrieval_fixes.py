@@ -19,6 +19,7 @@ import pytest
 
 from learnkit.router import (
     CONFIDENCE_FLOOR,
+    DOMAIN_CONFIDENCE_FLOORS,
     MemoryRouter,
     _apply_k1_split,
     rank_for_injection,
@@ -226,6 +227,34 @@ class TestConfidenceFloor:
             domain_vector={"sql_authoring": 0.9},
         )
         assert results == []
+
+    def test_router_domain_floor_for_sql_is_stricter_than_default(self):
+        router = MemoryRouter()
+        assert router.confidence_floor_for_domain("sql_authoring") == pytest.approx(
+            DOMAIN_CONFIDENCE_FLOORS["sql_authoring"]
+        )
+        assert router.confidence_floor_for_domain(None) == pytest.approx(CONFIDENCE_FLOOR)
+
+    def test_retriever_uses_router_domain_floor_when_provided(self):
+        from learnkit.retriever import SemanticRetriever
+
+        mock_backend = MagicMock()
+        # 0.50 passes global 0.45 but fails sql_authoring floor (0.55)
+        mid = _make_skill(0.50, "mid_conf_sql")
+        high = _make_skill(0.90, "high_conf_sql")
+        mock_backend.search.return_value = [high, mid]
+
+        retriever = SemanticRetriever(backend=mock_backend)
+        router = MemoryRouter()
+        results = retriever.retrieve(
+            task="gap detection query",
+            domain_vector={"sql_authoring": 0.9},
+            router=router,
+        )
+
+        returned_ids = {r.id for r in results}
+        assert high.id in returned_ids
+        assert mid.id not in returned_ids
 
 
 # ══════════════════════════════════════════════════════════════════════════════
