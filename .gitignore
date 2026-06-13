@@ -5,6 +5,12 @@ __pycache__/
 *.so
 .Python
 
+# Node.js
+node_modules/
+dist/
+.eslintcache
+
+
 # Distribution / packaging
 build/
 dist/
