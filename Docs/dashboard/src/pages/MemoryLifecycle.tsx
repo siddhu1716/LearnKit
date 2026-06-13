@@ -117,7 +117,7 @@ export const MemoryLifecycle: React.FC = () => {
                         Injected: {new Date(q.createdAt).toLocaleDateString()}
                       </span>
                     </div>
-                    <Button variant="accent" size="sm" onClick={() => handleManualPromote(q.id)}>
+                    <Button variant="primary" size="sm" onClick={() => handleManualPromote(q.id)}>
                       Promote Now
                     </Button>
                   </div>

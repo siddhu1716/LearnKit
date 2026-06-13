@@ -522,7 +522,7 @@ export const client = {
             // Decay more if it has high harmCount or low retrievalCount
             if (r.harmCount > 2) decayAmount = 0.15;
             const newConf = Math.max(0.1, r.confidence - decayAmount);
-            let newStatus = r.status;
+            let newStatus: MemoryRecord['status'] = r.status;
             if (newConf < 0.3) {
               newStatus = 'stale';
               staledCount++;

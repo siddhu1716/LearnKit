@@ -10,16 +10,31 @@ export interface ToastMessage {
   variant?: ToastVariant;
 }
 
-interface ToastContainerProps {
-  toasts: ToastMessage[];
-  onDismiss: (id: string) => void;
-}
+import { useState } from 'react';
 
-export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onDismiss }) => {
+export const ToastContainer: React.FC = () => {
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  const handleDismiss = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  const handleAdd = useCallback((msg: Omit<ToastMessage, 'id'>) => {
+    const newToast: ToastMessage = {
+      ...msg,
+      id: Math.random().toString(36).slice(2, 9),
+    };
+    setToasts((prev) => [...prev, newToast]);
+  }, []);
+
+  useEffect(() => {
+    registerToastFn(handleAdd);
+  }, [handleAdd]);
+
   return createPortal(
     <div className={styles.container} role="region" aria-label="Notifications" aria-live="polite">
       {toasts.map((t) => (
-        <Toast key={t.id} toast={t} onDismiss={onDismiss} />
+        <Toast key={t.id} toast={t} onDismiss={handleDismiss} />
       ))}
     </div>,
     document.body

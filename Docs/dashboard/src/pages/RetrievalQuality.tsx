@@ -241,7 +241,7 @@ export const RetrievalQuality: React.FC = () => {
                 <Button variant="secondary" size="sm" onClick={() => navigate(`/memory?type=all`)}>
                   View
                 </Button>
-                <Button variant="accent" size="sm" onClick={() => handleConsolidate(item.id, item.competitorId)}>
+                <Button variant="primary" size="sm" onClick={() => handleConsolidate(item.id, item.competitorId)}>
                   Consolidate with {item.competitorId}
                 </Button>
               </div>
