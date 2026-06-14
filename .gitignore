@@ -72,4 +72,10 @@ benchmarks/swe_bench_lite/pytest_repo/
 benchmarks/swe_bench_lite/*.jsonl
 logs/
 *.json
+!package.json
+!package-lock.json
+!tsconfig.json
+
+# Node
+node_modules/
 
