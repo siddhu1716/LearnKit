@@ -82,6 +82,29 @@ LearnKit now exposes **two distinct learning entrypoints**, sharing one memory s
 - Not yet validated against a real tool-using LLM agent (only the deterministic harness).
 - No on-disk `SKILL.md` library export/import (Hermes persists skills as directories; LearnKit keeps them in the record store).
 
+## 2026-06-20 Update: True-Learning Loop Status (Delta)
+
+This section captures what changed after AP7-live and what is now proven vs still open.
+
+- **Phase 1 complete:** reflective playbook authoring and accumulation on procedural skills.
+  - Distiller reflection (`reflect_procedure`) writes `playbook` / `pitfalls`.
+  - Cross-session accumulation merged into `reinforce_or_refine`.
+- **Phase 2 complete:** deterministic capture guardrails.
+  - `learnkit/playbook.py` now filters non-durable bullets (env/setup failures,
+    negative tool claims, transient errors, one-off narration, malformed length).
+- **Critical loop fix complete:** playbook is now injected into live guided context.
+  - Previously write-only (stored/exported but not injected).
+  - `composer._format_record_verbose` now renders `playbook` and `pitfalls`.
+- **Quality proof complete (application):** `benchmarks/injection_ablation.py`.
+  - 3-arm live ablation: `cold` vs `procedure` vs `playbook` over novel sibling tasks.
+  - Result (Qwen2.5-7B): procedure-only was weak; playbook arm reached full compliance.
+
+What this means:
+
+- Replay and procedure scaffolding reduce cost (caching/memoization).
+- Injected playbook can improve behavior on non-replayed siblings (learning-by-injection).
+- Remaining bottleneck is **playbook authoring quality**, not loop plumbing.
+
 ## Consolidated Program Flow
 
 ```mermaid
@@ -168,7 +191,12 @@ Net-new workstream from the 2026-06-20 update. Shares the W1–W3 substrate (sto
 - AP6 Argument parameterization / templating (`arg_template` slot markers at capture, `replay.bind_args` re-binding on replay). — DONE
 - AP7 Agentic benchmark family (`benchmarks/agentic_bench.py`): cold vs warmed arms, exact-repeat + parameterized-sibling + unrelated tasks, tool-calls/task + success + arg-correctness. — DONE (deterministic harness: warmed 3.83 vs cold 4.83 calls/task, −21%, 6/6 success incl. correct re-bound args)
 - AP7-live Live-LLM ReAct benchmark (`benchmarks/react_live.py`) on Qwen2.5-7B-Instruct (hermes tool parser): cold vs warmed with exact-match hard-replay. — DONE. Result: **LLM planning calls 21 → 8 (−62%)**, tool-calls/task 3.50 → 3.00 (−14%), success 6/6. Honest finding: on simple tasks a competent live model has little exploration to cut, so the dominant win is *eliminating planning/LLM calls* by hard-replaying exact re-encounters (zero-LLM), not tool-call reduction.
-- AP8 On-disk `SKILL.md` library export/import (Hermes-style). — OPTIONAL
+- AP8 Reflective playbook layer (model-authored natural-language know-how on procedures). — DONE
+- AP9 Deterministic capture guardrails for playbook quality (`playbook.py` filters). — DONE
+- AP10 Learning-loop closure: inject playbook/pitfalls in composed context. — DONE
+- AP11 Injection quality ablation (`benchmarks/injection_ablation.py`) proving playbook effect on novel siblings. — DONE
+- AP12 Reflection-quality hardening (semantic dedup + richer authoring tasks + stricter reflection eval). — TODO
+- AP13 On-disk `SKILL.md` library import path (export exists). — OPTIONAL
 
 ## Prioritized Roadmap
 

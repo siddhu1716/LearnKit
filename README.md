@@ -25,6 +25,11 @@ Every time your agent runs, LearnKit:
 
 Over time, the agent builds a compounding **“wiki” of expertise** — without retraining the underlying model.
 
+LearnKit now supports two learning paths:
+
+- `@memory.learn` / `@memory.agent` (model path): retrieves distilled context and injects `_learnkit_context`.
+- `@memory.agent_learn` (tool-using path): captures tool trajectories via `_learnkit_tools`, stores procedural skills, replays exact matches, and guides sibling tasks.
+
 ---
 
 # Core Philosophy
@@ -123,6 +128,27 @@ my_agent("Debug a Python multiprocessing deadlock on macOS")
 
 Valid `scope` values: `"user"`, `"team"`, `"public"` (see `learnkit/schemas/base.py`).
 
+## Tool-using agents (`@memory.agent_learn`)
+
+For agents that call tools, use the procedural path:
+
+```python
+import learnkit as lk
+
+memory = lk.LearnKit(memory_backend="sqlite", scope="team")
+
+@memory.agent_learn(domain="pipeline")
+def my_tool_agent(task: str, _learnkit_context: str = "", _learnkit_tools=None) -> str:
+    # Record every tool call so LearnKit can learn/replay the productive procedure.
+    rows = _learnkit_tools.record("query", {"table": "users"}, "rows")
+    _learnkit_tools.record("format", {"fmt": "csv"}, "done")
+    return "report ready"
+```
+
+This path supports exact replay (zero-LLM for exact re-encounters) and guided sibling reuse.
+
+See `benchmarks/injection_ablation.py` for a quality-focused ablation that isolates the effect of playbook injection on novel sibling tasks.
+
 ---
 
 # Integrate with LangChain
@@ -218,4 +244,11 @@ pre-commit install
 
 # Status
 
-**v0.0.2 — Live Pre-Release.** The full ingest / query / maintain loop runs end-to-end with SQLite + FTS5 + DSPy classifier + LLM-judge evaluator + structured distiller. Published and installable from PyPI as `learnkit-ai`! See [`AGENTS_V2.md`](AGENTS_V2.md) for the production hardening plan and [`improvements.md`](improvements.md) for the open backlog.
+**v0.0.2 — Live Pre-Release.** The full ingest / query / maintain loop runs end-to-end with SQLite + FTS5 + DSPy classifier + LLM-judge evaluator + structured distiller, and includes an agentic procedural-learning path (`@memory.agent_learn`) with replay and guided sibling reuse. Published and installable from PyPI as `learnkit-ai`.
+
+Latest benchmark highlights:
+
+- Live ReAct (`benchmarks/react_live.py`): LLM planning calls reduced 21 -> 8 (about 62%) with success held.
+- Injection ablation (`benchmarks/injection_ablation.py`): on novel sibling tasks, procedure-only guidance was weak while playbook injection reached full compliance in the observed run.
+
+See [`benchmarks/README.md`](benchmarks/README.md) for benchmark coverage and run commands.

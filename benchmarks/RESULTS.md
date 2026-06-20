@@ -7,6 +7,41 @@
 
 ---
 
+## 2026-06-20 Agent-path Update: Injection Quality Ablation
+
+Question tested: does the agent truly learn from accumulated knowledge, or only
+replay cached procedures more cheaply?
+
+Benchmark: `benchmarks/injection_ablation.py` (live Qwen2.5-7B, 8 novel sibling
+tasks, no exact replay), three arms:
+
+- `cold`: base system only
+- `procedure`: tool scaffold only (sequence guidance)
+- `playbook`: scaffold plus natural-language playbook/pitfalls
+
+Scored conventions per task (0..3):
+
+1. filter active records (`filter active='true'`)
+2. include record count (`aggregate op='count'`)
+3. output TSV (`format fmt='tsv'`)
+
+Observed result:
+
+| Arm | Avg score /3 | Full compliance (3/3) |
+|---|---|---|
+| cold | 0.50 | 0/8 |
+| procedure | 0.75 | 0/8 |
+| playbook | 3.00 | 8/8 |
+
+Interpretation: procedure scaffold alone gave minimal quality lift; playbook
+injection provided the decisive gain on non-replayed siblings. This is evidence
+of learning-by-injection, not just memoization.
+
+Limits: this run used curated playbook bullets to isolate application quality.
+Reflection-authoring quality remains a separate measurement target.
+
+---
+
 ## Headline
 
 | Domain | Control mean | Treatment mean | Δ score | Relative |
