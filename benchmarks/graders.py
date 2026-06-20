@@ -43,8 +43,37 @@ def grade_contract_task(prompt: str, response: str) -> float:
             
     return round((matched / len(facts)) * 5.0, 2)
 
-def _grade_python_by_pattern(pattern: str, prompt: str, code_lower: str) -> float:
+def _grade_python_by_pattern(
+    pattern: str, prompt: str, code_lower: str, response_lower: str = ""
+) -> float:
     """Grade a Python answer against the construct its correct pattern requires."""
+    if pattern == "tz_aware_datetime":
+        # Partial-credit rubric (graded on the FULL response, not just the code
+        # block) so a correct prose answer is not zeroed for a missing fence, and
+        # small improvements are measurable. The learnable idiom: use timezone-
+        # aware UTC (datetime.now(timezone.utc) / zoneinfo / astimezone) and never
+        # the naive datetime.utcnow()/utcfromtimestamp(), because the underlying
+        # bug is mixing offset-naive and offset-aware datetimes.
+        text = response_lower or code_lower
+        s = 0.0
+        # correct aware-UTC idiom (judged on the code that was actually written)
+        if any(t in code_lower for t in ("timezone.utc", "zoneinfo", "astimezone")) or (
+            "pytz" in code_lower and "utc" in code_lower
+        ):
+            s += 2.0
+        # the written code does not call the naive deprecated constructors
+        # (a prose "never use utcnow()" must not be penalized — hence code_lower)
+        if "utcnow(" not in code_lower and "utcfromtimestamp(" not in code_lower:
+            s += 1.5
+        # diagnoses the naive-vs-aware root cause (judged on the full response)
+        if any(
+            tok in text
+            for tok in ("naive", "aware", "tzinfo", "offset-naive", "without a timezone", "without timezone")
+        ):
+            s += 1.0
+        if "datetime" in code_lower and ("def " in code_lower or "import" in code_lower or "=" in code_lower):
+            s += 0.5
+        return round(min(s, 5.0), 2)
     if pattern == "mutable_default_arg":
         if "none" in code_lower and ("is none" in code_lower or "== none" in code_lower or "not" in code_lower):
             return 5.0
@@ -84,7 +113,7 @@ def grade_python_task(task_id: str, prompt: str, response: str, pattern: str | N
     # makes harm measurable: a contamination task baits the wrong skill via
     # surface vocabulary, but the grader still rewards only the right fix.
     if pattern:
-        return _grade_python_by_pattern(pattern, prompt, code_lower)
+        return _grade_python_by_pattern(pattern, prompt, code_lower, response.lower())
 
     # Identify pattern type
     # mutable default arg

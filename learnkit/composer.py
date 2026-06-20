@@ -83,12 +83,23 @@ def _format_record_verbose(record: MemoryRecord) -> str:
         steps = record.content.get("steps", [])
         tools = record.content.get("tools_used", [])
         failures = record.content.get("failure_modes", [])
+        procedure = record.content.get("procedure", [])
         confidence_pct = int(record.confidence * 100)
         reuses = record.reuse_count
         block = f"SKILL — {record.task_type} (confidence {confidence_pct}%, used {reuses} times):"
-        if steps:
+        if procedure:
+            # Procedural (agent path): render the captured tool-call sequence.
+            block += "\n  Proven tool procedure:"
+            for i, p in enumerate(procedure):
+                tool = p.get("tool", "tool")
+                args = p.get("args")
+                line = f"\n    {i+1}. {tool}"
+                if args:
+                    line += f"({args})"
+                block += line
+        elif steps:
             block += "\n" + "\n".join(f"  {i+1}. {s}" for i, s in enumerate(steps))
-        if tools:
+        if tools and not procedure:
             block += f"\n  Tools: {', '.join(tools)}"
         if failures:
             block += "\n  Watch out for: " + "; ".join(failures)

@@ -254,12 +254,65 @@ def _demotion_scale(record: MemoryRecord) -> float:
     return max(0.4, 1.0 - 0.6 * float(success))
 
 
+# Utility gate (MemRL ValueAwareSelector Q-value + Self-RAG [Utility] critique).
+# Self-RAG learns a per-generation utility score and a retrieval threshold;
+# MemRL keeps a per-memory Q-value EMA and abstains below a floor. We combine
+# both into a per-record utility EMA, updated from the SAME graded outcome that
+# drives confidence, but with the reward CENTERED at the quality threshold so a
+# merely-passing outcome is neutral (not rewarded). This separates "reliable in
+# general" (confidence) from "actually helped when injected" (utility), which is
+# what catches the on-topic-but-unneeded harm mode the relevance gate cannot.
+UTILITY_ALPHA = 0.3        # EMA step size (MemRL alpha)
+UTILITY_PRIOR = 0.2        # optimistic init so new records get explored
+UTILITY_MIN_TRIALS = 2     # don't gate before this many graded exposures
+
+
+def _utility_reward(eval_score: float, quality_threshold: float) -> float:
+    """Map a graded outcome to a reward in [-1, 1] centered at the threshold.
+
+    A merely-passing outcome (== threshold) is neutral (0.0); a perfect outcome
+    is +1.0; a zero outcome is -1.0. Centering at the threshold means a record
+    that only ever sustains borderline-passing outcomes drifts toward 0 — and
+    below the gate — rather than being mistaken for a useful memory.
+    """
+    if eval_score >= quality_threshold:
+        denom = max(1e-6, 5.0 - quality_threshold)
+        return min(1.0, (eval_score - quality_threshold) / denom)
+    denom = max(1e-6, quality_threshold)
+    return max(-1.0, (eval_score - quality_threshold) / denom)
+
+
+def update_utility(
+    backend: BaseBackend,
+    record: MemoryRecord,
+    eval_score: float,
+    quality_threshold: float,
+    alpha: float = UTILITY_ALPHA,
+    prior: float = UTILITY_PRIOR,
+) -> None:
+    """EMA-update a retrieved record's utility (MemRL Q-value, Self-RAG utility).
+
+    Persisted on the record content as ``_utility``/``_utility_trials`` so it
+    survives without a schema change and can gate future injection.
+    """
+    current = backend.read(record.id)
+    if current is None:
+        return
+    reward = _utility_reward(eval_score, quality_threshold)
+    u_old = float(current.content.get("_utility", prior))
+    trials = int(current.content.get("_utility_trials", 0))
+    current.content["_utility"] = (1.0 - alpha) * u_old + alpha * reward
+    current.content["_utility_trials"] = trials + 1
+    backend.replace(current)
+
+
 def apply_retrieval_feedback(
     backend: BaseBackend,
     record: MemoryRecord,
     eval_score: float,
     quality_threshold: float,
     primary: bool = False,
+    update_util: bool = True,
 ) -> None:
     """Apply graded, outcome-aware confidence updates for a retrieved record.
 
@@ -273,7 +326,19 @@ def apply_retrieval_feedback(
     disproportionate influence on downstream behavior. Demotions are scaled by
     the record's track record (see ``_demotion_scale``) so a proven memory isn't
     punished for a single noisy outcome.
+
+    When ``update_util`` is False the utility EMA is left untouched here, so a
+    caller that drives utility from a more trustworthy external outcome signal
+    (e.g. a test-pass / grader result rather than an LLM judging its own output)
+    can keep confidence on the judge while sourcing utility from the true signal.
     """
+    # Outcome-aware utility EMA (MemRL Q-value / Self-RAG [Utility]). Updated on
+    # every graded retrieval — runs first so the confidence updates below read
+    # and preserve the freshly-written utility on the record content. This is the
+    # signal the retriever's utility gate reads to suppress records that keep
+    # proving unhelpful for the contexts they actually match.
+    if update_util:
+        update_utility(backend, record, eval_score, quality_threshold)
     if eval_score >= 4.5:
         reinforce_existing(backend, record, delta=0.03 if primary else 0.02)
         recover_existing_harm(backend, record, step=2 if primary else 1)

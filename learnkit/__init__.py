@@ -2,7 +2,11 @@
 LearnKit — agent-agnostic self-improving memory SDK.
 
 Public surface:
-    LearnKit          — main class + @lk.agent decorator (Phase 3)
+    LearnKit          — main class
+                        @lk.learn       — model path (single-turn, text memory)
+                        @lk.agent_learn — agent path (Hermes-style, tool-call capture)
+                        @lk.agent       — backward-compatible alias of @lk.learn
+    ToolTracker       — tool-call capture instrument for the agent path
     Trajectory        — trajectory capture
     MemoryRecord      — base record type
     SkillRecord       — skill memory type
@@ -31,6 +35,7 @@ from .schemas.skill import SkillRecord
 from .schemas.strategy import StrategyRecord
 from .schemas.trace import TraceRecord
 from .skills_loader import seed_bundled_skills
+from .tool_tracker import ToolTracker
 from .trajectory import Trajectory, TrajectoryStep
 
 __version__ = "0.0.3"
@@ -54,4 +59,5 @@ __all__ = [
     "InferenceMode",
     "determine_inference_mode",
     "seed_bundled_skills",
+    "ToolTracker",
 ]

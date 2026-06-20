@@ -1,8 +1,10 @@
 import math
+import os
 
 from .backends.base import BaseBackend
 from .diversity import reciprocal_rank_fusion
 from .logging import get_logger
+from .memory_quality import UTILITY_MIN_TRIALS, UTILITY_PRIOR
 from .router import CONFIDENCE_FLOOR
 from .schemas.base import MemoryRecord
 
@@ -20,11 +22,49 @@ class SemanticRetriever:
         embedder=None,
         dense_weight: float = 0.5,
         fusion_strategy: str = "weighted",
+        relevance_floor: float | None = None,
+        utility_floor: float | None = None,
     ):
         self.backend = backend
         self.embedder = embedder
         self.dense_weight = dense_weight
         self.fusion_strategy = fusion_strategy
+        # Query-time relevance gate (adapted from MemRL ValueAwareSelector's
+        # τ-on-simmax abstention). When set, the retriever injects NOTHING for a
+        # task whose best record match is below this cosine floor — even if the
+        # record's STORED confidence clears CONFIDENCE_FLOOR. Stored confidence
+        # says a record is reliable in general; it does not say it is relevant
+        # to THIS task. Without this gate a confident-but-off-topic skill is
+        # injected into tasks the base model already handles, which is the
+        # dominant observed harm mode (already-correct answers dragged down).
+        # None disables the gate (default), preserving prior behaviour.
+        if relevance_floor is None:
+            env = os.environ.get("LEARNKIT_RELEVANCE_FLOOR")
+            if env:
+                try:
+                    relevance_floor = float(env)
+                except ValueError:
+                    relevance_floor = None
+        self.relevance_floor = relevance_floor
+        # Query-time utility gate (MemRL Q-value / Self-RAG [Utility]). When set,
+        # records whose learned utility EMA has dropped below this floor (after
+        # UTILITY_MIN_TRIALS graded exposures) are dropped from injection. Unlike
+        # the relevance gate (off-topic), this catches ON-topic records that hurt
+        # because the base model did not need them. None disables it (default).
+        if utility_floor is None:
+            env = os.environ.get("LEARNKIT_UTILITY_FLOOR")
+            if env:
+                try:
+                    utility_floor = float(env)
+                except ValueError:
+                    utility_floor = None
+        self.utility_floor = utility_floor
+        self.utility_min_trials = int(
+            os.environ.get("LEARNKIT_UTILITY_MIN_TRIALS", UTILITY_MIN_TRIALS)
+        )
+        self.utility_prior = float(
+            os.environ.get("LEARNKIT_UTILITY_PRIOR", UTILITY_PRIOR)
+        )
         # Cache of record embeddings keyed by record id. Each entry stores the
         # text that was embedded so a record whose content changed is re-embedded
         # rather than served a stale vector. Bounded to avoid unbounded growth.
@@ -121,6 +161,74 @@ class SemanticRetriever:
                     "domain": domain,
                 },
             )
+
+        # Utility gate (MemRL Q-value / Self-RAG [Utility]): drop records whose
+        # learned utility EMA has proven low. This is a PER-RECORD filter (not
+        # all-or-nothing): a record is removed only once it has accumulated
+        # >= utility_min_trials graded exposures AND its utility is below the
+        # floor, so new/unproven records are still explored (optimistic prior).
+        # Catches the on-topic-but-unneeded harm the relevance gate cannot.
+        if self.utility_floor is not None and results:
+            kept: list = []
+            for r in results:
+                content = getattr(r, "content", {}) or {}
+                trials = int(content.get("_utility_trials", 0))
+                util = float(content.get("_utility", self.utility_prior))
+                if trials >= self.utility_min_trials and util < self.utility_floor:
+                    logger.info(
+                        "Utility gate dropped low-value record",
+                        extra={
+                            "event": "utility_gate_drop",
+                            "record_id": getattr(r, "id", ""),
+                            "utility": round(util, 4),
+                            "trials": trials,
+                            "floor": self.utility_floor,
+                        },
+                    )
+                    continue
+                kept.append(r)
+            results = kept
+
+        # Relevance gate (MemRL τ-on-simmax, adapted): abstain from injecting
+        # ANYTHING when the strongest task<->record cosine match is below the
+        # configured floor. The confidence floor above filters records by how
+        # reliable they are in general; this gate filters by how relevant the
+        # best surviving record is to THIS task, which is what actually predicts
+        # whether injection helps or hurts. Disabled when relevance_floor is
+        # None or no embedder is available (cosine needs vectors).
+        if self.relevance_floor is not None and results and self.embedder is not None:
+            simmax = None
+            try:
+                query_vec = self.embedder(task)
+                simmax = max(_cosine(query_vec, self._embed_record(r)) for r in results)
+            except Exception as e:
+                logger.warning(
+                    "Relevance gate skipped (embedding failed)",
+                    extra={"event": "relevance_gate_skip", "error_type": type(e).__name__},
+                )
+            if simmax is not None:
+                if os.environ.get("LEARNKIT_RELEVANCE_DEBUG"):
+                    logger.info(
+                        "Relevance gate simmax",
+                        extra={
+                            "event": "relevance_gate_simmax",
+                            "simmax": round(simmax, 4),
+                            "floor": self.relevance_floor,
+                            "n": len(results),
+                            "domain": domain,
+                        },
+                    )
+                if simmax < self.relevance_floor:
+                    logger.info(
+                        "Relevance gate abstained (weak match)",
+                        extra={
+                            "event": "relevance_gate_abstain",
+                            "simmax": round(simmax, 4),
+                            "floor": self.relevance_floor,
+                            "domain": domain,
+                        },
+                    )
+                    return []
 
         if router:
             results = router.route(results)

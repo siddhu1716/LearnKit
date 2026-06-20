@@ -88,6 +88,38 @@ def _build_distiller():
     return MemoryDistiller(lm=lm)
 
 
+_EMBEDDER_SINGLETON = None
+
+
+def _build_embedder():
+    """Local sentence-transformers embedder, cached as a singleton.
+
+    Returns a Callable[[str], list[float]] or None when embeddings are disabled
+    (LEARNKIT_USE_EMBEDDER unset/0) or sentence-transformers is unavailable.
+    The embedder enables hybrid retrieval AND the query-time relevance gate
+    (LEARNKIT_RELEVANCE_FLOOR), which both need vectors.
+    """
+    if os.environ.get("LEARNKIT_USE_EMBEDDER", "0") not in ("1", "true", "True"):
+        return None
+    global _EMBEDDER_SINGLETON
+    if _EMBEDDER_SINGLETON is not None:
+        return _EMBEDDER_SINGLETON
+    try:
+        from sentence_transformers import SentenceTransformer
+    except ImportError:
+        print("  [embedder] sentence-transformers not installed; running lexical-only")
+        return None
+    model_name = os.environ.get("LEARNKIT_EMBED_MODEL", "all-MiniLM-L6-v2")
+    model = SentenceTransformer(model_name)
+
+    def _embed(text: str) -> list[float]:
+        return model.encode(text, normalize_embeddings=True).tolist()
+
+    _EMBEDDER_SINGLETON = _embed
+    return _embed
+
+
+
 DOMAIN_SYSTEM_PROMPTS = {
     "python_debugging": (
         "You are a senior Python engineer. Answer in <= 5 sentences. "
@@ -114,7 +146,9 @@ def call_agent(
 ) -> tuple[str, dict, float]:
     """Single LLM call with retry/backoff. Returns (text, usage_dict, latency_s)."""
     global _last_call_time
-    min_interval = 4.2
+    # Inter-call throttle guards cloud rate limits (e.g. Gemini 503s). A local
+    # vLLM/sglang endpoint needs no such gap, so make it env-configurable.
+    min_interval = float(os.environ.get("LEARNKIT_MIN_CALL_INTERVAL", "4.2"))
     elapsed = time.time() - _last_call_time
     if elapsed < min_interval:
         time.sleep(min_interval - elapsed)
@@ -248,6 +282,7 @@ def run_treatment(
         background_postprocess=False,  # sync so task N+1 sees task N's distillation
         auto_promote=True,  # bypass 24h quarantine for online benchmark learning
         distiller=_build_distiller(),
+        embedder=_build_embedder(),
     )
 
     context_holder: dict = {"chars": 0}
@@ -278,6 +313,12 @@ def run_treatment(
         print(f"    {i:2d}/{len(tasks)} {t['id']}", end="", flush=True)
         resp = ask(t["prompt"])
         s, reason = score(domain, t["id"], t["prompt"], resp, pattern=t.get("pattern"))
+        # When utility is sourced externally, feed the deterministic grader score
+        # (the true objective, a production analog of a real test/accept signal)
+        # into the retrieved records' utility EMA so the utility gate is driven by
+        # ground truth rather than the model's own (harm-blind) LLM judge.
+        if os.environ.get("LEARNKIT_UTILITY_EXTERNAL", "").lower() in ("1", "true", "yes"):
+            memory.apply_external_outcome(s)
         ctx = context_holder.get("chars", 0)
         usage = context_holder.get(
             "usage", {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}

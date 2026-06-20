@@ -9,6 +9,7 @@ A single-page marketing site for LearnKit + a live **Playground** that runs the 
 | `index.html` | The page. Cream/serif/mono aesthetic, no build step. |
 | `server.py` | FastAPI app — serves the page and the `/api/inspect` endpoint. |
 | `data/playground_*.db` | SQLite memory stores pre-seeded with distilled records from the v0.1.0 benchmark run. One per domain. |
+| `LEARNKIT_CONSOLIDATED_FLOW_PLAN.md` | Master execution flow document that consolidates roadmap, backlog, benchmark gates, and cross-repo production additions. |
 | `.env.example` | Copy to `.env` to override defaults. Gitignored. |
 
 ## How the Playground works

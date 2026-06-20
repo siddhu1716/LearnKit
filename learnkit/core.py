@@ -1,6 +1,7 @@
 import atexit
 import functools
 import hashlib
+import os
 import sys
 import threading
 import weakref
@@ -17,22 +18,29 @@ from .errors import PostProcessError
 from .evaluator import Evaluator
 from .inference_mode import determine_inference_mode
 from .logging import get_logger
-from .memory_quality import apply_retrieval_feedback, decide_storage, demote_existing, reinforce_existing
+from .memory_quality import apply_retrieval_feedback, decide_storage, demote_existing, reinforce_existing, update_utility
+from .procedural import extract_procedure, procedure_fingerprint
 from .retriever import SemanticRetriever
 from .router import MemoryRouter
 from .schemas.base import MemoryScope
+from .tool_tracker import ToolTracker
 from .trajectory import Trajectory
 
 logger = get_logger("core")
 
 
 def _skill_fingerprint(skill) -> str:
-    """Compute a stable fingerprint for a SkillRecord's step sequence.
+    """Compute a stable fingerprint for a SkillRecord.
 
-    AWM + Voyager pattern: prevents storing near-duplicate skills from
-    similar trajectories. Steps are normalized (lowercased, stripped) before
-    hashing so minor wording variations don't bypass dedup.
+    Procedural skills (agent path) fingerprint on their captured tool-call
+    sequence — two trajectories that invoke the same tools in the same order are
+    the same procedure. Declarative skills (model path) fall back to the AWM +
+    Voyager step-sequence hash. Steps are normalized (lowercased, stripped)
+    before hashing so minor wording variations don't bypass dedup.
     """
+    tool_sequence = skill.content.get("tool_sequence")
+    if tool_sequence:
+        return procedure_fingerprint(tool_sequence)
     steps = skill.content.get("steps", [])
     normalized = "|".join(s.strip().lower() for s in steps if isinstance(s, str))
     return hashlib.sha256(normalized.encode()).hexdigest()
@@ -55,6 +63,8 @@ class LearnKit:
         auto_promote: bool = False,
         diversity_lambda: float = 0.7,
         retrieval_fusion: str = "weighted",
+        relevance_floor: Optional[float] = None,
+        utility_floor: Optional[float] = None,
         **backend_kwargs,
     ):
         self.backend = get_backend(memory_backend, **backend_kwargs)
@@ -65,6 +75,8 @@ class LearnKit:
             backend=self.backend,
             embedder=embedder,
             fusion_strategy=retrieval_fusion,
+            relevance_floor=relevance_floor,
+            utility_floor=utility_floor,
         )
         self.classifier = classifier or classify_task
         self.evaluator = evaluator or Evaluator()
@@ -84,6 +96,16 @@ class LearnKit:
         self._attributions: Dict[str, dict] = {}
         self._trajectory_lock = threading.Lock()
         self._last_run_id: Optional[str] = None
+        self._last_records: list = []
+        # When True, the per-record utility EMA is NOT updated from the internal
+        # LLM judge during post-processing; instead a caller supplies a trusted
+        # external outcome via ``apply_external_outcome`` (e.g. a test/grader
+        # result). Confidence still tracks the judge. This separates "the judge
+        # liked the answer" (confidence) from "injecting this actually improved
+        # the real outcome" (utility), which is what the utility gate needs.
+        self.utility_external = os.environ.get(
+            "LEARNKIT_UTILITY_EXTERNAL", ""
+        ).lower() in ("1", "true", "yes")
         self._worker_pool = ThreadPoolExecutor(
             max_workers=max_workers, thread_name_prefix="LearnKitWorker"
         )
@@ -125,6 +147,44 @@ class LearnKit:
                 return self._attributions[self._last_run_id]
         return None
 
+    def apply_external_outcome(
+        self, eval_score: float, records: Optional[list] = None
+    ) -> int:
+        """Feed a trusted external outcome into the utility EMA of retrieved records.
+
+        Use this when a real, objective outcome signal is available (unit tests
+        passing, a deterministic grader, an explicit user accept/reject) instead
+        of relying on the model's own LLM judge — which cannot always see the
+        harm a needless injection causes. Updates the per-record utility that the
+        retriever's utility gate reads, without touching confidence.
+
+        Returns the number of records updated. Defaults to the records retrieved
+        on the most recent run.
+        """
+        recs = records if records is not None else list(self._last_records)
+        seen: set[str] = set()
+        n = 0
+        for record in recs:
+            rid = getattr(record, "id", None)
+            if rid is None or rid in seen:
+                continue
+            seen.add(rid)
+            try:
+                update_utility(
+                    self.backend, record, eval_score, self.quality_threshold
+                )
+                n += 1
+            except Exception as e:
+                logger.warning(
+                    "External utility update failed",
+                    extra={
+                        "event": "external_utility_update_fail",
+                        "record_id": rid,
+                        "error_type": type(e).__name__,
+                    },
+                )
+        return n
+
     def get_attribution(self, run_id: str) -> Optional[dict]:
         """Thread-safe access to a specific run's retrieval attribution."""
         with self._trajectory_lock:
@@ -139,6 +199,66 @@ class LearnKit:
             record.status = "active"
         return record
 
+    def _select_procedure(self, records):
+        """Pick the best learned procedure to replay for this run, if any.
+
+        Records are already ranked by the retriever/router, so the first
+        procedural skill that survived the gates is the best match. Returns
+        ``(procedure_steps, source_record_id)`` or ``(None, None)``.
+        """
+        for r in records or []:
+            if getattr(r, "type", None) == "skill" and r.content.get("procedure"):
+                return r.content["procedure"], r.id
+        return None, None
+
+    def _attach_procedure(self, skill, traj, domain_vector, score):
+        """Capture the executed tool-call sequence onto a procedural skill.
+
+        Agent path only. If ``traj`` has tool steps, attach the captured
+        ``procedure`` / ``tool_sequence`` to the distilled skill so it is stored
+        as a Hermes-style procedure rather than prose. If the prose distiller
+        returned no skill but a real tool workflow ran, build a minimal
+        procedural skill directly so the procedure is not lost.
+        """
+        captured = extract_procedure(traj)
+        if captured is None:
+            return skill  # no tool calls — model path, nothing to attach
+
+        if skill is None:
+            from .schemas.skill import SkillRecord
+
+            skill = SkillRecord(
+                domains=domain_vector,
+                task_type=traj.task[:80],
+                content={
+                    "steps": [],
+                    "tools_used": [],
+                    "constraints": [],
+                    "failure_modes": [],
+                },
+            )
+
+        skill.content["procedure"] = captured["procedure"]
+        skill.content["tool_sequence"] = captured["tool_sequence"]
+        skill.content.setdefault("trigger", f"Tasks like: {traj.task[:120]}")
+        # Keep tools_used aligned with the captured sequence (deduped, ordered).
+        seen: set[str] = set()
+        tools_used = []
+        for t in captured["tool_sequence"]:
+            if t not in seen:
+                seen.add(t)
+                tools_used.append(t)
+        skill.content["tools_used"] = tools_used
+        logger.info(
+            "Captured procedural skill from tool trajectory",
+            extra={
+                "event": "procedure_captured",
+                "tool_calls": captured["call_count"],
+                "tool_sequence": captured["tool_sequence"],
+            },
+        )
+        return skill
+
     def shutdown(self, wait: bool = True) -> None:
         """Drain the post-processing worker pool. Safe to call multiple times."""
         with self._shutdown_lock:
@@ -147,9 +267,13 @@ class LearnKit:
             self._is_shutdown = True
             self._worker_pool.shutdown(wait=wait)
 
-    def agent(self, domain: Optional[str] = None, task_type: Optional[str] = None):
-        """
-        Decorator that wraps any agent function with the full LearnKit loop.
+    def learn(self, domain: Optional[str] = None, task_type: Optional[str] = None):
+        """Model path — wrap a single-turn agent function with the LearnKit loop.
+
+        The wrapped function is treated as a black box: ``task`` in, answer string
+        out. Retrieved memory is injected as text via the ``_learnkit_context``
+        keyword, and only the final answer is judged and distilled. Use this for
+        models / single-shot generations that do not expose their tool calls.
         """
 
         def decorator(fn: Callable) -> Callable:
@@ -169,6 +293,64 @@ class LearnKit:
                     )
                     raise e
 
+                return self.finalize_run(run, result)
+
+            return wrapper
+
+        return decorator
+
+    # Backward-compatible alias. Existing call sites use ``@memory.agent(...)``.
+    agent = learn
+
+    def agent_learn(
+        self, domain: Optional[str] = None, task_type: Optional[str] = None
+    ):
+        """Agent path (Hermes-style) — wrap a tool-using agent and learn its
+        *procedure*, not just its final answer.
+
+        A :class:`~learnkit.tool_tracker.ToolTracker` is injected via the
+        ``_learnkit_tools`` keyword. The agent reports each tool call through it
+        (``tracker.record(...)`` or ``tracker.wrap(tool_fn)``), which records the
+        tool steps on the run's trajectory. On a successful run those steps are
+        distilled into a reusable procedural skill, and ``tracker.call_count``
+        exposes the tool-calls-per-task metric.
+
+        The wrapped function receives ``_learnkit_context`` (text memory) and
+        ``_learnkit_tools`` (the tracker). It still returns the final answer
+        string.
+        """
+
+        def decorator(fn: Callable) -> Callable:
+            @functools.wraps(fn)
+            def wrapper(task: str, *args, **kwargs) -> str:
+                run = self.prepare_run(task)
+                tracker = ToolTracker(run["trajectory"])
+
+                # Replay: if a previously-learned procedure matches this task,
+                # attach it so the agent can follow the proven tool sequence
+                # instead of re-deriving it (Hermes / AWM step-reduction).
+                proc, source_id = self._select_procedure(run["records"])
+                if proc:
+                    tracker.set_plan(proc, source_id=source_id)
+
+                enriched_kwargs = {
+                    **kwargs,
+                    "_learnkit_context": run["context"],
+                    "_learnkit_tools": tracker,
+                }
+                try:
+                    result = fn(task, *args, **enriched_kwargs)
+                except Exception as e:
+                    logger.warning(
+                        "Agent execution failed",
+                        extra={"event": "agent_crash", "error_type": type(e).__name__},
+                    )
+                    raise e
+
+                run["tool_calls"] = tracker.call_count
+                # Tool-success gate: gate storage/reinforcement on the real
+                # outcome (tools succeeded) rather than the harm-blind LLM judge.
+                run["outcome_score"] = tracker.outcome_score()
                 return self.finalize_run(run, result)
 
             return wrapper
@@ -216,6 +398,7 @@ class LearnKit:
             self._trajectories[traj.id] = traj
             self._attributions[traj.id] = attribution
             self._last_run_id = traj.id
+            self._last_records = records
 
         return {
             "classification": classification,
@@ -231,17 +414,36 @@ class LearnKit:
         traj = run["trajectory"]
         traj.add_step("assistant", response)
 
-        self._post_process(traj, run["domain_vector"], run.get("records", []))
+        self._post_process(
+            traj,
+            run["domain_vector"],
+            run.get("records", []),
+            override_score=run.get("outcome_score"),
+        )
         return response
 
-    def _post_process(self, traj: Trajectory, domain_vector: dict, retrieved_records=None):
+    def _post_process(
+        self,
+        traj: Trajectory,
+        domain_vector: dict,
+        retrieved_records=None,
+        override_score: Optional[float] = None,
+    ):
         if not self.background_postprocess:
-            self._post_process_now(traj, domain_vector, retrieved_records or [])
+            self._post_process_now(
+                traj, domain_vector, retrieved_records or [], override_score
+            )
             return
-        self._post_process_async(traj, domain_vector, retrieved_records or [])
+        self._post_process_async(
+            traj, domain_vector, retrieved_records or [], override_score
+        )
 
     def _post_process_async(
-        self, traj: Trajectory, domain_vector: dict, retrieved_records: list
+        self,
+        traj: Trajectory,
+        domain_vector: dict,
+        retrieved_records: list,
+        override_score: Optional[float] = None,
     ) -> None:
         """
         Quality gate + distillation. Runs after response returned to user.
@@ -249,10 +451,10 @@ class LearnKit:
         Falls back to sync if the pool has been drained (e.g. after shutdown).
         """
         if self._is_shutdown:
-            self._post_process_now(traj, domain_vector, retrieved_records)
+            self._post_process_now(traj, domain_vector, retrieved_records, override_score)
             return
         future = self._worker_pool.submit(
-            self._post_process_now, traj, domain_vector, retrieved_records
+            self._post_process_now, traj, domain_vector, retrieved_records, override_score
         )
 
         # Add a done callback to catch and log silent failures in the thread
@@ -271,7 +473,11 @@ class LearnKit:
         future.add_done_callback(_handle_result)
 
     def _post_process_now(
-        self, traj: Trajectory, domain_vector: dict, retrieved_records: list | None = None
+        self,
+        traj: Trajectory,
+        domain_vector: dict,
+        retrieved_records: list | None = None,
+        override_score: Optional[float] = None,
     ) -> None:
         # Interpreter is shutting down — dspy/litellm's own thread pool may already
         # be torn down (their atexit runs first since they're imported lazily on
@@ -287,22 +493,41 @@ class LearnKit:
             )
             return
         try:
-            eval_result = self.evaluator.evaluate_with_llm_judge(
-                task=traj.task, response=traj.steps[-1].content if traj.steps else ""
-            )
-            traj.quality_score = eval_result.score
+            # Agent path supplies a trusted outcome (tool success); model path
+            # falls back to the LLM judge. Gating on a real outcome signal is the
+            # core fix for the judge's harm-blindness on its own output.
+            if override_score is not None:
+                score = float(override_score)
+                logger.info(
+                    "Using external outcome score (tool-success gate)",
+                    extra={"event": "outcome_gate_external", "score": score},
+                )
+            else:
+                eval_result = self.evaluator.evaluate_with_llm_judge(
+                    task=traj.task, response=traj.steps[-1].content if traj.steps else ""
+                )
+                score = eval_result.score
+            traj.quality_score = score
             traj.outcome = (
-                "success" if eval_result.score >= self.quality_threshold else "failure"
+                "success" if score >= self.quality_threshold else "failure"
             )
             self._reinforce_or_demote_retrieved(
-                retrieved_records or [], eval_result.score
+                retrieved_records or [], score
             )
 
-            if eval_result.score >= self.quality_threshold:
+            if score >= self.quality_threshold:
                 skill, facts, failures, trace_record = self.distiller.distill(
                     trajectory=traj,
                     domain_vector=domain_vector,
-                    quality_score=eval_result.score,
+                    quality_score=score,
+                )
+                # Agent path (@lk.agent_learn): capture the executed tool-call
+                # sequence and store it as a procedural skill. If the prose
+                # distiller abstained (one-off task) but the agent still ran a
+                # real tool workflow that succeeded, build a procedural skill
+                # from the captured calls so the procedure is not lost.
+                skill = self._attach_procedure(
+                    skill, traj, domain_vector, score
                 )
                 if skill:
                     skill.scope = self.scope
@@ -348,7 +573,7 @@ class LearnKit:
                         )
                     else:
                         skill.content["_fingerprint"] = fp
-                        skill.content["_quality_score"] = eval_result.score
+                        skill.content["_quality_score"] = score
                         self._maybe_promote(skill)
                         self.backend.add(skill)
                 for fact in facts:
@@ -378,7 +603,7 @@ class LearnKit:
                 failure = self.distiller.distill_failure(
                     trajectory=traj,
                     domain_vector=domain_vector,
-                    quality_score=eval_result.score,
+                    quality_score=score,
                 )
                 if failure is None:
                     # Safe fallback: at minimum record that this task/approach failed
@@ -409,6 +634,7 @@ class LearnKit:
                     eval_score=eval_score,
                     quality_threshold=self.quality_threshold,
                     primary=(idx == 0),
+                    update_util=not self.utility_external,
                 )
             except Exception as e:
                 logger.warning(

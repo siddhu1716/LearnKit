@@ -22,6 +22,10 @@ class TrajectoryStep:
     tool_name: Optional[str] = None
     tool_input: Optional[dict] = None
     reasoning: Optional[str] = None  # CoT trace — CRITICAL per ReaComp
+    # productive=False marks a tool call as a dead-end/exploration step that did
+    # not contribute to the outcome, so it is excluded from the stored procedure
+    # (the cleaned successful path). Distinct from tool error/success.
+    productive: bool = True
     timestamp: str = field(default_factory=lambda: time.strftime("%Y-%m-%dT%H:%M:%SZ"))
 
 
