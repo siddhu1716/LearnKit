@@ -19,7 +19,13 @@ from .evaluator import Evaluator
 from .inference_mode import determine_inference_mode
 from .logging import get_logger
 from .memory_quality import apply_retrieval_feedback, decide_storage, demote_existing, reinforce_existing, update_utility
-from .procedural import extract_procedure, procedure_fingerprint
+from .procedural import (
+    extract_procedure,
+    match_kind,
+    procedure_fingerprint,
+    signature_coverage,
+    task_signature,
+)
 from .retriever import SemanticRetriever
 from .router import MemoryRouter
 from .schemas.base import MemoryScope
@@ -62,6 +68,7 @@ class LearnKit:
         max_workers: int = 4,
         auto_promote: bool = False,
         diversity_lambda: float = 0.7,
+        procedure_match_threshold: float = 0.7,
         retrieval_fusion: str = "weighted",
         relevance_floor: Optional[float] = None,
         utility_floor: Optional[float] = None,
@@ -91,6 +98,9 @@ class LearnKit:
         # on the next task. Use for benchmark/online-learning scenarios.
         self.auto_promote = auto_promote
 
+        # Agent path: minimum coverage of a stored procedure's task skeleton by
+        # the current task before it is eligible for replay (AP5 signature gate).
+        self.procedure_match_threshold = procedure_match_threshold
         # Concurrency safety: trajectory registry and bounded worker pool
         self._trajectories: Dict[str, Trajectory] = {}
         self._attributions: Dict[str, dict] = {}
@@ -199,17 +209,56 @@ class LearnKit:
             record.status = "active"
         return record
 
-    def _select_procedure(self, records):
+    def _select_procedure(self, records, task: Optional[str] = None):
         """Pick the best learned procedure to replay for this run, if any.
 
         Records are already ranked by the retriever/router, so the first
-        procedural skill that survived the gates is the best match. Returns
-        ``(procedure_steps, source_record_id)`` or ``(None, None)``.
+        procedural skill that survived the gates is the best candidate. When a
+        ``task`` is supplied, a task-signature gate (AP5) rejects a procedure
+        whose stored skeleton is not sufficiently present in the current task —
+        this stops the agent replaying the wrong proven sequence just because the
+        retriever ranked it highly. Returns ``(procedure_steps, source_id)`` or
+        ``(None, None)``.
         """
         for r in records or []:
-            if getattr(r, "type", None) == "skill" and r.content.get("procedure"):
-                return r.content["procedure"], r.id
+            if getattr(r, "type", None) != "skill" or not r.content.get("procedure"):
+                continue
+            if task is not None:
+                stored_sig = r.content.get("task_signature") or []
+                if signature_coverage(stored_sig, task) < self.procedure_match_threshold:
+                    logger.info(
+                        "Procedure rejected by signature gate",
+                        extra={
+                            "event": "procedure_signature_reject",
+                            "record_id": r.id,
+                            "stored_signature": stored_sig,
+                        },
+                    )
+                    continue
+            return r.content["procedure"], r.id
         return None, None
+
+    def _match_procedure(self, records, task: str):
+        """Like :meth:`_select_procedure` but also classifies the match strength.
+
+        Returns ``(kind, procedure_steps, source_id)`` where ``kind`` is
+        ``"exact"`` (same task — safe to hard-replay with no LLM), ``"sibling"``
+        (same family, different slot values — needs argument adaptation, better
+        used as guidance), or ``None`` (no usable procedure).
+        """
+        for r in records or []:
+            if getattr(r, "type", None) != "skill" or not r.content.get("procedure"):
+                continue
+            kind = match_kind(
+                r.content.get("task_signature") or [],
+                r.content.get("task_tokens") or [],
+                task,
+                threshold=self.procedure_match_threshold,
+            )
+            if kind is None:
+                continue
+            return kind, r.content["procedure"], r.id
+        return None, None, None
 
     def _attach_procedure(self, skill, traj, domain_vector, score):
         """Capture the executed tool-call sequence onto a procedural skill.
@@ -240,6 +289,8 @@ class LearnKit:
 
         skill.content["procedure"] = captured["procedure"]
         skill.content["tool_sequence"] = captured["tool_sequence"]
+        skill.content["task_signature"] = captured["task_signature"]
+        skill.content["task_tokens"] = captured["task_tokens"]
         skill.content.setdefault("trigger", f"Tasks like: {traj.task[:120]}")
         # Keep tools_used aligned with the captured sequence (deduped, ordered).
         seen: set[str] = set()
@@ -329,9 +380,10 @@ class LearnKit:
                 # Replay: if a previously-learned procedure matches this task,
                 # attach it so the agent can follow the proven tool sequence
                 # instead of re-deriving it (Hermes / AWM step-reduction).
-                proc, source_id = self._select_procedure(run["records"])
+                proc, source_id = self._select_procedure(run["records"], task=task)
                 if proc:
-                    tracker.set_plan(proc, source_id=source_id)
+                    kind, _, _ = self._match_procedure(run["records"], task)
+                    tracker.set_plan(proc, source_id=source_id, kind=kind)
 
                 enriched_kwargs = {
                     **kwargs,

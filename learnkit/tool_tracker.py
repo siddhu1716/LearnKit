@@ -63,6 +63,8 @@ class ToolTracker:
         # Plan (a retrieved procedure to replay), set by the agent path.
         self.plan_steps: list[dict] = []
         self.plan_source_id: Optional[str] = None
+        # "exact" (safe to hard-replay) | "sibling" (needs arg adaptation) | None
+        self.plan_kind: Optional[str] = None
 
     def record(
         self,
@@ -158,10 +160,19 @@ class ToolTracker:
         return 5.0 * self.tool_success_rate
 
     # ── Replay ──────────────────────────────────────────────────
-    def set_plan(self, procedure: list[dict], source_id: Optional[str] = None) -> None:
-        """Attach a retrieved procedure for the agent to replay."""
+    def set_plan(
+        self,
+        procedure: list[dict],
+        source_id: Optional[str] = None,
+        kind: Optional[str] = None,
+    ) -> None:
+        """Attach a retrieved procedure for the agent to replay. ``kind`` records
+        the match strength (``"exact"`` / ``"sibling"``) so the agent can choose
+        to hard-replay an exact match or merely follow a sibling as guidance.
+        """
         self.plan_steps = procedure or []
         self.plan_source_id = source_id
+        self.plan_kind = kind
         if self.plan_steps:
             logger.info(
                 "Procedure plan available for replay",
@@ -169,6 +180,7 @@ class ToolTracker:
                     "event": "plan_available",
                     "steps": len(self.plan_steps),
                     "source_id": source_id,
+                    "kind": kind,
                     "tools": [s.get("tool") for s in self.plan_steps],
                 },
             )

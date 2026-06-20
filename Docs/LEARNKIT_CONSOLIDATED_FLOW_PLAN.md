@@ -163,10 +163,11 @@ Net-new workstream from the 2026-06-20 update. Shares the W1–W3 substrate (sto
 - AP1 Tool-call capture + procedure cleaning (productive-path extraction). — DONE
 - AP2 Tool-success outcome gate (bypass harm-blind judge). — DONE
 - AP3 Procedure replay primitive (plan attach + follow). — DONE (manual follow)
-- AP4 Auto-short-circuit replay inside a standard agent loop (ReAct/LangChain/OpenAI Agents adapters). — TODO
-- AP5 Explicit task-signature / precondition match for procedure selection. — TODO
-- AP6 Argument parameterization / templating for generalization. — TODO
-- AP7 Agentic benchmark family (tool-calls/task, planning calls, latency, cost, success over repeats; cold vs warmed arms) against a live LLM agent. — TODO (seed: `benchmarks/run_agent_learn.py`)
+- AP4 Auto-short-circuit replay primitive (`learnkit/replay.py::replay_plan`) — framework-agnostic auto-execute of a captured plan with re-bound args. — DONE (primitive; ReAct/LangChain/OpenAI-Agents adapters still TODO)
+- AP5 Explicit task-signature match for procedure selection (`procedural.task_signature` / `signature_coverage`, coverage gate in `_select_procedure`, `procedure_match_threshold`). — DONE
+- AP6 Argument parameterization / templating (`arg_template` slot markers at capture, `replay.bind_args` re-binding on replay). — DONE
+- AP7 Agentic benchmark family (`benchmarks/agentic_bench.py`): cold vs warmed arms, exact-repeat + parameterized-sibling + unrelated tasks, tool-calls/task + success + arg-correctness. — DONE (deterministic harness: warmed 3.83 vs cold 4.83 calls/task, −21%, 6/6 success incl. correct re-bound args)
+- AP7-live Live-LLM ReAct benchmark (`benchmarks/react_live.py`) on Qwen2.5-7B-Instruct (hermes tool parser): cold vs warmed with exact-match hard-replay. — DONE. Result: **LLM planning calls 21 → 8 (−62%)**, tool-calls/task 3.50 → 3.00 (−14%), success 6/6. Honest finding: on simple tasks a competent live model has little exploration to cut, so the dominant win is *eliminating planning/LLM calls* by hard-replaying exact re-encounters (zero-LLM), not tool-call reduction.
 - AP8 On-disk `SKILL.md` library export/import (Hermes-style). — OPTIONAL
 
 ## Prioritized Roadmap
@@ -296,8 +297,8 @@ Exit criteria:
 
 ### Near-term (P1)
 
-- Agent path (`@lk.agent_learn`): graduate `run_agent_learn.py` to a real multi-step tool benchmark on a live LLM agent; report tool-calls/task and success over repeats (AP7).
-- Agent path: auto-short-circuit replay via a ReAct/LangChain/OpenAI-Agents adapter (AP4); explicit task-signature match (AP5); argument parameterization (AP6).
+- Agent path (`@lk.agent_learn`): graduate `benchmarks/agentic_bench.py` to a live LLM agent (e.g. ReAct on the Qwen endpoint); report tool-calls/task, planning calls, latency, and cost over repeats (AP7 live run).
+- Agent path: ship a ReAct/LangChain/OpenAI-Agents adapter that auto-invokes `replay_plan` inside a real tool loop (AP4 adapter). Signature match (AP5) and argument parameterization (AP6) are implemented; harden slot detection (current binder needs caller-supplied overrides for new slot values).
 - Snapshot/restore support in backend contract.
 - MCP tool surface for memory operations.
 - Strategy configuration abstraction for retrieval/build/update mode experiments.

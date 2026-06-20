@@ -7,6 +7,7 @@ Public surface:
                         @lk.agent_learn — agent path (Hermes-style, tool-call capture)
                         @lk.agent       — backward-compatible alias of @lk.learn
     ToolTracker       — tool-call capture instrument for the agent path
+    replay_plan       — auto-execute a captured procedure (agent-path replay)
     Trajectory        — trajectory capture
     MemoryRecord      — base record type
     SkillRecord       — skill memory type
@@ -35,6 +36,7 @@ from .schemas.skill import SkillRecord
 from .schemas.strategy import StrategyRecord
 from .schemas.trace import TraceRecord
 from .skills_loader import seed_bundled_skills
+from .replay import bind_args, replay_plan
 from .tool_tracker import ToolTracker
 from .trajectory import Trajectory, TrajectoryStep
 
@@ -60,4 +62,6 @@ __all__ = [
     "determine_inference_mode",
     "seed_bundled_skills",
     "ToolTracker",
+    "replay_plan",
+    "bind_args",
 ]
