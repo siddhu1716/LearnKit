@@ -84,6 +84,8 @@ def _format_record_verbose(record: MemoryRecord) -> str:
         tools = record.content.get("tools_used", [])
         failures = record.content.get("failure_modes", [])
         procedure = record.content.get("procedure", [])
+        playbook = record.content.get("playbook", [])
+        pitfalls = record.content.get("pitfalls", [])
         confidence_pct = int(record.confidence * 100)
         reuses = record.reuse_count
         block = f"SKILL — {record.task_type} (confidence {confidence_pct}%, used {reuses} times):"
@@ -101,8 +103,15 @@ def _format_record_verbose(record: MemoryRecord) -> str:
             block += "\n" + "\n".join(f"  {i+1}. {s}" for i, s in enumerate(steps))
         if tools and not procedure:
             block += f"\n  Tools: {', '.join(tools)}"
-        if failures:
-            block += "\n  Watch out for: " + "; ".join(failures)
+        # Accumulated natural-language know-how (Hermes "growing SKILL.md body").
+        # This is what makes the agent *smarter* about the class of task — not just
+        # cheaper at repeating it — so it must reach the model, not only the export.
+        if playbook:
+            block += "\n  Playbook (learned know-how):"
+            block += "".join(f"\n    - {p}" for p in playbook)
+        all_failures = list(failures) + list(pitfalls)
+        if all_failures:
+            block += "\n  Watch out for: " + "; ".join(all_failures)
         return block
 
     if record.type == "failure":

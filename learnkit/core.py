@@ -24,8 +24,15 @@ from .procedural import (
     match_kind,
     procedure_fingerprint,
     signature_coverage,
+    signature_fingerprint,
     task_signature,
 )
+from .procedure_evolution import (
+    demote_procedure,
+    find_family_procedure,
+    reinforce_or_refine,
+)
+from .playbook import merge_insights
 from .retriever import SemanticRetriever
 from .router import MemoryRouter
 from .schemas.base import MemoryScope
@@ -69,6 +76,7 @@ class LearnKit:
         auto_promote: bool = False,
         diversity_lambda: float = 0.7,
         procedure_match_threshold: float = 0.7,
+        reflect_procedures: bool = False,
         retrieval_fusion: str = "weighted",
         relevance_floor: Optional[float] = None,
         utility_floor: Optional[float] = None,
@@ -101,6 +109,10 @@ class LearnKit:
         # Agent path: minimum coverage of a stored procedure's task skeleton by
         # the current task before it is eligible for replay (AP5 signature gate).
         self.procedure_match_threshold = procedure_match_threshold
+        # Agent path: when True, a successful run also reflects on the trace to
+        # author/accumulate a natural-language *playbook* (Hermes-style growing
+        # skill body) alongside the captured procedure. Opt-in (LLM call).
+        self.reflect_procedures = reflect_procedures
         # Concurrency safety: trajectory registry and bounded worker pool
         self._trajectories: Dict[str, Trajectory] = {}
         self._attributions: Dict[str, dict] = {}
@@ -310,6 +322,108 @@ class LearnKit:
         )
         return skill
 
+    def _consolidate_procedure(self, skill, score: float) -> str:
+        """Store or evolve a procedural skill within its task-signature family.
+
+        If no family procedure exists yet, store this one as the family seed.
+        Otherwise reinforce the existing record (and refine it to a shorter path
+        if this run found one) instead of inserting a near-duplicate. This is the
+        institutional-knowledge mechanism: one durable, improving procedure per
+        task family rather than a pile of one-off captures.
+
+        Returns ``"stored"``, ``"reinforced"``, or ``"refined"``.
+        """
+        sig_fp = signature_fingerprint(skill.content.get("task_signature") or [])
+        skill.content["_signature_fp"] = sig_fp
+        existing = find_family_procedure(self.backend, sig_fp, self.scope)
+        if existing is None:
+            skill.content.setdefault("success_count", 1)
+            skill.content["_fingerprint"] = _skill_fingerprint(skill)
+            skill.content["_quality_score"] = score
+            self._maybe_promote(skill)
+            self.backend.add(skill)
+            logger.info(
+                "Stored new family procedure",
+                extra={"event": "procedure_family_seed", "signature_fp": sig_fp[:16]},
+            )
+            return "stored"
+        return reinforce_or_refine(self.backend, existing, skill.content, score)
+
+    def _reflect_playbook(self, skill, traj, domain_vector) -> None:
+        """Author the natural-language playbook for a procedural skill (opt-in).
+
+        Runs a single reflection LLM call to capture durable, class-level
+        knowledge (good sources, selection criteria, output conventions) and
+        pitfalls, and attaches them to ``skill.content``. The accumulation across
+        runs happens later in :func:`reinforce_or_refine`; here we only produce
+        this run's contribution. Best-effort: any failure leaves the procedure
+        stored without a playbook rather than blocking it.
+        """
+        if not self.reflect_procedures:
+            return
+        reflect = getattr(self.distiller, "reflect_procedure", None)
+        if not callable(reflect):
+            return
+        try:
+            result = reflect(
+                trajectory=traj,
+                tool_sequence=skill.content.get("tool_sequence") or [],
+                domain_vector=domain_vector,
+            )
+        except Exception as e:
+            logger.warning(
+                "Playbook reflection raised; storing procedure without playbook",
+                extra={"event": "reflect_error", "error_type": type(e).__name__},
+            )
+            return
+        if not isinstance(result, dict):
+            return
+        playbook = merge_insights(skill.content.get("playbook"), result.get("playbook"))
+        pitfalls = merge_insights(skill.content.get("pitfalls"), result.get("pitfalls"))
+        if playbook:
+            skill.content["playbook"] = playbook
+        if pitfalls:
+            skill.content["pitfalls"] = pitfalls
+        if playbook or pitfalls:
+            logger.info(
+                "Authored procedure playbook",
+                extra={
+                    "event": "playbook_authored",
+                    "playbook_items": len(playbook),
+                    "pitfall_items": len(pitfalls),
+                },
+            )
+
+    def export_skill_library(self, path) -> int:
+        """Write the learned procedural skills to an on-disk Hermes-style library.
+
+        Each procedure becomes ``<path>/<name>/SKILL.md`` (YAML frontmatter +
+        procedure body). This is the durable institutional-knowledge artifact:
+        a growing, human-readable library that survives the process and can be
+        reviewed, versioned, or shared. Returns the number of skills written.
+        """
+        from pathlib import Path
+        import re
+
+        out = Path(path)
+        out.mkdir(parents=True, exist_ok=True)
+        records = self.backend.list_by_scope(self.scope, limit=1000)
+        written = 0
+        for r in records:
+            if getattr(r, "type", None) != "skill" or not r.content.get("procedure"):
+                continue
+            raw = (r.task_type or "skill") + "-" + r.id[:8]
+            name = re.sub(r"[^a-z0-9._-]+", "-", raw.lower()).strip("-") or r.id[:8]
+            skill_dir = out / name
+            skill_dir.mkdir(parents=True, exist_ok=True)
+            (skill_dir / "SKILL.md").write_text(r.to_skill_md(), encoding="utf-8")
+            written += 1
+        logger.info(
+            "Exported procedural skill library",
+            extra={"event": "skill_library_export", "count": written, "path": str(out)},
+        )
+        return written
+
     def shutdown(self, wait: bool = True) -> None:
         """Drain the post-processing worker pool. Safe to call multiple times."""
         with self._shutdown_lock:
@@ -384,6 +498,9 @@ class LearnKit:
                 if proc:
                     kind, _, _ = self._match_procedure(run["records"], task)
                     tracker.set_plan(proc, source_id=source_id, kind=kind)
+                    # Remember which stored procedure we replayed so the outcome
+                    # can reinforce it (success) or demote it (failure).
+                    run["replayed_source_id"] = source_id
 
                 enriched_kwargs = {
                     **kwargs,
@@ -471,6 +588,7 @@ class LearnKit:
             run["domain_vector"],
             run.get("records", []),
             override_score=run.get("outcome_score"),
+            replayed_source_id=run.get("replayed_source_id"),
         )
         return response
 
@@ -480,14 +598,17 @@ class LearnKit:
         domain_vector: dict,
         retrieved_records=None,
         override_score: Optional[float] = None,
+        replayed_source_id: Optional[str] = None,
     ):
         if not self.background_postprocess:
             self._post_process_now(
-                traj, domain_vector, retrieved_records or [], override_score
+                traj, domain_vector, retrieved_records or [], override_score,
+                replayed_source_id,
             )
             return
         self._post_process_async(
-            traj, domain_vector, retrieved_records or [], override_score
+            traj, domain_vector, retrieved_records or [], override_score,
+            replayed_source_id,
         )
 
     def _post_process_async(
@@ -496,6 +617,7 @@ class LearnKit:
         domain_vector: dict,
         retrieved_records: list,
         override_score: Optional[float] = None,
+        replayed_source_id: Optional[str] = None,
     ) -> None:
         """
         Quality gate + distillation. Runs after response returned to user.
@@ -503,10 +625,12 @@ class LearnKit:
         Falls back to sync if the pool has been drained (e.g. after shutdown).
         """
         if self._is_shutdown:
-            self._post_process_now(traj, domain_vector, retrieved_records, override_score)
+            self._post_process_now(traj, domain_vector, retrieved_records, override_score,
+                                   replayed_source_id)
             return
         future = self._worker_pool.submit(
-            self._post_process_now, traj, domain_vector, retrieved_records, override_score
+            self._post_process_now, traj, domain_vector, retrieved_records, override_score,
+            replayed_source_id,
         )
 
         # Add a done callback to catch and log silent failures in the thread
@@ -530,6 +654,7 @@ class LearnKit:
         domain_vector: dict,
         retrieved_records: list | None = None,
         override_score: Optional[float] = None,
+        replayed_source_id: Optional[str] = None,
     ) -> None:
         # Interpreter is shutting down — dspy/litellm's own thread pool may already
         # be torn down (their atexit runs first since they're imported lazily on
@@ -581,7 +706,17 @@ class LearnKit:
                 skill = self._attach_procedure(
                     skill, traj, domain_vector, score
                 )
-                if skill:
+                if skill and skill.content.get("procedure"):
+                    # Agent path: evolve the task-signature *family*. All siblings
+                    # reinforce one durable procedure (institutional knowledge),
+                    # the shortest successful path wins (refinement), and dupes
+                    # never accumulate.
+                    skill.scope = self.scope
+                    # Author the natural-language playbook (opt-in) so the skill
+                    # body grows smarter over repeats, not just cheaper to replay.
+                    self._reflect_playbook(skill, traj, domain_vector)
+                    self._consolidate_procedure(skill, score)
+                elif skill:
                     skill.scope = self.scope
                     # AWM + Voyager pattern: skip if a near-duplicate skill already exists
                     # (same step-sequence fingerprint). Reinforce the existing record instead.
@@ -651,6 +786,14 @@ class LearnKit:
                 # corrective_strategy, and trigger_pattern from the failed trace.
                 # Falls back to a minimal generic FailureRecord if extraction fails.
                 from .schemas.failure import FailureRecord
+
+                # Agent path self-healing: if this failed run replayed a stored
+                # procedure, demote it. Repeated failures quarantine the procedure
+                # so the agent stops trusting it and re-learns the task.
+                if replayed_source_id:
+                    rec = self.backend.read(replayed_source_id)
+                    if rec is not None:
+                        demote_procedure(self.backend, rec)
 
                 failure = self.distiller.distill_failure(
                     trajectory=traj,

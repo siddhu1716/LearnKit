@@ -206,3 +206,15 @@ def procedure_fingerprint(tool_sequence: list[str]) -> str:
     """
     normalized = "|".join(t.strip().lower() for t in tool_sequence if isinstance(t, str))
     return hashlib.sha256(normalized.encode()).hexdigest()
+
+
+def signature_fingerprint(signature: list[str]) -> str:
+    """Stable fingerprint of a task *skeleton* (order-independent).
+
+    Unlike :func:`procedure_fingerprint` (ordered tool sequence), this hashes the
+    sorted task-signature tokens, so every task in the same family maps to one
+    fingerprint. It is the key for consolidating siblings onto a single durable
+    procedure record (institutional knowledge) rather than scattering near-dupes.
+    """
+    normalized = "|".join(sorted(t.strip().lower() for t in signature if isinstance(t, str)))
+    return hashlib.sha256(normalized.encode()).hexdigest()

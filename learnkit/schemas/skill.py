@@ -73,6 +73,8 @@ Use for {self.task_type} tasks in {list(self.domains.keys())} domains.
         procedure = c.get("procedure", [])
         constraints = c.get("constraints", [])
         failures = c.get("failure_modes", [])
+        playbook = c.get("playbook", [])
+        pitfalls = c.get("pitfalls", [])
 
         steps_md = []
         for i, step in enumerate(procedure):
@@ -85,7 +87,10 @@ Use for {self.task_type} tasks in {list(self.domains.keys())} domains.
         steps_block = "\n".join(steps_md) or "_No tool calls captured._"
 
         constraints_block = "\n".join(f"- {ct}" for ct in constraints) or "_None recorded._"
-        failures_block = "\n".join(f"- {f}" for f in failures) or "_None recorded._"
+        # The reflective pitfalls accumulate alongside any distilled failure modes.
+        all_failures = list(failures) + list(pitfalls)
+        failures_block = "\n".join(f"- {f}" for f in all_failures) or "_None recorded._"
+        playbook_block = "\n".join(f"- {p}" for p in playbook) or "_None recorded yet._"
 
         return f"""---
 name: {self.task_type}
@@ -100,6 +105,9 @@ reuse_count: {self.reuse_count}
 
 ## When to use
 {trigger}
+
+## Playbook (learned knowledge)
+{playbook_block}
 
 ## Procedure (captured tool sequence)
 {steps_block}

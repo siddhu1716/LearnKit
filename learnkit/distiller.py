@@ -54,6 +54,52 @@ If no reusable skill can be extracted (task was one-off), set skill to null.
 Focus on the APPROACH, not the specific content. The skill must generalize.
 """
 
+# Procedure reflection (Hermes-style accumulating skill body) — used by the
+# agent path (`@lk.agent_learn`) to author the durable natural-language
+# "playbook" that sits alongside the captured tool procedure. Each successful
+# run adds class-level knowledge (good sources/inputs, selection criteria,
+# output conventions) and pitfalls; these are merged + deduped across runs so
+# the skill body grows smarter over repeated exposures, not just cheaper.
+REFLECT_PROMPT = """
+You are reviewing an AI agent's SUCCESSFUL execution trace to capture the durable
+know-how that would make the next attempt at this CLASS of task better.
+
+TASK: {task}
+DOMAINS: {domains}
+TOOLS USED (in order): {tools}
+
+REASONING TRACE:
+{reasoning}
+
+EXECUTION STEPS:
+{steps}
+
+FINAL OUTPUT:
+{output}
+
+Write a PLAYBOOK: short, reusable, class-level knowledge a future agent should
+know BEFORE starting a task like this. Respond with JSON only:
+{{
+  "playbook": [
+    "where to look / which sources or inputs are worth using",
+    "how to decide what matters / selection criteria",
+    "output or formatting conventions that worked"
+  ],
+  "pitfalls": [
+    "a concrete trap to avoid next time"
+  ]
+}}
+
+Rules:
+- Each bullet is ONE short, durable, reusable insight (<= 25 words).
+- Capture knowledge that GENERALIZES to the whole class of task, not this one
+  instance's specific values, names, or numbers.
+- Do NOT capture: environment/setup failures (missing binary, not installed,
+  bad credentials), negative claims that a tool "doesn't work", transient errors
+  that resolved on retry, or one-off task narration. These harden into bad rules.
+- If there is genuinely no durable knowledge to capture, return empty lists.
+"""
+
 # ReasoningBank (ICLR 2026) Finding 4 — dual-pass contrastive failure extraction.
 # "ReasoningBank explicitly extracts 'preventative lessons' from failures in a
 # dual-prompt extraction step."
@@ -458,6 +504,69 @@ class MemoryDistiller:
             trace_record = None
 
         return skill, facts, failures, trace_record
+
+    def reflect_procedure(
+        self,
+        trajectory: Trajectory,
+        tool_sequence: list[str],
+        domain_vector: dict[str, float],
+    ) -> dict:
+        """Reflect on a successful agent run and author a *playbook* — the durable
+        natural-language knowledge that makes the agent better at this CLASS of
+        task next time (Hermes-style accumulating skill body).
+
+        Returns ``{"playbook": [...], "pitfalls": [...]}``. Both lists hold short,
+        reusable, class-level insights — NOT one-off narration. Safe-degrades to
+        ``{}`` on any model/parse failure so reflection never blocks storage.
+        """
+        reasoning_steps = []
+        execution_steps = []
+        final_output = ""
+        for step in trajectory.steps:
+            if step.reasoning:
+                reasoning_steps.append(step.reasoning)
+            if step.role == "assistant":
+                final_output = step.content
+            elif step.role == "tool":
+                execution_steps.append(f"Tool({step.tool_name}): {step.content[:200]}")
+
+        prompt = REFLECT_PROMPT.format(
+            task=trajectory.task,
+            domains=list(domain_vector.keys()),
+            tools=list(tool_sequence or []),
+            reasoning="\n".join(reasoning_steps) or "No reasoning trace captured",
+            steps="\n".join(execution_steps) or "No tool steps captured",
+            output=final_output[:500],
+        )
+
+        try:
+            with dspy.context(lm=self.lm):
+                raw = self.lm(prompt)[0]
+            data = robust_json_loads(_extract_json_block(raw))
+        except Exception as e:
+            logger.warning(
+                "Procedure reflection failed; storing procedure without playbook",
+                extra={"event": "reflect_fail", "error_type": type(e).__name__},
+            )
+            return {}
+
+        if not isinstance(data, dict):
+            return {}
+
+        def _bullets(value):
+            if not isinstance(value, list):
+                return []
+            out = []
+            for item in value[:MAX_DISTILL_LIST_ITEMS]:
+                clean = _clamp_str(item, 280)
+                if clean:
+                    out.append(clean)
+            return out
+
+        return {
+            "playbook": _bullets(data.get("playbook")),
+            "pitfalls": _bullets(data.get("pitfalls")),
+        }
 
     def distill_failure(
         self,
