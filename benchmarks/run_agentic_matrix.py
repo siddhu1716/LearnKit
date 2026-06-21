@@ -33,14 +33,14 @@ RESULTS_DIR = ROOT / "results"
 
 DEFAULT_TARGETS = [
     {
-        "name": "qwen2.5-7b",
+        "name": "hermes-3-llama-3.1-8b",
         "base_url": "http://127.0.0.1:8000/v1",
-        "model": "Qwen/Qwen2.5-7B-Instruct",
+        "model": "NousResearch/Hermes-3-Llama-3.1-8B",
     },
     {
-        "name": "deepseek-coder-33b",
+        "name": "qwen2.5-32b",
         "base_url": "http://127.0.0.1:8001/v1",
-        "model": "deepseek-ai/deepseek-coder-33b-instruct",
+        "model": "Qwen/Qwen2.5-32B-Instruct",
     },
     {
         "name": "qwen2.5-14b",

@@ -28,6 +28,7 @@ Run:
 
 import json
 import os
+import re
 
 from openai import OpenAI
 
@@ -137,6 +138,37 @@ STREAM = [
 ]
 
 
+_TOOL_CALL_RE = re.compile(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", re.DOTALL)
+
+
+class _SynthToolCall:
+    """Duck-typed stand-in for an OpenAI ChatCompletion tool_call object."""
+    __slots__ = ("id", "function")
+
+    def __init__(self, idx: int, name: str, args_str: str) -> None:
+        self.id = f"synth_{idx}"
+        self.function = type("F", (), {"name": name, "arguments": args_str})()
+
+
+def _extract_inline_tool_calls(content: str) -> list[tuple[str, str]]:
+    """Parse Hermes-style ``<tool_call>{...}</tool_call>`` blocks from raw
+    content as a fallback when the endpoint's tool-call parser misses them.
+    Returns a list of ``(name, args_json_str)`` pairs."""
+    out: list[tuple[str, str]] = []
+    for m in _TOOL_CALL_RE.finditer(content):
+        try:
+            obj = json.loads(m.group(1))
+        except json.JSONDecodeError:
+            continue
+        name = obj.get("name")
+        if not name:
+            continue
+        args = obj.get("arguments", {})
+        args_str = json.dumps(args) if isinstance(args, dict) else str(args)
+        out.append((name, args_str))
+    return out
+
+
 def react_loop(task: str, system: str, tracker: ToolTracker) -> tuple[str, int]:
     """Run a ReAct tool-calling loop. Records each tool call on ``tracker`` and
     returns ``(final_text, llm_calls)``."""
@@ -151,20 +183,31 @@ def react_loop(task: str, system: str, tracker: ToolTracker) -> tuple[str, int]:
         )
         llm_calls += 1
         msg = resp.choices[0].message
-        if not msg.tool_calls:
-            final = msg.content or ""
+        # Fallback for endpoints whose tool-call parser misses inline
+        # <tool_call>{...}</tool_call> blocks (seen with sglang+hermes on Qwen
+        # parallel-call outputs): lift them out of content into structured calls.
+        raw_calls = list(msg.tool_calls or [])
+        assistant_content = msg.content or ""
+        if not raw_calls and "<tool_call>" in assistant_content:
+            extracted = _extract_inline_tool_calls(assistant_content)
+            if extracted:
+                raw_calls = [_SynthToolCall(i, n, a)
+                             for i, (n, a) in enumerate(extracted)]
+                assistant_content = ""  # avoid replaying the raw XML to the model
+        if not raw_calls:
+            final = assistant_content
             break
         messages.append({
             "role": "assistant",
-            "content": msg.content or "",
+            "content": assistant_content,
             "tool_calls": [
                 {"id": tc.id, "type": "function",
                  "function": {"name": tc.function.name,
                               "arguments": tc.function.arguments}}
-                for tc in msg.tool_calls
+                for tc in raw_calls
             ],
         })
-        for tc in msg.tool_calls:
+        for tc in raw_calls:
             name = tc.function.name
             try:
                 args = json.loads(tc.function.arguments or "{}")

@@ -195,3 +195,34 @@ are `Docs/FINAL_BENCHMARK_NUMBERS_2026-06-21.txt`.
 5. Standard adapters (`TAU-bench`-style, SWE-bench Lite subset) to add
    external credibility on top of the internal suite.
 
+
+### 2026-06-21 update — third lineup, two new models PASS
+
+Lineup pass 3 swapped in `NousResearch/Hermes-3-Llama-3.1-8B` (port 8000),
+`Qwen/Qwen2.5-32B-Instruct` (port 8001), and kept `Qwen/Qwen2.5-14B-Instruct`
+(port 8002). Two of three are now PASSING the regression gate:
+
+- `Qwen/Qwen2.5-32B-Instruct`  PASS, playbook_effect=+1.75, pass^k=1.0,
+  react 6/6→6/6 (LLM 12→8), evolution 16/16→16/16 (LLM 32→20, evolved=true),
+  injection procedure=1.25 → playbook=3.0.
+- `Qwen/Qwen2.5-14B-Instruct`  PASS, playbook_effect=+1.875, pass^k=1.0,
+  react 6/6→6/6 (LLM 15→9), evolution 16/16→16/16 (LLM 38→21, evolved=true),
+  injection procedure=1.125 → playbook=3.0.
+- `NousResearch/Hermes-3-Llama-3.1-8B`  FAIL — endpoint configuration gap
+  (does not surface the OpenAI tools schema to the model; needs sglang
+  `--tool-call-parser hermes` + tools-aware chat template). Not a
+  framework gap.
+
+Framework change that unlocked the 14B PASS:
+`benchmarks/react_live.py:react_loop` now contains a small inline
+fallback that lifts Hermes-style `<tool_call>{...}</tool_call>` blocks
+out of the `content` field when the endpoint parser misses them. Shared
+by all three benchmarks. Without this, the 14B (Qwen "parallel call"
+pattern) scored 0 on injection_ablation despite clearly applying the
+playbook on react and evolution.
+
+Framework portability evidence: three Qwen sizes (7B, 14B, 32B) and two
+different generation regimes (single-call and parallel-call) now PASS the
+gate with no per-model code changes. The reference 7B numbers remain
+published in `Docs/FINAL_BENCHMARK_NUMBERS_2026-06-21.txt`; the full
+cross-model table is in `Docs/FINAL_MODEL_MATRIX_2026-06-21.txt`.

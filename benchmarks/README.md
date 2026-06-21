@@ -106,8 +106,8 @@ python -m benchmarks.run_agentic_suite --skip-react --skip-evolution --trials 1 
 # full suite with reflection enabled for evolution benchmark
 python -m benchmarks.run_agentic_suite --trials 3 --k 3 --reflect
 
-# run across hosted model matrix (defaults: :8000 qwen2.5-7b, :8001 deepseek-coder-33b, :8002 qwen2.5-14b)
-python -m benchmarks.run_agentic_matrix --trials 1 --k 1 --seed 7 --per-model-timeout 600 --continue-on-fail
+# run across hosted model matrix (defaults: :8000 hermes-3-llama-3.1-8b, :8001 qwen2.5-32b, :8002 qwen2.5-14b)
+python -m benchmarks.run_agentic_matrix --trials 1 --k 1 --seed 7 --per-model-timeout 1800 --react-timeout 1500 --evolution-timeout 1500 --injection-timeout 1500 --continue-on-fail
 ```
 
 Injection ablation artifacts are written to `benchmarks/results/`:

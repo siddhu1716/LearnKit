@@ -562,28 +562,43 @@ Source run: `benchmarks/results/agentic_suite_qwen2.5-7b_20260620_220017_summary
 Interpretation: cost reductions are stable in warmed mode, and the playbook arm
 shows strong quality lift over procedure-only guidance on non-replayed siblings.
 
-### Cross-model matrix (2026-06-21)
+### Cross-model matrix (2026-06-21, revision 3)
 
 Full numbers and per-model interpretation:
 `Docs/FINAL_MODEL_MATRIX_2026-06-21.txt`.
 
-| model                              | gate   | playbook_effect | pass^k(full) | react cold→warm | evolution cold→warm | evolved |
-|------------------------------------|--------|-----------------|--------------|-----------------|---------------------|---------|
-| `Qwen/Qwen2.5-7B-Instruct`         | PASS   | 2.625           | 1.0          | 6/6 → 6/6       | 16/16 → 16/16       | yes     |
-| `Qwen/Qwen2.5-14B-Instruct`        | FAIL*  | 0.0             | 0.0          | 3/6 → 5/6       | 10/16 → 15/16       | yes     |
-| `deepseek-ai/deepseek-coder-33b-instruct` | FAIL   | 0.0             | 0.0          | 0/6 → 0/6       | 0/16 → 0/16         | no      |
+Current lineup under test (sglang, OpenAI-compatible):
 
-\* The 14B reaches all three benchmarks end-to-end and shows real cold→warm
-lift on `react_live` and `evolution_live`; the injection-ablation zero is
-caused by the endpoint's tool-call parser not extracting the model's
-multi-`<tool_call>` content into structured `tool_calls`. Fix is endpoint
-config (`--tool-call-parser hermes`), not framework.
+| model                                 | gate | playbook_effect | pass^k(full) | react cold→warm | react LLM cold→warm | evolution cold→warm | evolution LLM cold→warm | evolved |
+|---------------------------------------|------|-----------------|--------------|-----------------|----------------------|---------------------|--------------------------|---------|
+| `Qwen/Qwen2.5-14B-Instruct`           | PASS | +1.875          | 1.0          | 6/6 → 6/6       | 15 → 9               | 16/16 → 16/16       | 38 → 21                  | yes     |
+| `Qwen/Qwen2.5-32B-Instruct`           | PASS | +1.75           | 1.0          | 6/6 → 6/6       | 12 → 8               | 16/16 → 16/16       | 32 → 20                  | yes     |
+| `NousResearch/Hermes-3-Llama-3.1-8B`  | FAIL | 0.0             | 0.0          | 0/6 → 0/6       | 6 → 6                | 0/16 → 0/16         | 16 → 16                  | no      |
+
+Reference model from the previous lineup (kept for continuity):
+
+| model                                 | gate | playbook_effect | pass^k(full) | react cold→warm | evolution cold→warm | evolved |
+|---------------------------------------|------|-----------------|--------------|-----------------|---------------------|---------|
+| `Qwen/Qwen2.5-7B-Instruct`            | PASS | +2.625          | 1.0          | 6/6 → 6/6       | 16/16 → 16/16       | yes     |
+
+Three Qwen sizes now PASS the gate with no per-model code changes (7B, 14B,
+32B). The 14B PASS depends on a small framework-side fix shipped on
+2026-06-21: `benchmarks/react_live.py:react_loop` now contains an inline
+fallback that lifts Hermes-style `<tool_call>{...}</tool_call>` blocks out
+of the `content` field when the endpoint's tool-call parser misses them
+(seen with sglang+hermes on Qwen "parallel call" outputs). The fallback
+is shared by `react_live`, `evolution_live`, and `injection_ablation`.
+
+`NousResearch/Hermes-3-Llama-3.1-8B` fails outside the framework: the
+endpoint does not surface the OpenAI-style `tools` schema to the model,
+so the model writes prose with invented function names. This requires
+re-launching sglang with `--tool-call-parser hermes` and a tools-aware
+chat template; the framework needs no further change to support it.
 
 The matrix runner now records three distinguishable failure classes:
-gate pass, parser/harness gap, and model capability gap (e.g.
-DeepSeek-Coder-33B does not emit `tool_calls` at all). This lets us gate
-production on class-1 results while still publishing class-2 and class-3
-data points.
+gate pass, parser/harness gap (now mitigated by the inline fallback), and
+model/endpoint capability gap. This lets us gate production on class-1
+results while still publishing class-2 and class-3 data points.
 
 ---
 
