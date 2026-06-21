@@ -1,0 +1,1238 @@
+Run id: 20260620_002806
+Output: C:\Users\mcw\OneDrive - Microsoft\Desktop\personal\LearnKit\benchmarks\results\20260620_002806
+Agent:  openai/Qwen/Qwen2.5-Coder-7B-Instruct
+Seeds:  3
+Tasks:  50 per domain
+Splits: run=['eval', 'train'] warm=none
+
+========================================================================
+DOMAIN: python_debugging  (50 tasks)
+========================================================================
+
+  [CONTROL] python_debugging (seed 0)
+     1/50 py44  score=0.0  tokens=335  latency=2.1s
+     2/50 py02  score=0.0  tokens=199  latency=0.3s
+     3/50 py29  score=5.0  tokens=273  latency=0.5s
+     4/50 py15  score=5.0  tokens=255  latency=0.4s
+     5/50 py37  score=5.0  tokens=269  latency=0.5s
+     6/50 py13  score=0.0  tokens=293  latency=0.6s
+     7/50 py01  score=5.0  tokens=309  latency=0.6s
+     8/50 py28  score=0.0  tokens=281  latency=0.5s
+     9/50 py48  score=5.0  tokens=383  latency=0.8s
+    10/50 py08  score=5.0  tokens=206  latency=0.3s
+    11/50 py34  score=5.0  tokens=266  latency=0.5s
+    12/50 py35  score=5.0  tokens=261  latency=0.5s
+    13/50 py21  score=5.0  tokens=332  latency=0.7s
+    14/50 py50  score=5.0  tokens=257  latency=0.4s
+    15/50 py06  score=0.0  tokens=245  latency=0.4s
+    16/50 py39  score=5.0  tokens=264  latency=0.4s
+    17/50 py12  score=5.0  tokens=291  latency=0.6s
+    18/50 py24  score=5.0  tokens=376  latency=0.8s
+    19/50 py41  score=5.0  tokens=229  latency=0.4s
+    20/50 py16  score=5.0  tokens=245  latency=0.4s
+    21/50 py11  score=5.0  tokens=241  latency=0.4s
+    22/50 py22  score=5.0  tokens=377  latency=0.8s
+    23/50 py47  score=5.0  tokens=370  latency=0.7s
+    24/50 py04  score=5.0  tokens=252  latency=0.5s
+    25/50 py10  score=5.0  tokens=367  latency=0.7s
+    26/50 py05  score=5.0  tokens=241  latency=0.4s
+    27/50 py42  score=5.0  tokens=306  latency=0.6s
+    28/50 py43  score=0.0  tokens=227  latency=0.4s
+    29/50 py40  score=5.0  tokens=258  latency=0.4s
+    30/50 py18  score=5.0  tokens=311  latency=0.6s
+    31/50 py30  score=5.0  tokens=286  latency=0.5s
+    32/50 py46  score=5.0  tokens=347  latency=0.7s
+    33/50 py07  score=5.0  tokens=231  latency=0.4s
+    34/50 py36  score=5.0  tokens=249  latency=0.4s
+    35/50 py19  score=5.0  tokens=270  latency=0.5s
+    36/50 py09  score=5.0  tokens=208  latency=0.3s
+    37/50 py45  score=5.0  tokens=366  latency=0.8s
+    38/50 py14  score=5.0  tokens=222  latency=0.4s
+    39/50 py38  score=5.0  tokens=289  latency=0.5s
+    40/50 py23  score=5.0  tokens=370  latency=0.7s
+    41/50 py31  score=5.0  tokens=275  latency=0.5s
+    42/50 py20  score=5.0  tokens=272  latency=0.5s
+    43/50 py26  score=5.0  tokens=247  latency=0.4s
+    44/50 py32  score=5.0  tokens=256  latency=0.4s
+    45/50 py33  score=5.0  tokens=315  latency=0.6s
+    46/50 py17  score=5.0  tokens=261  latency=0.4s
+    47/50 py03  score=5.0  tokens=355  latency=0.7s
+    48/50 py27  score=0.0  tokens=283  latency=0.5s
+    49/50 py49  score=5.0  tokens=255  latency=0.4s
+    50/50 py25  score=5.0  tokens=253  latency=0.5s
+
+  [TREATMENT] python_debugging  (db: learnkit_python_debugging_seed_0.db, seed 0)
+     1/50 py44  score=0.0  ctx=0  tokens=335  latency=0.7s
+     2/50 py02  score=0.0  ctx=0  tokens=199  latency=0.3s
+     3/50 py29  score=5.0  ctx=831  tokens=455  latency=0.5s
+     4/50 py15  score=5.0  ctx=1054  tokens=474  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "f513816f-ed07-448e-9a03-93fc1702f3f1"}
+     5/50 py37  score=5.0  ctx=1137  tokens=487  latency=0.4s
+     6/50 py13  score=0.0  ctx=1207  tokens=567  latency=0.6s
+     7/50 py01  score=5.0  ctx=0  tokens=309  latency=0.6s
+     8/50 py28  score=0.0  ctx=1222  tokens=594  latency=0.7s
+     9/50 py48  score=5.0  ctx=0  tokens=376  latency=0.7s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "5857da3ed235d971"}
+    10/50 py08  score=5.0  ctx=1002  tokens=462  latency=0.5s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "0c68eb74c37d56f1"}
+    11/50 py34  score=5.0  ctx=1247  tokens=535  latency=0.5s
+    12/50 py35  score=5.0  ctx=1124  tokens=486  latency=0.4s
+    13/50 py21  score=5.0  ctx=813  tokens=492  latency=0.6s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "0c68eb74c37d56f1"}
+    14/50 py50  score=5.0  ctx=1086  tokens=507  latency=0.5s
+    15/50 py06  score=0.0  ctx=0  tokens=245  latency=0.4s
+    16/50 py39  score=5.0  ctx=1057  tokens=490  latency=0.4s
+    17/50 py12  score=0.0  ctx=876  tokens=394  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "24290e33a553b40c"}
+    18/50 py24  score=5.0  ctx=995  tokens=601  latency=0.8s
+    19/50 py41  score=5.0  ctx=1084  tokens=551  latency=0.6s
+    20/50 py16  score=5.0  ctx=831  tokens=474  latency=0.5s
+    21/50 py11  score=5.0  ctx=827  tokens=423  latency=0.4s
+    22/50 py22  score=5.0  ctx=834  tokens=578  latency=0.8s
+    23/50 py47  score=5.0  ctx=1151  tokens=621  latency=0.7s
+    24/50 py04  score=5.0  ctx=1002  tokens=446  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "f525d5e740ecceff"}
+    25/50 py10  score=5.0  ctx=1117  tokens=580  latency=0.6s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "e24e4014093a11de"}
+    26/50 py05  score=5.0  ctx=1079  tokens=453  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "f4e3e99d-651a-40ad-8621-99cc72a2282f"}
+    27/50 py42  score=0.0  ctx=939  tokens=386  latency=0.3s
+    28/50 py43  score=5.0  ctx=1043  tokens=486  latency=0.5s
+    29/50 py40  score=5.0  ctx=711  tokens=478  latency=0.6s
+    30/50 py18  score=5.0  ctx=866  tokens=521  latency=0.7s
+    31/50 py30  score=5.0  ctx=699  tokens=432  latency=0.5s
+    32/50 py46  score=5.0  ctx=692  tokens=538  latency=0.8s
+    33/50 py07  score=5.0  ctx=711  tokens=430  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "5857da3ed235d971"}
+    34/50 py36  score=5.0  ctx=1063  tokens=487  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "371d5cbf-fe71-4a5e-a575-8c9f9b60ace2"}
+    35/50 py19  score=5.0  ctx=924  tokens=491  latency=0.5s
+    36/50 py09  score=5.0  ctx=875  tokens=485  latency=0.6s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "8621e5338ef0501e"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "1a82a33e-6467-43f2-b676-79f154a8a7b9"}
+    37/50 py45  score=5.0  ctx=1162  tokens=611  latency=0.7s
+    38/50 py14  score=5.0  ctx=965  tokens=517  latency=0.6s
+    39/50 py38  score=5.0  ctx=980  tokens=551  latency=0.7s
+    40/50 py23  score=5.0  ctx=1162  tokens=688  latency=0.9s
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "29a6d488-c174-4819-a1ea-214ff43c24ad"}
+    41/50 py31  score=5.0  ctx=818  tokens=431  latency=0.4s
+    42/50 py20  score=5.0  ctx=872  tokens=494  latency=0.6s
+    43/50 py26  score=0.0  ctx=1032  tokens=489  latency=0.5s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "5857da3ed235d971"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "7c754824-a078-4b96-bdcf-f417ea1356da"}
+    44/50 py32  score=5.0  ctx=818  tokens=438  latency=0.5s
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "b943f07a-9ccd-46ab-9f55-09cf3288d715"}
+    45/50 py33  score=5.0  ctx=1028  tokens=547  latency=0.6s
+    46/50 py17  score=5.0  ctx=711  tokens=431  latency=0.4s
+    47/50 py03  score=5.0  ctx=1040  tokens=620  latency=0.9s
+    48/50 py27  score=0.0  ctx=944  tokens=537  latency=0.7s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "ba1442bdafcb4177"}
+    49/50 py49  score=5.0  ctx=746  tokens=419  latency=0.5s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill storage skipped by quality gate", "event": "skill_store_skip", "reason": "not general (task overlap 50%)"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "197d94d4-ddfa-4b05-aa56-c5d10d9e897d"}
+    50/50 py25  score=5.0  ctx=944  tokens=464  latency=0.5s
+
+  [CONTROL] python_debugging (seed 1)
+     1/50 py03  score=5.0  tokens=355  latency=0.7s
+     2/50 py16  score=5.0  tokens=330  latency=0.6s
+     3/50 py48  score=5.0  tokens=376  latency=0.7s
+     4/50 py10  score=5.0  tokens=350  latency=0.7s
+     5/50 py22  score=5.0  tokens=347  latency=0.7s
+     6/50 py30  score=5.0  tokens=291  latency=0.5s
+     7/50 py49  score=5.0  tokens=247  latency=0.4s
+     8/50 py06  score=0.0  tokens=245  latency=0.4s
+     9/50 py47  score=5.0  tokens=370  latency=0.8s
+    10/50 py15  score=5.0  tokens=247  latency=0.4s
+    11/50 py12  score=5.0  tokens=291  latency=0.6s
+    12/50 py33  score=5.0  tokens=315  latency=0.6s
+    13/50 py35  score=5.0  tokens=261  latency=0.4s
+    14/50 py27  score=0.0  tokens=283  latency=0.5s
+    15/50 py50  score=5.0  tokens=226  latency=0.4s
+    16/50 py20  score=5.0  tokens=272  latency=0.5s
+    17/50 py40  score=5.0  tokens=258  latency=0.4s
+    18/50 py39  score=5.0  tokens=269  latency=0.4s
+    19/50 py13  score=5.0  tokens=300  latency=0.6s
+    20/50 py23  score=5.0  tokens=370  latency=0.7s
+    21/50 py38  score=5.0  tokens=309  latency=0.6s
+    22/50 py21  score=5.0  tokens=366  latency=0.8s
+    23/50 py43  score=5.0  tokens=320  latency=0.6s
+    24/50 py36  score=5.0  tokens=249  latency=0.4s
+    25/50 py34  score=5.0  tokens=265  latency=0.5s
+    26/50 py11  score=5.0  tokens=241  latency=0.4s
+    27/50 py04  score=5.0  tokens=252  latency=0.5s
+    28/50 py19  score=5.0  tokens=270  latency=0.5s
+    29/50 py46  score=5.0  tokens=347  latency=0.7s
+    30/50 py26  score=5.0  tokens=295  latency=0.6s
+    31/50 py24  score=5.0  tokens=376  latency=0.8s
+    32/50 py18  score=5.0  tokens=311  latency=0.6s
+    33/50 py44  score=0.0  tokens=335  latency=0.7s
+    34/50 py01  score=5.0  tokens=309  latency=0.6s
+    35/50 py28  score=0.0  tokens=269  latency=0.5s
+    36/50 py41  score=5.0  tokens=245  latency=0.4s
+    37/50 py02  score=0.0  tokens=199  latency=0.3s
+    38/50 py45  score=5.0  tokens=366  latency=0.9s
+    39/50 py07  score=5.0  tokens=231  latency=0.4s
+    40/50 py14  score=5.0  tokens=222  latency=0.4s
+    41/50 py25  score=5.0  tokens=241  latency=0.4s
+    42/50 py42  score=5.0  tokens=306  latency=0.6s
+    43/50 py31  score=5.0  tokens=275  latency=0.5s
+    44/50 py29  score=5.0  tokens=274  latency=0.5s
+    45/50 py32  score=5.0  tokens=255  latency=0.4s
+    46/50 py08  score=5.0  tokens=206  latency=0.3s
+    47/50 py17  score=5.0  tokens=258  latency=0.4s
+    48/50 py05  score=5.0  tokens=241  latency=0.4s
+    49/50 py37  score=5.0  tokens=269  latency=0.5s
+    50/50 py09  score=5.0  tokens=206  latency=0.3s
+
+  [TREATMENT] python_debugging  (db: learnkit_python_debugging_seed_1.db, seed 1)
+     1/50 py03  score=5.0  ctx=0  tokens=355  latency=0.7s
+     2/50 py16  score=5.0  ctx=0  tokens=330  latency=0.6s
+     3/50 py48  score=5.0  ctx=0  tokens=376  latency=0.8s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill storage skipped by quality gate", "event": "skill_store_skip", "reason": "not general (task overlap 70%)"}
+     4/50 py10  score=5.0  ctx=813  tokens=514  latency=0.7s
+     5/50 py22  score=5.0  ctx=831  tokens=537  latency=0.7s
+     6/50 py30  score=5.0  ctx=917  tokens=495  latency=0.5s
+     7/50 py49  score=5.0  ctx=856  tokens=437  latency=0.4s
+     8/50 py06  score=0.0  ctx=0  tokens=245  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill storage skipped by quality gate", "event": "skill_store_skip", "reason": "not general (task overlap 50%)"}
+     9/50 py47  score=5.0  ctx=967  tokens=581  latency=0.7s
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "55c84851-8ba0-4f5c-b42b-e18ed8734d81"}
+    10/50 py15  score=0.0  ctx=1200  tokens=599  latency=0.6s
+    11/50 py12  score=0.0  ctx=1188  tokens=485  latency=0.4s
+    12/50 py33  score=5.0  ctx=1009  tokens=495  latency=0.5s
+    13/50 py35  score=5.0  ctx=1178  tokens=554  latency=0.5s
+    14/50 py27  score=0.0  ctx=1031  tokens=489  latency=0.5s
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "4487d84f-3f43-4024-bba0-b7c935e947f2"}
+    15/50 py50  score=5.0  ctx=1105  tokens=526  latency=0.5s
+    16/50 py20  score=5.0  ctx=1283  tokens=506  latency=0.4s
+    17/50 py40  score=5.0  ctx=1100  tokens=497  latency=0.4s
+    18/50 py39  score=5.0  ctx=1114  tokens=490  latency=0.4s
+    19/50 py13  score=0.0  ctx=1046  tokens=531  latency=0.6s
+    20/50 py23  score=5.0  ctx=1135  tokens=634  latency=0.8s
+    21/50 py38  score=5.0  ctx=1129  tokens=616  latency=0.7s
+    22/50 py21  score=5.0  ctx=1095  tokens=580  latency=0.7s
+    23/50 py43  score=0.0  ctx=1178  tokens=506  latency=0.5s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "e784659db8742dc1"}
+    24/50 py36  score=5.0  ctx=1228  tokens=537  latency=0.4s
+    25/50 py34  score=5.0  ctx=845  tokens=442  latency=0.4s
+    26/50 py11  score=5.0  ctx=878  tokens=499  latency=0.6s
+    27/50 py04  score=5.0  ctx=1083  tokens=471  latency=0.4s
+    28/50 py19  score=5.0  ctx=1107  tokens=503  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "9a7235eae9b97316"}
+    29/50 py46  score=5.0  ctx=862  tokens=538  latency=0.7s
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "438b4ebb-182d-49d6-b148-9195d0688a05"}
+    30/50 py26  score=5.0  ctx=863  tokens=545  latency=0.8s
+    31/50 py24  score=5.0  ctx=1125  tokens=630  latency=0.8s
+    32/50 py18  score=5.0  ctx=1110  tokens=593  latency=0.7s
+    33/50 py44  score=0.0  ctx=1404  tokens=560  latency=0.5s
+    34/50 py01  score=5.0  ctx=621  tokens=426  latency=0.6s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill storage skipped by quality gate", "event": "skill_store_skip", "reason": "not general (task overlap 57%)"}
+    35/50 py28  score=5.0  ctx=1232  tokens=530  latency=0.5s
+    36/50 py41  score=5.0  ctx=1233  tokens=595  latency=0.7s
+    37/50 py02  score=0.0  ctx=1077  tokens=583  latency=0.7s
+    38/50 py45  score=5.0  ctx=1163  tokens=633  latency=0.8s
+    39/50 py07  score=5.0  ctx=816  tokens=454  latency=0.4s
+    40/50 py14  score=5.0  ctx=1171  tokens=527  latency=0.6s
+    41/50 py25  score=5.0  ctx=1237  tokens=595  latency=0.7s
+    42/50 py42  score=5.0  ctx=1239  tokens=560  latency=0.6s
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "a0f2173a-14a8-41d4-a944-72b1e2587598"}
+    43/50 py31  score=5.0  ctx=846  tokens=469  latency=0.5s
+    44/50 py29  score=5.0  ctx=1212  tokens=539  latency=0.5s
+    45/50 py32  score=5.0  ctx=889  tokens=441  latency=0.4s
+    46/50 py08  score=5.0  ctx=1026  tokens=497  latency=0.5s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "0c1bf95b6551c849"}
+    47/50 py17  score=5.0  ctx=845  tokens=456  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "4487d84f-3f43-4024-bba0-b7c935e947f2"}
+    48/50 py05  score=5.0  ctx=971  tokens=443  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "f2895822-f792-41e0-8af0-a8e8d448036d"}
+    49/50 py37  score=5.0  ctx=666  tokens=401  latency=0.5s
+    50/50 py09  score=5.0  ctx=891  tokens=436  latency=0.4s
+
+  [CONTROL] python_debugging (seed 2)
+     1/50 py25  score=5.0  tokens=241  latency=0.4s
+     2/50 py34  score=5.0  tokens=265  latency=0.5s
+     3/50 py50  score=5.0  tokens=226  latency=0.4s
+     4/50 py36  score=5.0  tokens=249  latency=0.4s
+     5/50 py07  score=5.0  tokens=231  latency=0.4s
+     6/50 py16  score=5.0  tokens=330  latency=0.6s
+     7/50 py05  score=5.0  tokens=241  latency=0.4s
+     8/50 py23  score=5.0  tokens=370  latency=0.7s
+     9/50 py10  score=5.0  tokens=350  latency=0.7s
+    10/50 py30  score=5.0  tokens=291  latency=0.5s
+    11/50 py35  score=5.0  tokens=261  latency=0.5s
+    12/50 py22  score=5.0  tokens=347  latency=0.8s
+    13/50 py19  score=5.0  tokens=270  latency=0.5s
+    14/50 py40  score=5.0  tokens=258  latency=0.5s
+    15/50 py27  score=0.0  tokens=283  latency=0.5s
+    16/50 py21  score=5.0  tokens=366  latency=0.8s
+    17/50 py08  score=5.0  tokens=206  latency=0.3s
+    18/50 py44  score=0.0  tokens=335  latency=0.7s
+    19/50 py18  score=5.0  tokens=311  latency=0.6s
+    20/50 py48  score=5.0  tokens=376  latency=0.8s
+    21/50 py31  score=5.0  tokens=275  latency=0.5s
+    22/50 py41  score=5.0  tokens=245  latency=0.4s
+    23/50 py13  score=5.0  tokens=300  latency=0.6s
+    24/50 py37  score=5.0  tokens=269  latency=0.5s
+    25/50 py15  score=5.0  tokens=247  latency=0.4s
+    26/50 py12  score=5.0  tokens=291  latency=0.6s
+    27/50 py01  score=5.0  tokens=309  latency=0.6s
+    28/50 py02  score=0.0  tokens=199  latency=0.3s
+    29/50 py32  score=5.0  tokens=255  latency=0.4s
+    30/50 py09  score=5.0  tokens=206  latency=0.3s
+    31/50 py45  score=5.0  tokens=366  latency=0.8s
+    32/50 py29  score=5.0  tokens=274  latency=0.5s
+    33/50 py47  score=5.0  tokens=370  latency=0.7s
+    34/50 py33  score=5.0  tokens=315  latency=0.6s
+    35/50 py26  score=5.0  tokens=295  latency=0.6s
+    36/50 py28  score=0.0  tokens=269  latency=0.5s
+    37/50 py46  score=5.0  tokens=347  latency=0.7s
+    38/50 py38  score=5.0  tokens=309  latency=0.6s
+    39/50 py03  score=5.0  tokens=355  latency=0.7s
+    40/50 py42  score=5.0  tokens=306  latency=0.6s
+    41/50 py14  score=5.0  tokens=222  latency=0.4s
+    42/50 py39  score=5.0  tokens=269  latency=0.4s
+    43/50 py17  score=5.0  tokens=258  latency=0.4s
+    44/50 py20  score=5.0  tokens=272  latency=0.5s
+    45/50 py43  score=5.0  tokens=320  latency=0.6s
+    46/50 py11  score=5.0  tokens=241  latency=0.4s
+    47/50 py24  score=5.0  tokens=376  latency=0.8s
+    48/50 py49  score=5.0  tokens=247  latency=0.4s
+    49/50 py06  score=0.0  tokens=245  latency=0.4s
+    50/50 py04  score=5.0  tokens=252  latency=0.5s
+
+  [TREATMENT] python_debugging  (db: learnkit_python_debugging_seed_2.db, seed 2)
+     1/50 py25  score=5.0  ctx=0  tokens=241  latency=0.4s
+     2/50 py34  score=5.0  ctx=993  tokens=469  latency=0.5s
+     3/50 py50  score=5.0  ctx=1051  tokens=490  latency=0.6s
+     4/50 py36  score=0.0  ctx=780  tokens=480  latency=0.6s
+     5/50 py07  score=5.0  ctx=1220  tokens=607  latency=0.7s
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "3e1ca260-0544-41ad-bc90-c5c0ffeac2c2"}
+     6/50 py16  score=5.0  ctx=1308  tokens=559  latency=0.5s
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "3e1ca260-0544-41ad-bc90-c5c0ffeac2c2"}
+     7/50 py05  score=5.0  ctx=884  tokens=417  latency=0.4s
+     8/50 py23  score=5.0  ctx=0  tokens=370  latency=0.7s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill storage skipped by quality gate", "event": "skill_store_skip", "reason": "not general (task overlap 64%)"}
+     9/50 py10  score=5.0  ctx=938  tokens=635  latency=0.9s
+    10/50 py30  score=5.0  ctx=1216  tokens=517  latency=0.5s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "e24941d52e3613cb"}
+    11/50 py35  score=5.0  ctx=1314  tokens=559  latency=0.5s
+    12/50 py22  score=5.0  ctx=1090  tokens=631  latency=0.9s
+    13/50 py19  score=5.0  ctx=959  tokens=500  latency=0.5s
+    14/50 py40  score=5.0  ctx=1238  tokens=599  latency=0.6s
+{"level": "WARNING", "module": "learnkit.distiller", "message": "Contrastive failure record created from low-quality trace", "event": "distill_failure_created", "task_type": "Set multiprocessing start method explicitly"}
+    15/50 py27  score=5.0  ctx=1059  tokens=496  latency=0.5s
+    16/50 py21  score=5.0  ctx=1240  tokens=661  latency=0.8s
+    17/50 py08  score=5.0  ctx=1097  tokens=517  latency=0.5s
+    18/50 py44  score=5.0  ctx=1276  tokens=622  latency=0.8s
+    19/50 py18  score=5.0  ctx=878  tokens=558  latency=0.7s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "9a7235eae9b97316"}
+    20/50 py48  score=5.0  ctx=1250  tokens=719  latency=0.9s
+    21/50 py31  score=5.0  ctx=916  tokens=447  latency=0.4s
+    22/50 py41  score=5.0  ctx=1189  tokens=489  latency=0.5s
+    23/50 py13  score=5.0  ctx=1231  tokens=500  latency=0.5s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "ace24d623e87d6cc"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "3e1ca260-0544-41ad-bc90-c5c0ffeac2c2"}
+    24/50 py37  score=5.0  ctx=1059  tokens=497  latency=0.5s
+    25/50 py15  score=5.0  ctx=905  tokens=479  latency=0.5s
+    26/50 py12  score=5.0  ctx=1156  tokens=556  latency=0.6s
+    27/50 py01  score=5.0  ctx=0  tokens=309  latency=0.6s
+    28/50 py02  score=0.0  ctx=1143  tokens=552  latency=0.6s
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "c90d9240-f24e-403a-838d-29bc94869e71"}
+    29/50 py32  score=5.0  ctx=783  tokens=417  latency=0.4s
+    30/50 py09  score=5.0  ctx=715  tokens=432  latency=0.5s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "9a7235eae9b97316"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "5cedd0c7-5c20-4d85-927c-1b63b7f615c7"}
+    31/50 py45  score=5.0  ctx=1250  tokens=678  latency=0.8s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "ace24d623e87d6cc"}
+    32/50 py29  score=5.0  ctx=1143  tokens=514  latency=0.5s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "9a7235eae9b97316"}
+    33/50 py47  score=5.0  ctx=1250  tokens=684  latency=0.8s
+    34/50 py33  score=5.0  ctx=1227  tokens=573  latency=0.6s
+    35/50 py26  score=5.0  ctx=1179  tokens=573  latency=0.7s
+    36/50 py28  score=5.0  ctx=1241  tokens=521  latency=0.5s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill storage skipped by quality gate", "event": "skill_store_skip", "reason": "not general (task overlap 50%)"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "a926f7f5-f5e8-4440-ac23-1a5acc633614"}
+    37/50 py46  score=5.0  ctx=970  tokens=596  latency=0.8s
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "c0cd37f6-1824-4c4e-981c-aa1767eb7a5e"}
+    38/50 py38  score=5.0  ctx=1192  tokens=542  latency=0.5s
+    39/50 py03  score=5.0  ctx=1110  tokens=621  latency=0.9s
+    40/50 py42  score=5.0  ctx=1080  tokens=456  latency=0.5s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "cc441010838dc8c4"}
+    41/50 py14  score=5.0  ctx=1203  tokens=504  latency=0.5s
+    42/50 py39  score=5.0  ctx=1116  tokens=553  latency=0.6s
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "1fe8dad1-9158-42ae-a634-96f6336527db"}
+    43/50 py17  score=5.0  ctx=687  tokens=406  latency=0.4s
+    44/50 py20  score=5.0  ctx=941  tokens=471  latency=0.4s
+    45/50 py43  score=5.0  ctx=1130  tokens=495  latency=0.5s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "281bc4ec0d004971"}
+    46/50 py11  score=5.0  ctx=999  tokens=477  latency=0.5s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "9a7235eae9b97316"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "67f6dec2-4957-41f3-a866-6aa375a979e8"}
+    47/50 py24  score=5.0  ctx=1250  tokens=689  latency=0.8s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "0e8959da4d7d785c"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "1fe8dad1-9158-42ae-a634-96f6336527db"}
+    48/50 py49  score=5.0  ctx=936  tokens=471  latency=0.5s
+    49/50 py06  score=5.0  ctx=687  tokens=390  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "3e1ca260-0544-41ad-bc90-c5c0ffeac2c2"}
+    50/50 py04  score=5.0  ctx=1057  tokens=529  latency=0.5s
+
+========================================================================
+DOMAIN: contract_summarization  (50 tasks)
+========================================================================
+
+  [CONTROL] contract_summarization (seed 0)
+     1/50 ct44  score=5.0  tokens=217  latency=0.3s
+     2/50 ct02  score=5.0  tokens=245  latency=0.3s
+     3/50 ct29  score=5.0  tokens=167  latency=0.2s
+     4/50 ct15  score=5.0  tokens=161  latency=0.2s
+     5/50 ct37  score=5.0  tokens=246  latency=0.3s
+     6/50 ct13  score=5.0  tokens=249  latency=0.3s
+     7/50 ct01  score=4.2  tokens=301  latency=0.4s
+     8/50 ct28  score=5.0  tokens=178  latency=0.2s
+     9/50 ct48  score=5.0  tokens=256  latency=0.3s
+    10/50 ct08  score=3.8  tokens=243  latency=0.3s
+    11/50 ct34  score=5.0  tokens=293  latency=0.4s
+    12/50 ct35  score=5.0  tokens=256  latency=0.3s
+    13/50 ct21  score=3.8  tokens=223  latency=0.3s
+    14/50 ct50  score=5.0  tokens=257  latency=0.4s
+    15/50 ct06  score=5.0  tokens=204  latency=0.2s
+    16/50 ct39  score=5.0  tokens=181  latency=0.2s
+    17/50 ct12  score=5.0  tokens=247  latency=0.3s
+    18/50 ct24  score=5.0  tokens=247  latency=0.3s
+    19/50 ct41  score=5.0  tokens=167  latency=0.2s
+    20/50 ct16  score=5.0  tokens=178  latency=0.2s
+    21/50 ct11  score=5.0  tokens=284  latency=0.4s
+    22/50 ct22  score=5.0  tokens=291  latency=0.4s
+    23/50 ct47  score=5.0  tokens=256  latency=0.3s
+    24/50 ct04  score=5.0  tokens=228  latency=0.3s
+    25/50 ct10  score=5.0  tokens=294  latency=0.4s
+    26/50 ct05  score=5.0  tokens=219  latency=0.3s
+    27/50 ct42  score=5.0  tokens=201  latency=0.3s
+    28/50 ct43  score=5.0  tokens=260  latency=0.4s
+    29/50 ct40  score=5.0  tokens=178  latency=0.2s
+    30/50 ct18  score=5.0  tokens=181  latency=0.2s
+    31/50 ct30  score=5.0  tokens=181  latency=0.2s
+    32/50 ct46  score=5.0  tokens=292  latency=0.4s
+    33/50 ct07  score=5.0  tokens=254  latency=0.3s
+    34/50 ct36  score=5.0  tokens=247  latency=0.3s
+    35/50 ct19  score=5.0  tokens=260  latency=0.4s
+    36/50 ct09  score=0.0  tokens=263  latency=0.3s
+    37/50 ct45  score=3.8  tokens=223  latency=0.3s
+    38/50 ct14  score=5.0  tokens=285  latency=0.4s
+    39/50 ct38  score=5.0  tokens=280  latency=0.4s
+    40/50 ct23  score=5.0  tokens=256  latency=0.3s
+    41/50 ct31  score=5.0  tokens=260  latency=0.4s
+    42/50 ct20  score=5.0  tokens=221  latency=0.3s
+    43/50 ct26  score=5.0  tokens=285  latency=0.4s
+    44/50 ct32  score=5.0  tokens=221  latency=0.3s
+    45/50 ct33  score=3.8  tokens=223  latency=0.3s
+    46/50 ct17  score=5.0  tokens=167  latency=0.2s
+    47/50 ct03  score=5.0  tokens=324  latency=0.4s
+    48/50 ct27  score=5.0  tokens=182  latency=0.2s
+    49/50 ct49  score=5.0  tokens=182  latency=0.2s
+    50/50 ct25  score=5.0  tokens=246  latency=0.3s
+
+  [TREATMENT] contract_summarization  (db: learnkit_contract_summarization_seed_0.db, seed 0)
+     1/50 ct44  score=5.0  ctx=0  tokens=221  latency=0.3s
+     2/50 ct02  score=5.0  ctx=0  tokens=245  latency=0.3s
+     3/50 ct29  score=5.0  ctx=1160  tokens=443  latency=0.2s
+     4/50 ct15  score=5.0  ctx=1246  tokens=436  latency=0.2s
+     5/50 ct37  score=5.0  ctx=1187  tokens=512  latency=0.3s
+     6/50 ct13  score=5.0  ctx=1133  tokens=501  latency=0.3s
+     7/50 ct01  score=4.2  ctx=0  tokens=301  latency=0.4s
+     8/50 ct28  score=5.0  ctx=1168  tokens=411  latency=0.2s
+     9/50 ct48  score=5.0  ctx=0  tokens=256  latency=0.3s
+    10/50 ct08  score=3.8  ctx=1105  tokens=474  latency=0.3s
+    11/50 ct34  score=5.0  ctx=0  tokens=287  latency=0.4s
+    12/50 ct35  score=4.2  ctx=861  tokens=451  latency=0.3s
+{"level": "WARNING", "module": "learnkit.distiller", "message": "Contrastive failure record created from low-quality trace", "event": "distill_failure_created", "task_type": "Incomplete and Inaccurate Legal Clause Summarization"}
+    13/50 ct21  score=3.8  ctx=1258  tokens=509  latency=0.3s
+    14/50 ct50  score=5.0  ctx=1391  tokens=577  latency=0.4s
+    15/50 ct06  score=5.0  ctx=1114  tokens=467  latency=0.3s
+    16/50 ct39  score=5.0  ctx=1262  tokens=446  latency=0.2s
+    17/50 ct12  score=5.0  ctx=1183  tokens=554  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced near-duplicate record", "event": "skill_dedup_near", "record_id": "032bc02a-fb0d-451c-8aec-1ed5653936b1"}
+    18/50 ct24  score=5.0  ctx=1170  tokens=549  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced near-duplicate record", "event": "skill_dedup_near", "record_id": "26e4140d-361d-4800-832d-b9e17bcc0113"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "07f48a17-a08b-4933-b3b1-d4e6d1686201"}
+    19/50 ct41  score=5.0  ctx=1084  tokens=451  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "89f08dfb9e4aabd1"}
+    20/50 ct16  score=5.0  ctx=0  tokens=178  latency=0.2s
+    21/50 ct11  score=5.0  ctx=0  tokens=284  latency=0.4s
+    22/50 ct22  score=5.0  ctx=1326  tokens=547  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "1b06765460a07407"}
+    23/50 ct47  score=3.3  ctx=1338  tokens=614  latency=0.4s
+    24/50 ct04  score=5.0  ctx=1320  tokens=525  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "d09d85a8c9289368"}
+    25/50 ct10  score=4.2  ctx=1265  tokens=570  latency=0.5s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "89f08dfb9e4aabd1"}
+    26/50 ct05  score=5.0  ctx=1288  tokens=511  latency=0.3s
+    27/50 ct42  score=5.0  ctx=1247  tokens=431  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "b2ad1a7732ba98de"}
+    28/50 ct43  score=5.0  ctx=1035  tokens=458  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "89f08dfb9e4aabd1"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "9fead965-0989-4601-911f-d25038c6bf8a"}
+    29/50 ct40  score=5.0  ctx=1094  tokens=407  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "f4c998f288d61d9c"}
+    30/50 ct18  score=5.0  ctx=1180  tokens=423  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "6f4cb69df2445bee"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "7c4787a4-41b8-4682-9fab-fb1e6893e034"}
+    31/50 ct30  score=5.0  ctx=1094  tokens=403  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "d09d85a8c9289368"}
+    32/50 ct46  score=4.2  ctx=1302  tokens=548  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "b2ad1a7732ba98de"}
+    33/50 ct07  score=5.0  ctx=1298  tokens=554  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "ec72e070-fb8c-47cd-90be-dfbb2cd97f04"}
+    34/50 ct36  score=5.0  ctx=1294  tokens=582  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "b2ad1a7732ba98de"}
+    35/50 ct19  score=5.0  ctx=0  tokens=260  latency=0.4s
+{"level": "WARNING", "module": "learnkit.distiller", "message": "Contrastive failure record created from low-quality trace", "event": "distill_failure_created", "task_type": "Incomplete and Inaccurate Termination Clause"}
+    36/50 ct09  score=0.0  ctx=647  tokens=401  latency=0.3s
+{"level": "WARNING", "module": "learnkit.distiller", "message": "Contrastive failure record created from low-quality trace", "event": "distill_failure_created", "task_type": "Inadequate Non-Compete Clause"}
+    37/50 ct45  score=2.5  ctx=1387  tokens=517  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "644bf602edee1668"}
+    38/50 ct14  score=5.0  ctx=1247  tokens=580  latency=0.4s
+    39/50 ct38  score=5.0  ctx=0  tokens=285  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "1b06765460a07407"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "82fa37eb-146d-4253-a314-9bccc77318ee"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "74991d0e-475e-4ab7-8711-8625bc28fbe7"}
+    40/50 ct23  score=4.2  ctx=1329  tokens=610  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "b2ad1a7732ba98de"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "ed285500-ee68-4b8d-88f8-0be3b338e845"}
+    41/50 ct31  score=5.0  ctx=1043  tokens=464  latency=0.3s
+    42/50 ct20  score=5.0  ctx=1187  tokens=478  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "644bf602edee1668"}
+    43/50 ct26  score=5.0  ctx=1133  tokens=534  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "1a6d7aa18f96a627"}
+    44/50 ct32  score=5.0  ctx=1191  tokens=474  latency=0.3s
+    45/50 ct33  score=3.8  ctx=1208  tokens=443  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "c50a71c2055efbe1"}
+    46/50 ct17  score=5.0  ctx=1040  tokens=369  latency=0.2s
+{"level": "WARNING", "module": "learnkit.distiller", "message": "Contrastive failure record created from low-quality trace", "event": "distill_failure_created", "task_type": "Inadequate Attention to Detail in Contract Analysis"}
+    47/50 ct03  score=5.0  ctx=1223  tokens=734  latency=0.7s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced near-duplicate record", "event": "skill_dedup_near", "record_id": "dd83e8c5-938a-423b-9a33-a1226e18c564"}
+    48/50 ct27  score=5.0  ctx=1057  tokens=414  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "f4c998f288d61d9c"}
+    49/50 ct49  score=5.0  ctx=1040  tokens=367  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "644bf602edee1668"}
+    50/50 ct25  score=5.0  ctx=1133  tokens=516  latency=0.3s
+
+  [CONTROL] contract_summarization (seed 1)
+     1/50 ct03  score=5.0  tokens=324  latency=0.4s
+     2/50 ct16  score=5.0  tokens=178  latency=0.2s
+     3/50 ct48  score=5.0  tokens=256  latency=0.3s
+     4/50 ct10  score=5.0  tokens=294  latency=0.4s
+     5/50 ct22  score=5.0  tokens=293  latency=0.4s
+     6/50 ct30  score=5.0  tokens=181  latency=0.2s
+     7/50 ct49  score=5.0  tokens=182  latency=0.2s
+     8/50 ct06  score=5.0  tokens=204  latency=0.2s
+     9/50 ct47  score=5.0  tokens=256  latency=0.3s
+    10/50 ct15  score=5.0  tokens=161  latency=0.2s
+    11/50 ct12  score=5.0  tokens=247  latency=0.3s
+    12/50 ct33  score=3.8  tokens=223  latency=0.3s
+    13/50 ct35  score=5.0  tokens=256  latency=0.3s
+    14/50 ct27  score=5.0  tokens=182  latency=0.2s
+    15/50 ct50  score=5.0  tokens=257  latency=0.4s
+    16/50 ct20  score=5.0  tokens=221  latency=0.3s
+    17/50 ct40  score=5.0  tokens=178  latency=0.2s
+    18/50 ct39  score=5.0  tokens=182  latency=0.2s
+    19/50 ct13  score=5.0  tokens=249  latency=0.3s
+    20/50 ct23  score=5.0  tokens=256  latency=0.3s
+    21/50 ct38  score=5.0  tokens=285  latency=0.4s
+    22/50 ct21  score=3.8  tokens=223  latency=0.3s
+    23/50 ct43  score=5.0  tokens=260  latency=0.4s
+    24/50 ct36  score=5.0  tokens=247  latency=0.3s
+    25/50 ct34  score=5.0  tokens=287  latency=0.4s
+    26/50 ct11  score=5.0  tokens=284  latency=0.4s
+    27/50 ct04  score=5.0  tokens=228  latency=0.3s
+    28/50 ct19  score=5.0  tokens=260  latency=0.4s
+    29/50 ct46  score=5.0  tokens=286  latency=0.4s
+    30/50 ct26  score=5.0  tokens=285  latency=0.4s
+    31/50 ct24  score=5.0  tokens=247  latency=0.3s
+    32/50 ct18  score=5.0  tokens=197  latency=0.3s
+    33/50 ct44  score=5.0  tokens=221  latency=0.3s
+    34/50 ct01  score=4.2  tokens=301  latency=0.4s
+    35/50 ct28  score=5.0  tokens=178  latency=0.3s
+    36/50 ct41  score=5.0  tokens=167  latency=0.2s
+    37/50 ct02  score=5.0  tokens=245  latency=0.3s
+    38/50 ct45  score=3.8  tokens=223  latency=0.4s
+    39/50 ct07  score=5.0  tokens=254  latency=0.4s
+    40/50 ct14  score=5.0  tokens=285  latency=0.5s
+    41/50 ct25  score=5.0  tokens=246  latency=0.4s
+    42/50 ct42  score=5.0  tokens=181  latency=0.3s
+    43/50 ct31  score=5.0  tokens=260  latency=0.4s
+    44/50 ct29  score=5.0  tokens=167  latency=0.2s
+    45/50 ct32  score=5.0  tokens=221  latency=0.3s
+    46/50 ct08  score=3.8  tokens=243  latency=0.4s
+    47/50 ct17  score=5.0  tokens=167  latency=0.2s
+    48/50 ct05  score=5.0  tokens=219  latency=0.3s
+    49/50 ct37  score=5.0  tokens=246  latency=0.4s
+    50/50 ct09  score=0.0  tokens=263  latency=0.4s
+
+  [TREATMENT] contract_summarization  (db: learnkit_contract_summarization_seed_1.db, seed 1)
+     1/50 ct03  score=5.0  ctx=0  tokens=324  latency=0.5s
+     2/50 ct16  score=5.0  ctx=0  tokens=178  latency=0.3s
+     3/50 ct48  score=5.0  ctx=0  tokens=256  latency=0.4s
+     4/50 ct10  score=5.0  ctx=0  tokens=294  latency=0.4s
+     5/50 ct22  score=5.0  ctx=1130  tokens=576  latency=0.5s
+     6/50 ct30  score=5.0  ctx=1261  tokens=484  latency=0.3s
+     7/50 ct49  score=5.0  ctx=901  tokens=396  latency=0.3s
+     8/50 ct06  score=5.0  ctx=1132  tokens=433  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "1b06765460a07407"}
+     9/50 ct47  score=5.0  ctx=1166  tokens=565  latency=0.5s
+    10/50 ct15  score=5.0  ctx=1199  tokens=449  latency=0.3s
+    11/50 ct12  score=5.0  ctx=1140  tokens=532  latency=0.4s
+{"level": "WARNING", "module": "learnkit.distiller", "message": "Contrastive failure record created from low-quality trace", "event": "distill_failure_created", "task_type": "Incomplete and Inaccurate Legal Clause Summarization"}
+    12/50 ct33  score=3.8  ctx=1258  tokens=509  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "1b06765460a07407"}
+    13/50 ct35  score=4.2  ctx=1052  tokens=511  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "f4c998f288d61d9c"}
+    14/50 ct27  score=5.0  ctx=972  tokens=385  latency=0.3s
+    15/50 ct50  score=5.0  ctx=1391  tokens=577  latency=0.5s
+    16/50 ct20  score=5.0  ctx=0  tokens=221  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "89f08dfb9e4aabd1"}
+    17/50 ct40  score=5.0  ctx=1030  tokens=405  latency=0.3s
+    18/50 ct39  score=5.0  ctx=1024  tokens=382  latency=0.2s
+    19/50 ct13  score=5.0  ctx=925  tokens=458  latency=0.4s
+    20/50 ct23  score=5.0  ctx=1085  tokens=549  latency=0.5s
+    21/50 ct38  score=5.0  ctx=0  tokens=285  latency=0.4s
+    22/50 ct21  score=3.8  ctx=1354  tokens=506  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "b2ad1a7732ba98de"}
+    23/50 ct43  score=5.0  ctx=1176  tokens=523  latency=0.5s
+    24/50 ct36  score=5.0  ctx=1085  tokens=554  latency=0.5s
+    25/50 ct34  score=5.0  ctx=1014  tokens=529  latency=0.5s
+    26/50 ct11  score=5.0  ctx=0  tokens=284  latency=0.4s
+    27/50 ct04  score=5.0  ctx=1355  tokens=528  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "b2ad1a7732ba98de"}
+    28/50 ct19  score=5.0  ctx=0  tokens=260  latency=0.4s
+    29/50 ct46  score=5.0  ctx=1155  tokens=552  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced near-duplicate record", "event": "skill_dedup_near", "record_id": "da6c13d8-65ab-4bca-b33c-b97700a5d003"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "43062a57-b8f1-4b00-a67c-3296f00c96b0"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "172c2091-e9d0-409d-b9e6-9ea93be42f4d"}
+    30/50 ct26  score=5.0  ctx=1133  tokens=536  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "57940870-dfc8-4336-9265-7f64359c7361"}
+    31/50 ct24  score=4.2  ctx=1085  tokens=531  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "424f886c8ac751c0"}
+    32/50 ct18  score=5.0  ctx=1082  tokens=399  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "1a6d7aa18f96a627"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "ba4161b7-795e-4cd9-8b6b-f5bce3b2788d"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "a139cb06-12d5-4c33-94b8-e3421e02ec53"}
+    33/50 ct44  score=5.0  ctx=1105  tokens=462  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "14396e12376202a7"}
+    34/50 ct01  score=4.2  ctx=0  tokens=301  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "89f08dfb9e4aabd1"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "95db200a-753a-4114-bf4b-685c6d8128a6"}
+    35/50 ct28  score=5.0  ctx=1082  tokens=415  latency=0.2s
+    36/50 ct41  score=5.0  ctx=981  tokens=381  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "644bf602edee1668"}
+    37/50 ct02  score=5.0  ctx=956  tokens=525  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "2c4b03ae74eb1117"}
+    38/50 ct45  score=3.8  ctx=1404  tokens=519  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "b2ad1a7732ba98de"}
+    39/50 ct07  score=5.0  ctx=1404  tokens=561  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "644bf602edee1668"}
+    40/50 ct14  score=5.0  ctx=1334  tokens=619  latency=0.5s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "14396e12376202a7"}
+    41/50 ct25  score=5.0  ctx=956  tokens=481  latency=0.3s
+{"level": "WARNING", "module": "learnkit.distiller", "message": "Contrastive failure record created from low-quality trace", "event": "distill_failure_created", "task_type": "Incomplete Term Specification in Confidentiality Agreements"}
+    42/50 ct42  score=5.0  ctx=1193  tokens=428  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "b2ad1a7732ba98de"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "ad25c5d2-511b-4c9f-a1a9-eaa9906d233c"}
+    43/50 ct31  score=5.0  ctx=950  tokens=443  latency=0.4s
+    44/50 ct29  score=5.0  ctx=1243  tokens=418  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "1a6d7aa18f96a627"}
+    45/50 ct32  score=5.0  ctx=1178  tokens=474  latency=0.3s
+    46/50 ct08  score=3.8  ctx=1178  tokens=487  latency=0.3s
+    47/50 ct17  score=5.0  ctx=1102  tokens=402  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "89f08dfb9e4aabd1"}
+    48/50 ct05  score=5.0  ctx=1396  tokens=522  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "67d274c2a60b187d"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "609c9684-f4c8-4898-a284-4a79d66a9727"}
+    49/50 ct37  score=5.0  ctx=1009  tokens=506  latency=0.3s
+{"level": "WARNING", "module": "learnkit.distiller", "message": "Contrastive failure record created from low-quality trace", "event": "distill_failure_created", "task_type": "Incomplete and Inaccurate Termination Clause"}
+    50/50 ct09  score=0.0  ctx=647  tokens=401  latency=0.4s
+
+  [CONTROL] contract_summarization (seed 2)
+     1/50 ct25  score=5.0  tokens=246  latency=0.3s
+     2/50 ct34  score=5.0  tokens=287  latency=0.4s
+     3/50 ct50  score=5.0  tokens=257  latency=0.4s
+     4/50 ct36  score=5.0  tokens=247  latency=0.3s
+     5/50 ct07  score=5.0  tokens=254  latency=0.3s
+     6/50 ct16  score=5.0  tokens=178  latency=0.3s
+     7/50 ct05  score=5.0  tokens=219  latency=0.3s
+     8/50 ct23  score=5.0  tokens=256  latency=0.3s
+     9/50 ct10  score=5.0  tokens=294  latency=0.4s
+    10/50 ct30  score=5.0  tokens=181  latency=0.2s
+    11/50 ct35  score=5.0  tokens=256  latency=0.3s
+    12/50 ct22  score=5.0  tokens=293  latency=0.4s
+    13/50 ct19  score=5.0  tokens=260  latency=0.4s
+    14/50 ct40  score=5.0  tokens=178  latency=0.3s
+    15/50 ct27  score=5.0  tokens=182  latency=0.2s
+    16/50 ct21  score=3.8  tokens=223  latency=0.3s
+    17/50 ct08  score=3.8  tokens=243  latency=0.3s
+    18/50 ct44  score=5.0  tokens=221  latency=0.3s
+    19/50 ct18  score=5.0  tokens=197  latency=0.3s
+    20/50 ct48  score=5.0  tokens=256  latency=0.3s
+    21/50 ct31  score=5.0  tokens=260  latency=0.4s
+    22/50 ct41  score=5.0  tokens=167  latency=0.2s
+    23/50 ct13  score=5.0  tokens=249  latency=0.3s
+    24/50 ct37  score=5.0  tokens=246  latency=0.3s
+    25/50 ct15  score=5.0  tokens=161  latency=0.2s
+    26/50 ct12  score=5.0  tokens=247  latency=0.3s
+    27/50 ct01  score=4.2  tokens=301  latency=0.4s
+    28/50 ct02  score=5.0  tokens=245  latency=0.3s
+    29/50 ct32  score=5.0  tokens=221  latency=0.3s
+    30/50 ct09  score=0.0  tokens=263  latency=0.3s
+    31/50 ct45  score=3.8  tokens=223  latency=0.3s
+    32/50 ct29  score=5.0  tokens=167  latency=0.2s
+    33/50 ct47  score=5.0  tokens=256  latency=0.3s
+    34/50 ct33  score=3.8  tokens=223  latency=0.3s
+    35/50 ct26  score=5.0  tokens=285  latency=0.4s
+    36/50 ct28  score=5.0  tokens=178  latency=0.2s
+    37/50 ct46  score=5.0  tokens=286  latency=0.4s
+    38/50 ct38  score=5.0  tokens=285  latency=0.4s
+    39/50 ct03  score=5.0  tokens=324  latency=0.4s
+    40/50 ct42  score=5.0  tokens=181  latency=0.2s
+    41/50 ct14  score=5.0  tokens=285  latency=0.4s
+    42/50 ct39  score=5.0  tokens=182  latency=0.2s
+    43/50 ct17  score=5.0  tokens=167  latency=0.2s
+    44/50 ct20  score=5.0  tokens=221  latency=0.3s
+    45/50 ct43  score=5.0  tokens=260  latency=0.4s
+    46/50 ct11  score=5.0  tokens=284  latency=0.4s
+    47/50 ct24  score=5.0  tokens=247  latency=0.3s
+    48/50 ct49  score=5.0  tokens=182  latency=0.2s
+    49/50 ct06  score=5.0  tokens=204  latency=0.2s
+    50/50 ct04  score=5.0  tokens=228  latency=0.3s
+
+  [TREATMENT] contract_summarization  (db: learnkit_contract_summarization_seed_2.db, seed 2)
+     1/50 ct25  score=5.0  ctx=0  tokens=246  latency=0.3s
+     2/50 ct34  score=5.0  ctx=0  tokens=287  latency=0.4s
+     3/50 ct50  score=5.0  ctx=0  tokens=257  latency=0.4s
+     4/50 ct36  score=5.0  ctx=1253  tokens=535  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "b219df4a-84b9-4776-805d-f32fc48c0a59"}
+     5/50 ct07  score=5.0  ctx=1176  tokens=552  latency=0.4s
+     6/50 ct16  score=5.0  ctx=0  tokens=178  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "89f08dfb9e4aabd1"}
+     7/50 ct05  score=5.0  ctx=1196  tokens=477  latency=0.2s
+     8/50 ct23  score=5.0  ctx=1217  tokens=534  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "d09d85a8c9289368"}
+     9/50 ct10  score=5.0  ctx=1265  tokens=577  latency=0.4s
+    10/50 ct30  score=5.0  ctx=1139  tokens=434  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "1b06765460a07407"}
+    11/50 ct35  score=4.2  ctx=1107  tokens=521  latency=0.3s
+    12/50 ct22  score=5.0  ctx=1275  tokens=597  latency=0.4s
+    13/50 ct19  score=5.0  ctx=0  tokens=260  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "89f08dfb9e4aabd1"}
+    14/50 ct40  score=5.0  ctx=1060  tokens=413  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced near-duplicate record", "event": "skill_dedup_near", "record_id": "1cc3b5a6-b2ee-4f9b-bfd2-e844328c0baa"}
+    15/50 ct27  score=5.0  ctx=956  tokens=401  latency=0.2s
+    16/50 ct21  score=3.8  ctx=1213  tokens=454  latency=0.2s
+    17/50 ct08  score=3.8  ctx=0  tokens=243  latency=0.3s
+    18/50 ct44  score=5.0  ctx=1200  tokens=505  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced near-duplicate record", "event": "skill_dedup_near", "record_id": "1cc3b5a6-b2ee-4f9b-bfd2-e844328c0baa"}
+    19/50 ct18  score=5.0  ctx=1100  tokens=421  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "1b06765460a07407"}
+    20/50 ct48  score=5.0  ctx=1176  tokens=547  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "b2ad1a7732ba98de"}
+    21/50 ct31  score=5.0  ctx=1160  tokens=508  latency=0.4s
+    22/50 ct41  score=5.0  ctx=1104  tokens=391  latency=0.1s
+    23/50 ct13  score=5.0  ctx=1046  tokens=479  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "67d274c2a60b187d"}
+    24/50 ct37  score=5.0  ctx=826  tokens=431  latency=0.3s
+    25/50 ct15  score=5.0  ctx=1125  tokens=397  latency=0.2s
+{"level": "WARNING", "module": "learnkit.distiller", "message": "Contrastive failure record created from low-quality trace", "event": "distill_failure_created", "task_type": "Incorrect Termination Clause Interpretation"}
+    26/50 ct12  score=4.2  ctx=794  tokens=429  latency=0.4s
+    27/50 ct01  score=4.2  ctx=0  tokens=301  latency=0.4s
+    28/50 ct02  score=5.0  ctx=741  tokens=426  latency=0.3s
+    29/50 ct32  score=5.0  ctx=1273  tokens=516  latency=0.3s
+    30/50 ct09  score=0.0  ctx=1088  tokens=508  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "2c4b03ae74eb1117"}
+    31/50 ct45  score=3.8  ctx=1176  tokens=452  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "7f6e5cd620b9cb46"}
+    32/50 ct29  score=5.0  ctx=947  tokens=390  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "1b06765460a07407"}
+    33/50 ct47  score=4.2  ctx=903  tokens=466  latency=0.4s
+{"level": "WARNING", "module": "learnkit.distiller", "message": "Contrastive failure record created from low-quality trace", "event": "distill_failure_created", "task_type": "Incomplete IP Assignment Clause"}
+    34/50 ct33  score=5.0  ctx=1176  tokens=474  latency=0.2s
+    35/50 ct26  score=5.0  ctx=0  tokens=285  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "89f08dfb9e4aabd1"}
+    36/50 ct28  score=5.0  ctx=1096  tokens=418  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "d09d85a8c9289368"}
+    37/50 ct46  score=5.0  ctx=1190  tokens=573  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "644bf602edee1668"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "057fc0b9-d45c-43ab-962f-edfc5733df1f"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "837673c6-ebb0-4fad-96d4-9bae51519007"}
+    38/50 ct38  score=5.0  ctx=1133  tokens=536  latency=0.4s
+    39/50 ct03  score=5.0  ctx=821  tokens=503  latency=0.5s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced near-duplicate record", "event": "skill_dedup_near", "record_id": "1cc3b5a6-b2ee-4f9b-bfd2-e844328c0baa"}
+    40/50 ct42  score=5.0  ctx=1096  tokens=412  latency=0.2s
+    41/50 ct14  score=5.0  ctx=1383  tokens=613  latency=0.5s
+    42/50 ct39  score=5.0  ctx=1228  tokens=435  latency=0.2s
+    43/50 ct17  score=5.0  ctx=1214  tokens=414  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "1a6d7aa18f96a627"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "638acde0-c637-43d8-8140-08a09015fa53"}
+    44/50 ct20  score=5.0  ctx=1278  tokens=511  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "b2ad1a7732ba98de"}
+    45/50 ct43  score=5.0  ctx=1354  tokens=551  latency=0.4s
+    46/50 ct11  score=5.0  ctx=0  tokens=284  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced near-duplicate record", "event": "skill_dedup_near", "record_id": "794f9e43-53b3-4e67-aab0-afcd77a1b1cb"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "67665597-c036-4587-ab1e-8f8bc9a80232"}
+    47/50 ct24  score=5.0  ctx=872  tokens=480  latency=0.4s
+    48/50 ct49  score=5.0  ctx=1292  tokens=432  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced near-duplicate record", "event": "skill_dedup_near", "record_id": "4abe1ea5-a291-47c5-a689-3e8d833b26dd"}
+    49/50 ct06  score=5.0  ctx=838  tokens=332  latency=0.1s
+    50/50 ct04  score=5.0  ctx=1442  tokens=527  latency=0.2s
+
+========================================================================
+DOMAIN: sql_authoring  (50 tasks)
+========================================================================
+
+  [CONTROL] sql_authoring (seed 0)
+     1/50 sql44  score=5.0  tokens=303  latency=0.5s
+     2/50 sql02  score=5.0  tokens=170  latency=0.2s
+     3/50 sql29  score=5.0  tokens=259  latency=0.4s
+     4/50 sql15  score=5.0  tokens=307  latency=0.5s
+     5/50 sql37  score=5.0  tokens=175  latency=0.2s
+     6/50 sql13  score=5.0  tokens=181  latency=0.3s
+     7/50 sql01  score=5.0  tokens=195  latency=0.3s
+     8/50 sql28  score=5.0  tokens=171  latency=0.2s
+     9/50 sql48  score=5.0  tokens=194  latency=0.2s
+    10/50 sql08  score=5.0  tokens=195  latency=0.3s
+    11/50 sql34  score=5.0  tokens=180  latency=0.2s
+    12/50 sql35  score=5.0  tokens=198  latency=0.3s
+    13/50 sql21  score=5.0  tokens=205  latency=0.3s
+    14/50 sql50  score=5.0  tokens=162  latency=0.2s
+    15/50 sql06  score=5.0  tokens=311  latency=0.6s
+    16/50 sql39  score=5.0  tokens=197  latency=0.3s
+    17/50 sql12  score=5.0  tokens=182  latency=0.3s
+    18/50 sql24  score=5.0  tokens=154  latency=0.2s
+    19/50 sql41  score=5.0  tokens=212  latency=0.3s
+    20/50 sql16  score=5.0  tokens=296  latency=0.5s
+    21/50 sql11  score=5.0  tokens=167  latency=0.2s
+    22/50 sql22  score=5.0  tokens=182  latency=0.2s
+    23/50 sql47  score=5.0  tokens=188  latency=0.2s
+    24/50 sql04  score=5.0  tokens=292  latency=0.5s
+    25/50 sql10  score=5.0  tokens=212  latency=0.3s
+    26/50 sql05  score=0.0  tokens=280  latency=0.5s
+    27/50 sql42  score=5.0  tokens=187  latency=0.3s
+    28/50 sql43  score=5.0  tokens=299  latency=0.5s
+    29/50 sql40  score=5.0  tokens=193  latency=0.3s
+    30/50 sql18  score=5.0  tokens=198  latency=0.2s
+    31/50 sql30  score=5.0  tokens=294  latency=0.5s
+    32/50 sql46  score=5.0  tokens=191  latency=0.2s
+    33/50 sql07  score=5.0  tokens=186  latency=0.2s
+    34/50 sql36  score=5.0  tokens=159  latency=0.2s
+    35/50 sql19  score=5.0  tokens=183  latency=0.2s
+    36/50 sql09  score=5.0  tokens=191  latency=0.2s
+    37/50 sql45  score=5.0  tokens=318  latency=0.6s
+    38/50 sql14  score=5.0  tokens=176  latency=0.2s
+    39/50 sql38  score=5.0  tokens=154  latency=0.2s
+    40/50 sql23  score=5.0  tokens=178  latency=0.2s
+    41/50 sql31  score=5.0  tokens=268  latency=0.4s
+    42/50 sql20  score=5.0  tokens=197  latency=0.2s
+    43/50 sql26  score=5.0  tokens=184  latency=0.3s
+    44/50 sql32  score=5.0  tokens=188  latency=0.2s
+    45/50 sql33  score=5.0  tokens=190  latency=0.2s
+    46/50 sql17  score=5.0  tokens=287  latency=0.5s
+    47/50 sql03  score=5.0  tokens=172  latency=0.2s
+    48/50 sql27  score=5.0  tokens=187  latency=0.3s
+    49/50 sql49  score=5.0  tokens=198  latency=0.3s
+    50/50 sql25  score=5.0  tokens=167  latency=0.2s
+
+  [TREATMENT] sql_authoring  (db: learnkit_sql_authoring_seed_0.db, seed 0)
+     1/50 sql44  score=5.0  ctx=0  tokens=303  latency=0.5s
+     2/50 sql02  score=5.0  ctx=0  tokens=170  latency=0.2s
+     3/50 sql29  score=5.0  ctx=949  tokens=478  latency=0.6s
+     4/50 sql15  score=5.0  ctx=0  tokens=307  latency=0.5s
+     5/50 sql37  score=5.0  ctx=0  tokens=175  latency=0.2s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 4, "floor": 0.55, "domain": "database"}
+     6/50 sql13  score=5.0  ctx=633  tokens=326  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "118c92cf56e01b0d"}
+     7/50 sql01  score=5.0  ctx=1124  tokens=455  latency=0.3s
+     8/50 sql28  score=5.0  ctx=819  tokens=361  latency=0.2s
+     9/50 sql48  score=5.0  ctx=1153  tokens=469  latency=0.2s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 7, "floor": 0.55, "domain": "database"}
+{"level": "WARNING", "module": "learnkit.distiller", "message": "Contrastive failure record created from low-quality trace", "event": "distill_failure_created", "task_type": "Preserve Non-Updatable Columns During Upsert"}
+    10/50 sql08  score=5.0  ctx=720  tokens=358  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "06edbedb33177c60"}
+    11/50 sql34  score=5.0  ctx=819  tokens=371  latency=0.2s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 7, "floor": 0.55, "domain": "database"}
+    12/50 sql35  score=5.0  ctx=844  tokens=390  latency=0.3s
+{"level": "WARNING", "module": "learnkit.distiller", "message": "Contrastive failure record created from low-quality trace", "event": "distill_failure_created", "task_type": "Missing Aggregation for Unique Users"}
+    13/50 sql21  score=5.0  ctx=1254  tokens=473  latency=0.2s
+    14/50 sql50  score=5.0  ctx=896  tokens=372  latency=0.2s
+    15/50 sql06  score=5.0  ctx=0  tokens=311  latency=0.6s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "118c92cf56e01b0d"}
+    16/50 sql39  score=5.0  ctx=963  tokens=429  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "118c92cf56e01b0d"}
+    17/50 sql12  score=5.0  ctx=992  tokens=413  latency=0.3s
+    18/50 sql24  score=5.0  ctx=992  tokens=385  latency=0.2s
+    19/50 sql41  score=5.0  ctx=1048  tokens=446  latency=0.3s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 10, "floor": 0.55, "domain": "database"}
+    20/50 sql16  score=5.0  ctx=1056  tokens=537  latency=0.5s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 13, "floor": 0.55, "domain": "database"}
+    21/50 sql11  score=5.0  ctx=1130  tokens=445  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill storage skipped by quality gate", "event": "skill_store_skip", "reason": "not general (task overlap 50%)"}
+    22/50 sql22  score=5.0  ctx=1142  tokens=444  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "06edbedb33177c60"}
+    23/50 sql47  score=5.0  ctx=1214  tokens=472  latency=0.2s
+    24/50 sql04  score=5.0  ctx=1045  tokens=577  latency=0.6s
+{"level": "WARNING", "module": "learnkit.distiller", "message": "Contrastive failure record created from low-quality trace", "event": "distill_failure_created", "task_type": "Incomplete GROUP BY Clause"}
+    25/50 sql10  score=5.0  ctx=1041  tokens=460  latency=0.3s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 13, "floor": 0.55, "domain": "database"}
+    26/50 sql05  score=0.0  ctx=1187  tokens=562  latency=0.5s
+    27/50 sql42  score=5.0  ctx=0  tokens=187  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill storage skipped by quality gate", "event": "skill_store_skip", "reason": "not general (task overlap 64%)"}
+    28/50 sql43  score=5.0  ctx=967  tokens=507  latency=0.5s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 14, "floor": 0.55, "domain": "database"}
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "118c92cf56e01b0d"}
+    29/50 sql40  score=5.0  ctx=1078  tokens=440  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "06edbedb33177c60"}
+    30/50 sql18  score=5.0  ctx=1244  tokens=472  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill storage skipped by quality gate", "event": "skill_store_skip", "reason": "not general (task overlap 55%)"}
+    31/50 sql30  score=5.0  ctx=1172  tokens=571  latency=0.5s
+{"level": "WARNING", "module": "learnkit.distiller", "message": "Contrastive failure record created from low-quality trace", "event": "distill_failure_created", "task_type": "Missing Parenthesis in SET Clause"}
+    32/50 sql46  score=5.0  ctx=1345  tokens=496  latency=0.2s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 13, "floor": 0.55, "domain": "database"}
+    33/50 sql07  score=5.0  ctx=1202  tokens=468  latency=0.3s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 14, "floor": 0.55, "domain": "database"}
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "4a16649859c06a67"}
+    34/50 sql36  score=5.0  ctx=1113  tokens=420  latency=0.2s
+    35/50 sql19  score=5.0  ctx=1152  tokens=454  latency=0.2s
+    36/50 sql09  score=5.0  ctx=1094  tokens=447  latency=0.2s
+{"level": "WARNING", "module": "learnkit.distiller", "message": "Contrastive failure record created from low-quality trace", "event": "distill_failure_created", "task_type": "Incomplete SQL Query"}
+    37/50 sql45  score=5.0  ctx=829  tokens=504  latency=0.6s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 15, "floor": 0.55, "domain": "database"}
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "d3bafc63eda12cea"}
+    38/50 sql14  score=5.0  ctx=989  tokens=420  latency=0.3s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 15, "floor": 0.55, "domain": "database"}
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "c3aa6705573915f9"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "4900f4c9-88bf-459f-b62b-3419a8ac7f17"}
+    39/50 sql38  score=5.0  ctx=1141  tokens=424  latency=0.2s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 15, "floor": 0.55, "domain": "database"}
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "1156f9b305238e4b"}
+    40/50 sql23  score=5.0  ctx=1045  tokens=417  latency=0.2s
+    41/50 sql31  score=5.0  ctx=1219  tokens=502  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "06edbedb33177c60"}
+    42/50 sql20  score=5.0  ctx=1063  tokens=445  latency=0.2s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 19, "floor": 0.55, "domain": "database"}
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "118c92cf56e01b0d"}
+    43/50 sql26  score=5.0  ctx=721  tokens=343  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "06edbedb33177c60"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "ba233965-f171-4bd7-a42d-c952567f6e34"}
+    44/50 sql32  score=5.0  ctx=1104  tokens=456  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "06edbedb33177c60"}
+    45/50 sql33  score=5.0  ctx=981  tokens=415  latency=0.2s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 16, "floor": 0.55, "domain": "database"}
+    46/50 sql17  score=5.0  ctx=969  tokens=507  latency=0.5s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 17, "floor": 0.55, "domain": "database"}
+    47/50 sql03  score=5.0  ctx=858  tokens=373  latency=0.2s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 18, "floor": 0.55, "domain": "database"}
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "118c92cf56e01b0d"}
+    48/50 sql27  score=5.0  ctx=797  tokens=367  latency=0.3s
+    49/50 sql49  score=5.0  ctx=967  tokens=429  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "118c92cf56e01b0d"}
+    50/50 sql25  score=5.0  ctx=1008  tokens=432  latency=0.3s
+
+  [CONTROL] sql_authoring (seed 1)
+     1/50 sql03  score=5.0  tokens=172  latency=0.2s
+     2/50 sql16  score=5.0  tokens=296  latency=0.6s
+     3/50 sql48  score=5.0  tokens=194  latency=0.2s
+     4/50 sql10  score=5.0  tokens=212  latency=0.3s
+     5/50 sql22  score=5.0  tokens=182  latency=0.2s
+     6/50 sql30  score=5.0  tokens=294  latency=0.5s
+     7/50 sql49  score=5.0  tokens=198  latency=0.3s
+     8/50 sql06  score=5.0  tokens=311  latency=0.6s
+     9/50 sql47  score=5.0  tokens=188  latency=0.2s
+    10/50 sql15  score=5.0  tokens=307  latency=0.5s
+    11/50 sql12  score=5.0  tokens=182  latency=0.3s
+    12/50 sql33  score=5.0  tokens=190  latency=0.2s
+    13/50 sql35  score=5.0  tokens=198  latency=0.3s
+    14/50 sql27  score=5.0  tokens=187  latency=0.3s
+    15/50 sql50  score=5.0  tokens=162  latency=0.2s
+    16/50 sql20  score=5.0  tokens=197  latency=0.2s
+    17/50 sql40  score=5.0  tokens=193  latency=0.3s
+    18/50 sql39  score=5.0  tokens=197  latency=0.3s
+    19/50 sql13  score=5.0  tokens=181  latency=0.3s
+    20/50 sql23  score=5.0  tokens=178  latency=0.2s
+    21/50 sql38  score=5.0  tokens=154  latency=0.2s
+    22/50 sql21  score=5.0  tokens=205  latency=0.3s
+    23/50 sql43  score=5.0  tokens=280  latency=0.5s
+    24/50 sql36  score=5.0  tokens=159  latency=0.2s
+    25/50 sql34  score=5.0  tokens=180  latency=0.2s
+    26/50 sql11  score=5.0  tokens=167  latency=0.2s
+    27/50 sql04  score=5.0  tokens=292  latency=0.5s
+    28/50 sql19  score=5.0  tokens=183  latency=0.2s
+    29/50 sql46  score=5.0  tokens=191  latency=0.2s
+    30/50 sql26  score=5.0  tokens=184  latency=0.3s
+    31/50 sql24  score=5.0  tokens=154  latency=0.2s
+    32/50 sql18  score=5.0  tokens=198  latency=0.2s
+    33/50 sql44  score=5.0  tokens=303  latency=0.5s
+    34/50 sql01  score=5.0  tokens=195  latency=0.3s
+    35/50 sql28  score=5.0  tokens=171  latency=0.2s
+    36/50 sql41  score=5.0  tokens=198  latency=0.3s
+    37/50 sql02  score=5.0  tokens=170  latency=0.2s
+    38/50 sql45  score=5.0  tokens=318  latency=0.6s
+    39/50 sql07  score=5.0  tokens=186  latency=0.2s
+    40/50 sql14  score=5.0  tokens=176  latency=0.2s
+    41/50 sql25  score=5.0  tokens=167  latency=0.2s
+    42/50 sql42  score=5.0  tokens=187  latency=0.3s
+    43/50 sql31  score=5.0  tokens=268  latency=0.4s
+    44/50 sql29  score=5.0  tokens=259  latency=0.4s
+    45/50 sql32  score=5.0  tokens=188  latency=0.2s
+    46/50 sql08  score=5.0  tokens=195  latency=0.2s
+    47/50 sql17  score=5.0  tokens=287  latency=0.5s
+    48/50 sql05  score=0.0  tokens=280  latency=0.5s
+    49/50 sql37  score=5.0  tokens=175  latency=0.2s
+    50/50 sql09  score=5.0  tokens=191  latency=0.2s
+
+  [TREATMENT] sql_authoring  (db: learnkit_sql_authoring_seed_1.db, seed 1)
+     1/50 sql03  score=5.0  ctx=0  tokens=172  latency=0.2s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 3, "floor": 0.55, "domain": "database"}
+     2/50 sql16  score=5.0  ctx=806  tokens=507  latency=0.6s
+     3/50 sql48  score=5.0  ctx=1297  tokens=492  latency=0.2s
+     4/50 sql10  score=5.0  ctx=0  tokens=212  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill storage skipped by quality gate", "event": "skill_store_skip", "reason": "not general (task overlap 50%)"}
+     5/50 sql22  score=5.0  ctx=862  tokens=369  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill storage skipped by quality gate", "event": "skill_store_skip", "reason": "not general (task overlap 55%)"}
+     6/50 sql30  score=5.0  ctx=1212  tokens=576  latency=0.5s
+     7/50 sql49  score=5.0  ctx=0  tokens=198  latency=0.3s
+     8/50 sql06  score=5.0  ctx=0  tokens=311  latency=0.6s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "06edbedb33177c60"}
+     9/50 sql47  score=5.0  ctx=1212  tokens=470  latency=0.2s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 6, "floor": 0.55, "domain": "database"}
+{"level": "INFO", "module": "learnkit.core", "message": "Skill storage skipped by quality gate", "event": "skill_store_skip", "reason": "not general (task overlap 56%)"}
+    10/50 sql15  score=5.0  ctx=984  tokens=517  latency=0.5s
+    11/50 sql12  score=5.0  ctx=899  tokens=389  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "06edbedb33177c60"}
+    12/50 sql33  score=5.0  ctx=982  tokens=415  latency=0.2s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 9, "floor": 0.55, "domain": "database"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "e5f12d4a-5479-48cd-b3c0-555751938e64"}
+    13/50 sql35  score=5.0  ctx=984  tokens=418  latency=0.3s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 11, "floor": 0.55, "domain": "database"}
+    14/50 sql27  score=5.0  ctx=1043  tokens=447  latency=0.3s
+    15/50 sql50  score=5.0  ctx=0  tokens=162  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "06edbedb33177c60"}
+    16/50 sql20  score=5.0  ctx=1114  tokens=440  latency=0.2s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 14, "floor": 0.55, "domain": "database"}
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "2e553da78999f54f"}
+    17/50 sql40  score=5.0  ctx=1100  tokens=462  latency=0.3s
+    18/50 sql39  score=5.0  ctx=1086  tokens=430  latency=0.2s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 15, "floor": 0.55, "domain": "database"}
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced near-duplicate record", "event": "skill_dedup_near", "record_id": "3ca84b8e-266d-4667-ae73-9d3e27aaee84"}
+    19/50 sql13  score=5.0  ctx=1100  tokens=462  latency=0.3s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 16, "floor": 0.55, "domain": "database"}
+    20/50 sql23  score=5.0  ctx=1041  tokens=419  latency=0.2s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 16, "floor": 0.55, "domain": "database"}
+    21/50 sql38  score=5.0  ctx=1038  tokens=406  latency=0.2s
+{"level": "WARNING", "module": "learnkit.distiller", "message": "Contrastive failure record created from low-quality trace", "event": "distill_failure_created", "task_type": "Missing Aggregation for Unique Users"}
+    22/50 sql21  score=5.0  ctx=1219  tokens=462  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill storage skipped by quality gate", "event": "skill_store_skip", "reason": "not general (task overlap 64%)"}
+    23/50 sql43  score=5.0  ctx=863  tokens=475  latency=0.5s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 14, "floor": 0.55, "domain": "database"}
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "4a16649859c06a67"}
+    24/50 sql36  score=5.0  ctx=1219  tokens=445  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "06edbedb33177c60"}
+    25/50 sql34  score=5.0  ctx=1106  tokens=434  latency=0.2s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 15, "floor": 0.55, "domain": "database"}
+    26/50 sql11  score=5.0  ctx=1087  tokens=445  latency=0.3s
+    27/50 sql04  score=5.0  ctx=1196  tokens=648  latency=0.7s
+    28/50 sql19  score=5.0  ctx=1123  tokens=432  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "06edbedb33177c60"}
+    29/50 sql46  score=5.0  ctx=1085  tokens=434  latency=0.2s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 16, "floor": 0.55, "domain": "database"}
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "2e553da78999f54f"}
+    30/50 sql26  score=5.0  ctx=1089  tokens=447  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "c3aa6705573915f9"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "cdd152e8-2483-43b9-ad8a-0e5f03582991"}
+    31/50 sql24  score=5.0  ctx=1041  tokens=387  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "06edbedb33177c60"}
+    32/50 sql18  score=5.0  ctx=1175  tokens=456  latency=0.2s
+    33/50 sql44  score=5.0  ctx=0  tokens=303  latency=0.5s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "118c92cf56e01b0d"}
+    34/50 sql01  score=5.0  ctx=1099  tokens=447  latency=0.3s
+    35/50 sql28  score=5.0  ctx=1143  tokens=457  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "118c92cf56e01b0d"}
+    36/50 sql41  score=5.0  ctx=1143  tokens=469  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "2e553da78999f54f"}
+    37/50 sql02  score=5.0  ctx=1099  tokens=418  latency=0.2s
+{"level": "WARNING", "module": "learnkit.distiller", "message": "Contrastive failure record created from low-quality trace", "event": "distill_failure_created", "task_type": "Incomplete SQL Query"}
+    38/50 sql45  score=5.0  ctx=0  tokens=318  latency=0.6s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 16, "floor": 0.55, "domain": "database"}
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "3ee57ed45f618db2"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "1214549c-289f-43b1-8aa4-92227f796a89"}
+    39/50 sql07  score=5.0  ctx=1093  tokens=440  latency=0.2s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 17, "floor": 0.55, "domain": "database"}
+    40/50 sql14  score=5.0  ctx=971  tokens=418  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "9d16c16d-9e76-49df-8256-14bb7d2b35a1"}
+    41/50 sql25  score=5.0  ctx=1150  tokens=466  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced near-duplicate record", "event": "skill_dedup_near", "record_id": "e076303b-6a5c-47c4-8fcb-bb9f645c283b"}
+    42/50 sql42  score=5.0  ctx=0  tokens=187  latency=0.3s
+    43/50 sql31  score=5.0  ctx=1219  tokens=502  latency=0.4s
+    44/50 sql29  score=5.0  ctx=1090  tokens=496  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "06edbedb33177c60"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "04a4b2d3-db53-4163-9457-403078da2203"}
+    45/50 sql32  score=5.0  ctx=1064  tokens=432  latency=0.2s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 15, "floor": 0.55, "domain": "database"}
+{"level": "WARNING", "module": "learnkit.distiller", "message": "Contrastive failure record created from low-quality trace", "event": "distill_failure_created", "task_type": "Preserve Non-Updatable Columns During Upsert"}
+    46/50 sql08  score=5.0  ctx=1148  tokens=457  latency=0.2s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 15, "floor": 0.55, "domain": "database"}
+{"level": "WARNING", "module": "learnkit.distiller", "message": "Contrastive failure record created from low-quality trace", "event": "distill_failure_created", "task_type": "Incomplete Query"}
+    47/50 sql17  score=5.0  ctx=1016  tokens=544  latency=0.6s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 16, "floor": 0.55, "domain": "database"}
+    48/50 sql05  score=0.0  ctx=876  tokens=496  latency=0.5s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "ed38c69e8ffd8c0b"}
+    49/50 sql37  score=5.0  ctx=1041  tokens=407  latency=0.2s
+    50/50 sql09  score=5.0  ctx=1125  tokens=450  latency=0.2s
+
+  [CONTROL] sql_authoring (seed 2)
+     1/50 sql25  score=5.0  tokens=167  latency=0.2s
+     2/50 sql34  score=5.0  tokens=180  latency=0.2s
+     3/50 sql50  score=5.0  tokens=162  latency=0.2s
+     4/50 sql36  score=5.0  tokens=159  latency=0.2s
+     5/50 sql07  score=5.0  tokens=186  latency=0.2s
+     6/50 sql16  score=5.0  tokens=296  latency=0.5s
+     7/50 sql05  score=0.0  tokens=280  latency=0.5s
+     8/50 sql23  score=5.0  tokens=178  latency=0.2s
+     9/50 sql10  score=5.0  tokens=212  latency=0.3s
+    10/50 sql30  score=5.0  tokens=294  latency=0.5s
+    11/50 sql35  score=5.0  tokens=198  latency=0.3s
+    12/50 sql22  score=5.0  tokens=182  latency=0.2s
+    13/50 sql19  score=5.0  tokens=183  latency=0.2s
+    14/50 sql40  score=5.0  tokens=193  latency=0.3s
+    15/50 sql27  score=5.0  tokens=187  latency=0.3s
+    16/50 sql21  score=5.0  tokens=205  latency=0.3s
+    17/50 sql08  score=5.0  tokens=195  latency=0.2s
+    18/50 sql44  score=5.0  tokens=303  latency=0.5s
+    19/50 sql18  score=5.0  tokens=198  latency=0.2s
+    20/50 sql48  score=5.0  tokens=194  latency=0.2s
+    21/50 sql31  score=5.0  tokens=268  latency=0.5s
+    22/50 sql41  score=5.0  tokens=198  latency=0.3s
+    23/50 sql13  score=5.0  tokens=181  latency=0.2s
+    24/50 sql37  score=5.0  tokens=175  latency=0.2s
+    25/50 sql15  score=5.0  tokens=307  latency=0.5s
+    26/50 sql12  score=5.0  tokens=182  latency=0.3s
+    27/50 sql01  score=5.0  tokens=195  latency=0.3s
+    28/50 sql02  score=5.0  tokens=170  latency=0.2s
+    29/50 sql32  score=5.0  tokens=188  latency=0.2s
+    30/50 sql09  score=5.0  tokens=191  latency=0.2s
+    31/50 sql45  score=5.0  tokens=318  latency=0.6s
+    32/50 sql29  score=5.0  tokens=259  latency=0.4s
+    33/50 sql47  score=5.0  tokens=188  latency=0.2s
+    34/50 sql33  score=5.0  tokens=190  latency=0.2s
+    35/50 sql26  score=5.0  tokens=184  latency=0.3s
+    36/50 sql28  score=5.0  tokens=171  latency=0.2s
+    37/50 sql46  score=5.0  tokens=191  latency=0.2s
+    38/50 sql38  score=5.0  tokens=154  latency=0.2s
+    39/50 sql03  score=5.0  tokens=172  latency=0.2s
+    40/50 sql42  score=5.0  tokens=187  latency=0.3s
+    41/50 sql14  score=5.0  tokens=176  latency=0.2s
+    42/50 sql39  score=5.0  tokens=197  latency=0.3s
+    43/50 sql17  score=5.0  tokens=287  latency=0.5s
+    44/50 sql20  score=5.0  tokens=197  latency=0.2s
+    45/50 sql43  score=5.0  tokens=280  latency=0.5s
+    46/50 sql11  score=5.0  tokens=167  latency=0.2s
+    47/50 sql24  score=5.0  tokens=154  latency=0.2s
+    48/50 sql49  score=5.0  tokens=198  latency=0.3s
+    49/50 sql06  score=5.0  tokens=311  latency=0.6s
+    50/50 sql04  score=5.0  tokens=292  latency=0.5s
+
+  [TREATMENT] sql_authoring  (db: learnkit_sql_authoring_seed_2.db, seed 2)
+     1/50 sql25  score=5.0  ctx=0  tokens=167  latency=0.2s
+     2/50 sql34  score=5.0  ctx=0  tokens=180  latency=0.2s
+     3/50 sql50  score=5.0  ctx=815  tokens=349  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "4a16649859c06a67"}
+     4/50 sql36  score=5.0  ctx=0  tokens=159  latency=0.2s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 4, "floor": 0.55, "domain": "database"}
+     5/50 sql07  score=5.0  ctx=0  tokens=186  latency=0.2s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 6, "floor": 0.55, "domain": "database"}
+     6/50 sql16  score=5.0  ctx=628  tokens=468  latency=0.6s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 10, "floor": 0.55, "domain": "database"}
+     7/50 sql05  score=0.0  ctx=717  tokens=466  latency=0.5s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 14, "floor": 0.55, "domain": "database"}
+     8/50 sql23  score=5.0  ctx=804  tokens=360  latency=0.2s
+     9/50 sql10  score=5.0  ctx=0  tokens=212  latency=0.3s
+{"level": "WARNING", "module": "learnkit.distiller", "message": "Contrastive failure record created from low-quality trace", "event": "distill_failure_created", "task_type": "Incomplete SQL Query"}
+    10/50 sql30  score=5.0  ctx=1048  tokens=538  latency=0.5s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 17, "floor": 0.55, "domain": "database"}
+    11/50 sql35  score=5.0  ctx=798  tokens=382  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill storage skipped by quality gate", "event": "skill_store_skip", "reason": "not general (task overlap 50%)"}
+    12/50 sql22  score=5.0  ctx=899  tokens=388  latency=0.2s
+    13/50 sql19  score=5.0  ctx=1061  tokens=436  latency=0.2s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 16, "floor": 0.55, "domain": "database"}
+    14/50 sql40  score=5.0  ctx=859  tokens=395  latency=0.3s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 17, "floor": 0.55, "domain": "database"}
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "118c92cf56e01b0d"}
+    15/50 sql27  score=5.0  ctx=760  tokens=372  latency=0.3s
+{"level": "WARNING", "module": "learnkit.distiller", "message": "Contrastive failure record created from low-quality trace", "event": "distill_failure_created", "task_type": "Missing Aggregation for Unique Users Across Event Types"}
+    16/50 sql21  score=5.0  ctx=1085  tokens=426  latency=0.2s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 17, "floor": 0.55, "domain": "database"}
+{"level": "WARNING", "module": "learnkit.distiller", "message": "Contrastive failure record created from low-quality trace", "event": "distill_failure_created", "task_type": "Preserve Non-Updatable Columns During Upsert"}
+    17/50 sql08  score=5.0  ctx=851  tokens=385  latency=0.2s
+    18/50 sql44  score=5.0  ctx=0  tokens=303  latency=0.5s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "06edbedb33177c60"}
+    19/50 sql18  score=5.0  ctx=0  tokens=198  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "06edbedb33177c60"}
+    20/50 sql48  score=5.0  ctx=1212  tokens=475  latency=0.2s
+    21/50 sql31  score=5.0  ctx=1219  tokens=502  latency=0.4s
+    22/50 sql41  score=5.0  ctx=1132  tokens=471  latency=0.3s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 15, "floor": 0.55, "domain": "database"}
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "118c92cf56e01b0d"}
+    23/50 sql13  score=5.0  ctx=1018  tokens=421  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced near-duplicate record", "event": "skill_dedup_near", "record_id": "7d5f3182-d317-4b83-be59-b3d365dd3d80"}
+    24/50 sql37  score=5.0  ctx=982  tokens=402  latency=0.2s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 13, "floor": 0.55, "domain": "database"}
+{"level": "WARNING", "module": "learnkit.distiller", "message": "Contrastive failure record created from low-quality trace", "event": "distill_failure_created", "task_type": "Incomplete SQL Query"}
+    25/50 sql15  score=5.0  ctx=1166  tokens=581  latency=0.6s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "118c92cf56e01b0d"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "f4aa9e50-c195-44ba-b9e4-ad7037360892"}
+    26/50 sql12  score=5.0  ctx=982  tokens=410  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "2e553da78999f54f"}
+    27/50 sql01  score=5.0  ctx=1124  tokens=466  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "2e553da78999f54f"}
+    28/50 sql02  score=5.0  ctx=1134  tokens=453  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "06edbedb33177c60"}
+    29/50 sql32  score=5.0  ctx=1146  tokens=449  latency=0.2s
+    30/50 sql09  score=5.0  ctx=1080  tokens=442  latency=0.2s
+{"level": "WARNING", "module": "learnkit.distiller", "message": "Contrastive failure record created from low-quality trace", "event": "distill_failure_created", "task_type": "Incomplete SQL Query"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "1d7907c2-3209-47ff-9f06-ee207277b813"}
+    31/50 sql45  score=5.0  ctx=653  tokens=448  latency=0.6s
+    32/50 sql29  score=5.0  ctx=1104  tokens=524  latency=0.4s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "06edbedb33177c60"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "ead72312-2889-4128-8fe8-373682b79a8c"}
+    33/50 sql47  score=5.0  ctx=1094  tokens=449  latency=0.2s
+{"level": "WARNING", "module": "learnkit.distiller", "message": "Contrastive failure record created from low-quality trace", "event": "distill_failure_created", "task_type": "Incorrect use of EXCLUDED in ON CONFLICT SET"}
+    34/50 sql33  score=5.0  ctx=682  tokens=334  latency=0.2s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 17, "floor": 0.55, "domain": "database"}
+    35/50 sql26  score=5.0  ctx=841  tokens=385  latency=0.3s
+    36/50 sql28  score=5.0  ctx=1189  tokens=438  latency=0.2s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "06edbedb33177c60"}
+    37/50 sql46  score=5.0  ctx=880  tokens=381  latency=0.2s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 17, "floor": 0.55, "domain": "database"}
+    38/50 sql38  score=5.0  ctx=841  tokens=344  latency=0.2s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 16, "floor": 0.55, "domain": "database"}
+    39/50 sql03  score=5.0  ctx=859  tokens=372  latency=0.2s
+    40/50 sql42  score=5.0  ctx=0  tokens=187  latency=0.3s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 18, "floor": 0.55, "domain": "database"}
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced near-duplicate record", "event": "skill_dedup_near", "record_id": "b03e7e67-54a2-492d-897b-6d73dde5f287"}
+{"level": "INFO", "module": "learnkit.core", "message": "Failure dedup: reinforced existing failure record", "event": "failure_dedup", "record_id": "7fd1de92-0cc7-4f6f-ba38-d9ed767b2d71"}
+    41/50 sql14  score=5.0  ctx=723  tokens=348  latency=0.2s
+    42/50 sql39  score=5.0  ctx=1258  tokens=499  latency=0.3s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 15, "floor": 0.55, "domain": "database"}
+{"level": "WARNING", "module": "learnkit.distiller", "message": "Contrastive failure record created from low-quality trace", "event": "distill_failure_created", "task_type": "SQL Syntax Error in WHERE Clause"}
+    43/50 sql17  score=5.0  ctx=987  tokens=531  latency=0.5s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "06edbedb33177c60"}
+    44/50 sql20  score=5.0  ctx=1110  tokens=455  latency=0.3s
+{"level": "WARNING", "module": "learnkit.distiller", "message": "Contrastive failure record created from low-quality trace", "event": "distill_failure_created", "task_type": "Incomplete Logic in Inactive Period Calculation"}
+    45/50 sql43  score=5.0  ctx=982  tokens=508  latency=0.5s
+{"level": "WARNING", "module": "learnkit.retriever", "message": "Records dropped by confidence floor", "event": "confidence_floor_drop", "dropped": 14, "floor": 0.55, "domain": "database"}
+    46/50 sql11  score=5.0  ctx=972  tokens=423  latency=0.3s
+{"level": "INFO", "module": "learnkit.core", "message": "Skill dedup: reinforced existing record instead of inserting duplicate", "event": "skill_dedup", "fingerprint": "c3aa6705573915f9"}
+    47/50 sql24  score=5.0  ctx=1110  tokens=421  latency=0.2s
+    48/50 sql49  score=5.0  ctx=1174  tokens=472  latency=0.3s
+    49/50 sql06  score=5.0  ctx=1014  tokens=510  latency=0.5s
+    50/50 sql04  score=5.0  ctx=1154  tokens=595  latency=0.6s
+
+========================================================================
+DONE ÔÇö see C:\Users\mcw\OneDrive - Microsoft\Desktop\personal\LearnKit\benchmarks\results\20260620_002806\summary.md
+========================================================================
