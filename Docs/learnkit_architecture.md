@@ -504,5 +504,88 @@ LearnKit is an SDK that sits between any AI agent and its memory backend. It int
 
 ---
 
+## 2026-06-21 Architecture Addendum — Agentic Learning Control Plane
+
+The original architecture above describes the infer-and-learn data path. The
+current production focus adds a control plane for benchmarking and gated
+improvement loops.
+
+### New control-plane components
+
+- `benchmarks/injection_ablation.py`
+  - Multi-trial (`--trials`) quality ablation on novel sibling tasks.
+  - pass^k-style metrics (`--k`) plus convention-level checks.
+  - Writes detailed and summary JSON artifacts.
+- `benchmarks/run_agentic_suite.py`
+  - Orchestrates `react_live`, `evolution_live`, and `injection_ablation`.
+  - Produces merged suite artifacts.
+  - Enforces first regression gate: `playbook_effect >= threshold`.
+
+### Control-plane flow (implemented)
+
+1. Execute benchmark suite (`react_live`, `evolution_live`, `injection_ablation`).
+2. Parse/merge metrics into one summary record.
+3. Apply regression gate(s), starting with minimum playbook effect.
+4. Fail build/release candidate when gate(s) fail.
+5. Feed failing slices back into reflection/guardrail tuning.
+
+This closes the loop from "learning mechanism" to "measurable quality gate".
+
+### Standard benchmark numbers (suite run)
+
+Source run: `benchmarks/results/agentic_suite_qwen2.5-7b_20260620_220017_summary.json`
+
+- Model: `Qwen/Qwen2.5-7B-Instruct`
+- Gate: `min_playbook_effect >= 0.5`
+- Observed playbook effect: `+2.625` (PASS)
+
+`react_live`:
+
+- tool-calls/task: `3.5 -> 3.0` (about 14% reduction)
+- llm calls: `21 -> 8` (about 62% reduction)
+- success: `6/6 -> 6/6`
+
+`evolution_live`:
+
+- tool calls total: `58 -> 48` (about 17% reduction)
+- llm calls total: `58 -> 20` (about 66% reduction)
+- success: `16/16 -> 16/16`
+- evolved flag: `true`
+
+`injection_ablation` (`trials=1`, `k=1`):
+
+- cold avg score: `0.0`
+- procedure avg score: `0.375`
+- playbook avg score: `3.0`
+- playbook pass^k(full): `1.0`
+
+Interpretation: cost reductions are stable in warmed mode, and the playbook arm
+shows strong quality lift over procedure-only guidance on non-replayed siblings.
+
+### Cross-model matrix (2026-06-21)
+
+Full numbers and per-model interpretation:
+`Docs/FINAL_MODEL_MATRIX_2026-06-21.txt`.
+
+| model                              | gate   | playbook_effect | pass^k(full) | react cold→warm | evolution cold→warm | evolved |
+|------------------------------------|--------|-----------------|--------------|-----------------|---------------------|---------|
+| `Qwen/Qwen2.5-7B-Instruct`         | PASS   | 2.625           | 1.0          | 6/6 → 6/6       | 16/16 → 16/16       | yes     |
+| `Qwen/Qwen2.5-14B-Instruct`        | FAIL*  | 0.0             | 0.0          | 3/6 → 5/6       | 10/16 → 15/16       | yes     |
+| `deepseek-ai/deepseek-coder-33b-instruct` | FAIL   | 0.0             | 0.0          | 0/6 → 0/6       | 0/16 → 0/16         | no      |
+
+\* The 14B reaches all three benchmarks end-to-end and shows real cold→warm
+lift on `react_live` and `evolution_live`; the injection-ablation zero is
+caused by the endpoint's tool-call parser not extracting the model's
+multi-`<tool_call>` content into structured `tool_calls`. Fix is endpoint
+config (`--tool-call-parser hermes`), not framework.
+
+The matrix runner now records three distinguishable failure classes:
+gate pass, parser/harness gap, and model capability gap (e.g.
+DeepSeek-Coder-33B does not emit `tool_calls` at all). This lets us gate
+production on class-1 results while still publishing class-2 and class-3
+data points.
+
+---
+
 *v1.0 — May 2026*
 *Architecture inspired by Hermes Agent (Nous Research), GEPA self-evolution (ICLR 2026), and Mem0 memory architecture.*

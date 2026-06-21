@@ -1,64 +1,65 @@
-"""Quality ablation: does *injecting accumulated knowledge* actually make the
-live model better — not just cheaper?
+"""Quality ablation: does injected playbook knowledge improve quality on
+non-replayed sibling tasks?
 
-Replay and the tool-procedure scaffold reduce calls/tokens, but that is caching,
-not learning. The honest test of learning is: on tasks the agent has NEVER
-replayed, does the accumulated natural-language *playbook* raise the QUALITY of
-the output? This benchmark isolates that with a 3-arm ablation over a stream of
-novel sibling tasks (distinct tables, none ever replayed):
+This benchmark isolates learning-by-injection from memoization with 3 arms:
 
-    cold       — BASE_SYSTEM only. No memory.
-    procedure  — inject the bare tool-sequence scaffold (tool NAMES only, no
-                 convention arguments). This is the pre-fix behavior: the model
-                 learns the SHAPE of the task but none of the know-how.
-    playbook   — inject the scaffold PLUS the accumulated natural-language
-                 playbook (the post-fix behavior, via the real compose_context
-                 path the agent uses live).
+    cold       — no injected memory context
+    procedure  — injected tool scaffold only (shape, no conventions)
+    playbook   — scaffold + natural-language playbook conventions
 
-The task prompt is deliberately vague. Success depends on three domain
-conventions that are stated ONLY in the playbook, never in the prompt or the
-scaffold:
+Compared with the prior one-shot script, this version is benchmark-grade:
 
-    1. filter to active records      -> filter(active='true')
-    2. include a record count        -> aggregate(op='count')
-    3. emit TSV for the ingest system-> format(fmt='tsv')
-
-The verifier inspects the ACTUAL tool arguments and scores each task 0..3.
-
-    cold vs procedure  -> value of the bare scaffold (shape only)
-    procedure vs playbook -> value of the accumulated KNOW-HOW (the real question)
-
-A flat line from procedure->playbook is an honest negative: injection did not
-help. A rising line means the model genuinely applied knowledge it was given.
+- Multi-trial runs for robustness
+- pass^k-style reporting (fraction of tasks solved in all k sampled trials)
+- Detailed + summary JSON artifacts persisted to benchmarks/results/
+- Per-arm compliance breakdown for each hidden convention
 
 Run:
     python -m benchmarks.injection_ablation
+    python -m benchmarks.injection_ablation --trials 3 --k 3 --seed 7 --save-prefix qwen_ablation
 """
 
-from benchmarks.react_live import (
-    BASE_SYSTEM,
-    GUIDED_SUFFIX,
-    MODEL,
-    react_loop,
-)
+from __future__ import annotations
+
+import argparse
+import json
+import random
+from datetime import datetime, timezone
+from math import comb
+from pathlib import Path
+
+from benchmarks.react_live import BASE_SYSTEM, GUIDED_SUFFIX, MODEL, react_loop
 from learnkit.composer import compose_context
 from learnkit.inference_mode import InferenceMode
 from learnkit.schemas.skill import SkillRecord
 from learnkit.tool_tracker import ToolTracker
 from learnkit.trajectory import Trajectory
 
-# ── Novel sibling tasks (distinct tables, never replayed) ─────────────────────
-# Vague on purpose: it does NOT reveal the compliance conventions.
-TABLES = ["users", "orders", "products", "items",
-          "customers", "invoices", "payments", "accounts"]
+# Novel sibling tasks only. No exact replay here by design.
+TABLES = [
+    "users",
+    "orders",
+    "products",
+    "items",
+    "customers",
+    "invoices",
+    "payments",
+    "accounts",
+]
 TASK = "Prepare the compliance export for the {t} table."
-
-# ── The three hidden conventions, checked against real tool arguments ─────────
 CONVENTIONS = ("filter_active", "record_count", "tsv_output")
 
 
-def _compliance(tracker: ToolTracker) -> tuple[int, dict]:
-    """Score 0..3: how many compliance conventions the agent actually satisfied."""
+def pass_hat_k(n: int, s: int, k: int) -> float:
+    """pass^k style metric using combinations: C(s, k) / C(n, k)."""
+    if k > n or k > s:
+        return 0.0
+    return comb(s, k) / comb(n, k)
+
+
+def _compliance(tracker: ToolTracker) -> tuple[int, dict[str, bool]]:
+    """Score each task 0..3 by checking actual tool arguments used."""
+
     def used(tool: str, key: str, value: str) -> bool:
         for c in tracker.calls:
             if c["tool"] != tool:
@@ -76,17 +77,18 @@ def _compliance(tracker: ToolTracker) -> tuple[int, dict]:
     return sum(hits.values()), hits
 
 
-# ── Memory records that get injected (the only difference between arms) ────────
 def _skill(with_playbook: bool) -> SkillRecord:
-    """A proven procedure for the compliance-export family. The scaffold lists
-    tool NAMES only (no convention args). When ``with_playbook`` is set, the
-    accumulated know-how — the conventions — is attached as the playbook."""
+    """Base procedural scaffold; optional playbook for knowledge injection."""
     rec = SkillRecord(
         domains={"pipeline": 1.0},
         task_type="compliance-export",
         content={
-            "procedure": [{"tool": "query"}, {"tool": "filter"},
-                          {"tool": "aggregate"}, {"tool": "format"}],
+            "procedure": [
+                {"tool": "query"},
+                {"tool": "filter"},
+                {"tool": "aggregate"},
+                {"tool": "format"},
+            ],
             "tool_sequence": ["query", "filter", "aggregate", "format"],
             "tools_used": ["query", "filter", "aggregate", "format"],
         },
@@ -115,59 +117,183 @@ def _system_for(arm: str, task: str) -> str:
     return BASE_SYSTEM + GUIDED_SUFFIX + context
 
 
-def run_arm(arm: str) -> dict:
-    s = {"score": 0, "full": 0, "tool_calls": 0, "llm_calls": 0, "tasks": 0,
-         "filter_active": 0, "record_count": 0, "tsv_output": 0, "rows": []}
-    for t in TABLES:
+def run_arm_trial(arm: str, tables: list[str]) -> dict:
+    out = {
+        "score": 0,
+        "full": 0,
+        "tool_calls": 0,
+        "llm_calls": 0,
+        "tasks": 0,
+        "filter_active": 0,
+        "record_count": 0,
+        "tsv_output": 0,
+        "rows": [],
+    }
+    for t in tables:
         task = TASK.format(t=t)
         tracker = ToolTracker(Trajectory(task=task))
         system = _system_for(arm, task)
         _final, llm = react_loop(task, system, tracker)
         score, hits = _compliance(tracker)
-        s["score"] += score
-        s["full"] += 1 if score == 3 else 0
-        s["tool_calls"] += sum(1 for c in tracker.calls if c["productive"])
-        s["llm_calls"] += llm
-        s["tasks"] += 1
+
+        out["score"] += score
+        out["full"] += 1 if score == 3 else 0
+        out["tool_calls"] += sum(1 for c in tracker.calls if c["productive"])
+        out["llm_calls"] += llm
+        out["tasks"] += 1
         for k in CONVENTIONS:
-            s[k] += 1 if hits[k] else 0
-        s["rows"].append((t, score, hits))
-    return s
+            out[k] += 1 if hits[k] else 0
+        out["rows"].append(
+            {
+                "table": t,
+                "score": score,
+                "hits": hits,
+                "tool_calls": sum(1 for c in tracker.calls if c["productive"]),
+                "llm_calls": llm,
+            }
+        )
+    return out
+
+
+def _mean(xs: list[float]) -> float:
+    return sum(xs) / len(xs) if xs else 0.0
+
+
+def aggregate_trials(arm: str, trials: list[dict], k: int) -> dict:
+    n_tasks = len(TABLES)
+    full_successes = sum(1 for t in trials if t["full"] == n_tasks)
+
+    # Per-convention all-task success count across trials.
+    convention_all = {
+        c: sum(1 for t in trials if t[c] == n_tasks)
+        for c in CONVENTIONS
+    }
+
+    return {
+        "arm": arm,
+        "trials": len(trials),
+        "tasks": n_tasks,
+        "avg_score_per_task": _mean([t["score"] / n_tasks for t in trials]),
+        "avg_full_per_trial": _mean([t["full"] for t in trials]),
+        "avg_tool_calls_per_task": _mean([t["tool_calls"] / n_tasks for t in trials]),
+        "avg_llm_calls_per_trial": _mean([t["llm_calls"] for t in trials]),
+        "full_success_trials": full_successes,
+        "pass_k_full": pass_hat_k(len(trials), full_successes, k),
+        "convention_pass_k": {
+            c: pass_hat_k(len(trials), convention_all[c], k)
+            for c in CONVENTIONS
+        },
+    }
+
+
+def _results_dir() -> Path:
+    p = Path(__file__).resolve().parent / "results"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def save_results(detailed: dict, summary: dict, prefix: str) -> tuple[Path, Path]:
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    out_prefix = f"{prefix}_{ts}"
+    root = _results_dir()
+    detailed_path = root / f"{out_prefix}_detailed.json"
+    summary_path = root / f"{out_prefix}_summary.json"
+    detailed_path.write_text(json.dumps(detailed, indent=2), encoding="utf-8")
+    summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    return detailed_path, summary_path
+
+
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(description="Injection quality ablation benchmark")
+    p.add_argument("--trials", type=int, default=1,
+                   help="Number of independent trials per arm (default: 1)")
+    p.add_argument("--k", type=int, default=1,
+                   help="k for pass^k reporting (default: 1)")
+    p.add_argument("--seed", type=int, default=0,
+                   help="Base random seed used for per-trial task shuffles")
+    p.add_argument("--save-prefix", default="injection_ablation",
+                   help="Prefix for results files under benchmarks/results/")
+    p.add_argument("--no-save", action="store_true",
+                   help="Disable writing detailed/summary JSON files")
+    return p.parse_args()
 
 
 def main() -> None:
-    print(f"model: {MODEL}   novel sibling tasks: {len(TABLES)}   "
-          f"(none replayed; conventions live only in the playbook)\n")
+    args = parse_args()
+
+    if args.trials < 1:
+        raise SystemExit("--trials must be >= 1")
+    if args.k < 1:
+        raise SystemExit("--k must be >= 1")
+
+    print(
+        f"model: {MODEL}   tasks: {len(TABLES)}   "
+        f"trials/arm: {args.trials}   pass^k: {args.k}"
+    )
+    print("arms: cold | procedure | playbook\n")
 
     arms = ["cold", "procedure", "playbook"]
-    results = {a: run_arm(a) for a in arms}
+    detailed = {
+        "model": MODEL,
+        "task_template": TASK,
+        "tables": TABLES,
+        "trials": args.trials,
+        "k": args.k,
+        "seed": args.seed,
+        "arms": {},
+    }
+
+    for arm in arms:
+        arm_trials = []
+        for t in range(args.trials):
+            rng = random.Random(args.seed + t)
+            tables = list(TABLES)
+            rng.shuffle(tables)
+            trial = run_arm_trial(arm, tables)
+            trial["trial_index"] = t
+            trial["table_order"] = tables
+            arm_trials.append(trial)
+        detailed["arms"][arm] = arm_trials
+
+    summary = {
+        "model": MODEL,
+        "trials": args.trials,
+        "k": args.k,
+        "arms": {
+            arm: aggregate_trials(arm, detailed["arms"][arm], args.k)
+            for arm in arms
+        },
+    }
 
     n = len(TABLES)
-    print("  arm       | avg score /3 | full 3/3 | filter | count |  tsv | tool/ta | llm")
-    print("  " + "-" * 78)
-    for a in arms:
-        r = results[a]
-        print(f"  {a:<9} | {r['score']/n:>11.2f}  | {r['full']:>4}/{n:<3} | "
-              f"{r['filter_active']:>4}/{n} | {r['record_count']:>3}/{n} | "
-              f"{r['tsv_output']:>3}/{n} | {r['tool_calls']/n:>6.2f}  | {r['llm_calls']}")
-    print("  " + "-" * 78)
+    print("  arm       | avg score/3 | avg full | pass^k(full) | filter^k | count^k | tsv^k")
+    print("  " + "-" * 84)
+    for arm in arms:
+        s = summary["arms"][arm]
+        print(
+            f"  {arm:<9} |"
+            f" {s['avg_score_per_task']:>10.2f} |"
+            f" {s['avg_full_per_trial']:>7.2f}/{n:<2} |"
+            f" {s['pass_k_full']:>12.3f} |"
+            f" {s['convention_pass_k']['filter_active']:>8.3f} |"
+            f" {s['convention_pass_k']['record_count']:>7.3f} |"
+            f" {s['convention_pass_k']['tsv_output']:>5.3f}"
+        )
+    print("  " + "-" * 84)
 
-    cold, proc, pb = results["cold"], results["procedure"], results["playbook"]
-    d_scaffold = (proc["score"] - cold["score"]) / n
-    d_playbook = (pb["score"] - proc["score"]) / n
-    print(f"\n  scaffold effect  (procedure - cold):     {d_scaffold:+.2f} avg compliance points")
-    print(f"  PLAYBOOK effect  (playbook - procedure): {d_playbook:+.2f} avg compliance points")
-    print(f"  full-compliance: cold {cold['full']}/{n} -> procedure {proc['full']}/{n} "
-          f"-> playbook {pb['full']}/{n}")
+    cold = summary["arms"]["cold"]
+    proc = summary["arms"]["procedure"]
+    pb = summary["arms"]["playbook"]
+    d_scaffold = proc["avg_score_per_task"] - cold["avg_score_per_task"]
+    d_playbook = pb["avg_score_per_task"] - proc["avg_score_per_task"]
 
-    if d_playbook > 0.25:
-        print("\n  VERDICT: the agent applied accumulated know-how it could not have")
-        print("           inferred from the prompt or scaffold. Injection genuinely helped.")
-    elif d_playbook <= 0.0:
-        print("\n  VERDICT: injecting the playbook did NOT improve quality. Honest negative —")
-        print("           the loop is wired but the model is not using the knowledge here.")
-    else:
-        print("\n  VERDICT: marginal/mixed. The playbook moved quality a little; not decisive.")
+    print(f"\n  scaffold effect (procedure - cold):     {d_scaffold:+.2f} avg compliance points")
+    print(f"  PLAYBOOK effect (playbook - procedure): {d_playbook:+.2f} avg compliance points")
+
+    if not args.no_save:
+        detailed_path, summary_path = save_results(detailed, summary, args.save_prefix)
+        print(f"\nSaved detailed: {detailed_path}")
+        print(f"Saved summary:  {summary_path}")
 
 
 if __name__ == "__main__":

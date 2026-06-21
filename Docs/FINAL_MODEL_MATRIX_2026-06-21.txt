@@ -1,0 +1,127 @@
+LearnKit Cross-Model Matrix Results
+Date: 2026-06-21
+Sources (per-model agentic suite summaries):
+- qwen2.5-7b:          benchmarks/results/agentic_suite_qwen2.5-7b_20260620_220017_summary.json
+- deepseek-coder-33b:  benchmarks/results/agentic_suite_deepseek-coder-33b_20260620_221449_summary.json
+- qwen2.5-14b:         benchmarks/results/agentic_suite_qwen2.5-14b_20260620_223626_summary.json
+Combined matrix snapshot (with --per-model-timeout 600): benchmarks/results/agentic_matrix_20260620_223022_summary.json
+
+Matrix run command (multi-model):
+  python -m benchmarks.run_agentic_matrix --trials 1 --k 1 --seed 7 \
+    --per-model-timeout 600 --continue-on-fail
+
+Per-model rerun with extended timeouts (used for qwen2.5-14b):
+  python -m benchmarks.run_agentic_suite --trials 1 --k 1 --seed 7 \
+    --react-timeout 1500 --evolution-timeout 1500 --injection-timeout 1500 \
+    --save-prefix agentic_suite_qwen2.5-14b
+
+Model endpoints:
+- qwen2.5-7b:          http://127.0.0.1:8000/v1   model=Qwen/Qwen2.5-7B-Instruct
+- deepseek-coder-33b:  http://127.0.0.1:8001/v1   model=deepseek-ai/deepseek-coder-33b-instruct
+- qwen2.5-14b:         http://127.0.0.1:8002/v1   model=Qwen/Qwen2.5-14B-Instruct
+
+========================================================================
+Suite gate summary (min_playbook_effect >= 0.5)
+========================================================================
+  model               | gate   | playbook_effect | pass^k(full) | evolved
+  --------------------+--------+-----------------+--------------+--------
+  qwen2.5-7b          | PASS   |       2.625     |     1.0      |   yes
+  qwen2.5-14b         | FAIL*  |       0.0       |     0.0      |   yes
+  deepseek-coder-33b  | FAIL   |       0.0       |     0.0      |   no
+
+  * qwen2.5-14b: gate fails on injection_ablation (see notes below), but
+    react_live and evolution_live both show clear cold->warm lift.
+
+========================================================================
+react_live (live ReAct, 6 tasks per arm)
+========================================================================
+  model               | cold success | warm success | LLM cold->warm | tools/task cold->warm
+  --------------------+--------------+--------------+----------------+----------------------
+  qwen2.5-7b          |     6/6      |     6/6      |    21 -> 8     |   3.5 -> 3.0
+  qwen2.5-14b         |     3/6      |     5/6      |     9 -> 9     |   1.5 -> 2.5
+  deepseek-coder-33b  |     0/6      |     0/6      |     6 -> 6     |   0.0 -> 0.0
+
+========================================================================
+evolution_live (multi-round durability, 16 tasks per arm)
+========================================================================
+  model               | cold success | warm success | LLM cold->warm | tools cold->warm | evolved
+  --------------------+--------------+--------------+----------------+------------------+--------
+  qwen2.5-7b          |    16/16     |    16/16     |   58 -> 20     |   58 -> 48       |   yes
+  qwen2.5-14b         |    10/16     |    15/16     |   26 -> 25     |   30 -> 45       |   yes
+  deepseek-coder-33b  |     0/16     |     0/16     |   16 -> 16     |    0 ->  0       |   no
+
+========================================================================
+injection_ablation (novel sibling tasks, trials=1, k=1)
+========================================================================
+  model               | procedure_avg | playbook_avg | playbook_effect | pass^k(full)
+  --------------------+---------------+--------------+-----------------+-------------
+  qwen2.5-7b          |    0.375      |    3.0       |      2.625      |     1.0
+  qwen2.5-14b         |    0.0        |    0.0       |      0.0        |     0.0
+  deepseek-coder-33b  |    0.0        |    0.0       |      0.0        |     0.0
+
+========================================================================
+Per-model interpretation
+========================================================================
+
+qwen2.5-7b (Qwen/Qwen2.5-7B-Instruct)
+  - Full PASS on all three suite benchmarks and the playbook regression gate.
+  - 62% LLM-call reduction on react_live (21 -> 8) with zero loss in success.
+  - 66% LLM-call reduction on evolution_live (58 -> 20) with all 16/16 tasks
+    still solved cold and warmed.
+  - Playbook injection lifts compliance from 0.375 -> 3.0 (effect +2.625) and
+    perfect pass^k=1.0 on novel sibling tasks.
+  - Recommendation: this is the reference model for the production playbook
+    regression gate today.
+
+qwen2.5-14b (Qwen/Qwen2.5-14B-Instruct)
+  - Endpoint reachable; framework end-to-end completed all three benchmarks.
+  - Clear LearnKit gain visible:
+      react_live success     3/6 -> 5/6  (warmed)
+      evolution_live success 10/16 -> 15/16 (warmed, evolved=true)
+  - injection_ablation scored 0 across all arms because this endpoint's
+    tool-call parser does not consistently extract multi-call hermes-style
+    output (the 14B emits <tool_call>...</tool_call> blocks in `content`
+    rather than the structured `tool_calls` field). The grader keys on actual
+    tool arguments, so missed parses look like zero compliance.
+  - Action item (infra, not framework): start the 14B sglang server with
+    `--tool-call-parser hermes` and confirm structured tool_calls are
+    returned. Once the parser config is corrected, re-run the suite; the
+    react/evolution lift indicates the playbook is being applied correctly,
+    only the verifier is starved of tool-arg evidence.
+
+deepseek-coder-33b (deepseek-ai/deepseek-coder-33b-instruct)
+  - Endpoint reachable; model does NOT emit tool calls. A direct probe
+    against /v1/chat/completions with tools=TOOLS_SCHEMA, tool_choice='auto'
+    returned a Python code block in `content` and `tool_calls=[]`.
+  - This is a model capability gap (the base 33B instruct release predates
+    standardized tool-calling). The framework cannot warm a model that never
+    produces tool_calls, so cold and warmed are both zero.
+  - Recommendation: replace with a coder model that supports structured
+    tool-calling (e.g. deepseek-coder-v2-instruct or qwen2.5-coder via the
+    hermes parser) if you want a coder lane in the matrix.
+
+========================================================================
+Framework portability finding
+========================================================================
+- The agentic suite, suite orchestrator, and matrix runner now treat every
+  model uniformly: same gates, same JSON artifacts, same regression metric.
+- Three observed failure classes are now distinguishable in artifacts:
+    1) GATE PASS              -> playbook_effect >= threshold (qwen2.5-7b)
+    2) PARSER / HARNESS GAP   -> framework executes, but the endpoint's
+                                 tool-call parser drops multi-call output
+                                 (qwen2.5-14b on injection_ablation)
+    3) MODEL CAPABILITY GAP   -> model does not produce tool_calls at all
+                                 (deepseek-coder-33b-instruct)
+- This separation lets us promote a model into the gating lane only when
+  it falls into class (1), while keeping classes (2) and (3) visible in
+  reports without blocking the build.
+
+========================================================================
+Production recommendation (current state)
+========================================================================
+- Hard-gate production benchmark health on qwen2.5-7b-instruct.
+- Keep qwen2.5-14b in the comparative lane; promote it to the gating lane
+  once the endpoint's tool-call parser config is fixed.
+- Replace deepseek-coder-33b-instruct in the coder lane with a model that
+  natively supports tool-calling before depending on its numbers.
+

@@ -1,6 +1,6 @@
 # LearnKit Consolidated Flow Plan
 
-Last updated: 2026-06-20
+Last updated: 2026-06-21
 Owner: LearnKit core team
 Status: Active execution blueprint
 
@@ -32,6 +32,14 @@ This is the single planning artifact for sequencing, prioritization, and release
   - Surveyed but not adopted: `../Godel_Agent`, `../letta`, `../ruflo`, `../MemOS`, `../recursive-improve`, `../hermes-agent` (see Cross-Repo Component Adoption Decisions).
 
 ## Current State Snapshot
+
+### Current execution phase (2026-06-21)
+
+- Completed: Phase 1 (reflective playbook), Phase 2 (deterministic guardrails),
+  and learning-loop closure (playbook injected into composed context).
+- Entering now: Phase 3 (benchmark credibility and aggressive loop improvement).
+- Current focus: repeated live ablations and pass^k-style robustness metrics,
+  then feed failure slices back into reflection/guardrails improvements.
 
 ### Strengths already in place
 
@@ -195,8 +203,9 @@ Net-new workstream from the 2026-06-20 update. Shares the W1–W3 substrate (sto
 - AP9 Deterministic capture guardrails for playbook quality (`playbook.py` filters). — DONE
 - AP10 Learning-loop closure: inject playbook/pitfalls in composed context. — DONE
 - AP11 Injection quality ablation (`benchmarks/injection_ablation.py`) proving playbook effect on novel siblings. — DONE
-- AP12 Reflection-quality hardening (semantic dedup + richer authoring tasks + stricter reflection eval). — TODO
-- AP13 On-disk `SKILL.md` library import path (export exists). — OPTIONAL
+- AP12 Agentic suite orchestrator + first regression gate (`benchmarks/run_agentic_suite.py`). — DONE
+- AP13 Reflection-quality hardening (semantic dedup + richer authoring tasks + stricter reflection eval). — TODO
+- AP14 On-disk `SKILL.md` library import path (export exists). — OPTIONAL
 
 ## Prioritized Roadmap
 

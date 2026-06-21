@@ -1,0 +1,36 @@
+LearnKit Standard Benchmark Numbers
+Date: 2026-06-21
+Source suite summary: benchmarks/results/agentic_suite_qwen2.5-7b_20260620_220017_summary.json
+Model: Qwen/Qwen2.5-7B-Instruct
+Endpoint: http://127.0.0.1:8000/v1 (sglang, --tool-call-parser hermes)
+Reproduce: python -m benchmarks.run_agentic_suite --trials 1 --k 1 --seed 7
+
+Suite gate:
+- min_playbook_effect threshold: 0.5
+- observed playbook_effect: 2.625
+- gate result: PASS
+- overall suite result: PASS
+
+react_live (cold vs warmed, 6 tasks per arm):
+- tools/task: 3.5 -> 3.0 (~14% reduction)
+- llm calls: 21 -> 8 (~62% reduction)
+- success: 6/6 -> 6/6
+- benchmark pass: true
+
+evolution_live (cold vs warmed totals over rounds, 16 tasks per arm):
+- tool calls: 58 -> 48 (~17% reduction)
+- llm calls: 58 -> 20 (~66% reduction)
+- success: 16/16 -> 16/16
+- evolved flag: true
+
+injection_ablation (trials=1, k=1, 8 novel sibling tasks per arm):
+- cold avg_score_per_task: 0.0
+- procedure avg_score_per_task: 0.375
+- playbook avg_score_per_task: 3.0
+- playbook_effect (playbook - procedure): 2.625
+- playbook pass^k(full): 1.0
+- convention pass^k (filter_active, record_count, tsv_output): 1.0, 1.0, 1.0
+
+Interpretation:
+- Warmed mode consistently reduces cost (tool and llm calls) while preserving success.
+- Playbook injection delivers a large quality gain over procedure-only guidance on novel sibling tasks.

@@ -40,6 +40,7 @@ BASE_URL = os.environ.get("LK_BASE_URL", "http://206.1.58.252:8000/v1")
 MODEL = os.environ.get("LK_MODEL", "Qwen/Qwen2.5-7B-Instruct")
 API_KEY = os.environ.get("LK_API_KEY", "none")
 MAX_STEPS = 8
+MAX_OUTPUT_TOKENS = int(os.environ.get("LK_MAX_OUTPUT_TOKENS", "256"))
 
 client = OpenAI(base_url=BASE_URL, api_key=API_KEY, timeout=120)
 
@@ -146,7 +147,7 @@ def react_loop(task: str, system: str, tracker: ToolTracker) -> tuple[str, int]:
     for _ in range(MAX_STEPS):
         resp = client.chat.completions.create(
             model=MODEL, messages=messages, tools=TOOLS_SCHEMA,
-            tool_choice="auto", temperature=0,
+            tool_choice="auto", temperature=0, max_tokens=MAX_OUTPUT_TOKENS,
         )
         llm_calls += 1
         msg = resp.choices[0].message

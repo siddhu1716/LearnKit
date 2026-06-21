@@ -38,6 +38,7 @@ learning-by-injection on sibling tasks.
 - 3 arms: `cold` vs `procedure` (tool scaffold only) vs `playbook` (scaffold + natural-language know-how).
 - Novel sibling tasks only (no exact replay) to avoid conflating with memoization.
 - Verifier checks real tool arguments for required conventions.
+- Supports multi-trial runs (`--trials`), pass^k reporting (`--k`), seeded task-order shuffles (`--seed`), and persisted detailed/summary JSON artifacts.
 
 Example observed run (Qwen2.5-7B):
 
@@ -80,7 +81,39 @@ python -m benchmarks.agentic_bench
 python -m benchmarks.react_live
 python -m benchmarks.evolution_live
 python -m benchmarks.injection_ablation
+python -m benchmarks.injection_ablation --trials 3 --k 3 --seed 7
+python -m benchmarks.run_agentic_suite --trials 3 --k 3 --seed 7
+python -m benchmarks.run_agentic_matrix --trials 1 --k 1 --seed 7
 ```
+
+One-command suite runner (new):
+
+- `benchmarks/run_agentic_suite.py` orchestrates `react_live`, `evolution_live`,
+	and `injection_ablation` in one run.
+- Produces merged artifacts:
+	- `benchmarks/results/agentic_suite_<timestamp>_detailed.json`
+	- `benchmarks/results/agentic_suite_<timestamp>_summary.json`
+- Enforces the first regression gate by default:
+	- `playbook_effect = avg_score(playbook) - avg_score(procedure)`
+	- fail if `playbook_effect < --min-playbook-effect` (default `0.5`)
+
+Useful flags:
+
+```bash
+# fast validation (injection-only)
+python -m benchmarks.run_agentic_suite --skip-react --skip-evolution --trials 1 --k 1
+
+# full suite with reflection enabled for evolution benchmark
+python -m benchmarks.run_agentic_suite --trials 3 --k 3 --reflect
+
+# run across hosted model matrix (defaults: :8000 qwen2.5-7b, :8001 deepseek-coder-33b, :8002 qwen2.5-14b)
+python -m benchmarks.run_agentic_matrix --trials 1 --k 1 --seed 7 --per-model-timeout 600 --continue-on-fail
+```
+
+Injection ablation artifacts are written to `benchmarks/results/`:
+
+- `<prefix>_<timestamp>_detailed.json`
+- `<prefix>_<timestamp>_summary.json`
 
 For live-hosted runs (`react_live`, `evolution_live`, `injection_ablation`), set:
 

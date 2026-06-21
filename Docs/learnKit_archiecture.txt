@@ -60,9 +60,21 @@ flowchart TD
         GEPA["GEPA Evolution<br/>evolution/gepa.py · MIT<br/>3+ parallel trials then ensemble<br/>variants get evolution_gen + 1, quarantine"]
     end
 
+    %% ===================== BENCHMARK CONTROL PLANE =====================
+    subgraph BENCH["BENCHMARK CONTROL PLANE · Phase 3 credibility + gates"]
+        direction TB
+        SUITE["run_agentic_suite.py<br/>orchestrates react_live + evolution_live + injection_ablation"]
+        INJ["injection_ablation.py<br/>multi-trial quality run + pass^k"]
+        ART["results artifacts<br/>detailed.json + summary.json"]
+        GATE2{"regression gate<br/>playbook_effect >= threshold"}
+        LOOP["improvement loop<br/>feed failures into reflection/guardrail tuning"]
+        SUITE --> INJ --> ART --> GATE2 --> LOOP
+    end
+
     STORE <--> REINF
     STORE <--> DECAY
     STORE <--> GEPA
+    STORE -. benchmarked via live suites .-> SUITE
 
     classDef io fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#f1f5f9;
 
@@ -70,3 +82,4 @@ flowchart TD
     style INGEST fill:#dcfce7,stroke:#16a34a,stroke-width:2px
     style WIKI fill:#f3e8ff,stroke:#9333ea,stroke-width:2px
     style MAINTAIN fill:#ffedd5,stroke:#ea580c,stroke-width:2px
+    style BENCH fill:#e2e8f0,stroke:#334155,stroke-width:2px
