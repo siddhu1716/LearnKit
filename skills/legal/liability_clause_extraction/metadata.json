@@ -1,0 +1,45 @@
+{
+  "id": "a7b8c9d0-e1f2-3456-0123-678901234567",
+  "version": 1,
+  "type": "skill",
+  "domains": {
+    "legal": 0.91,
+    "finance": 0.4
+  },
+  "task_type": "liability_clause_extraction",
+  "content": {
+    "steps": [
+      "Search for keywords: 'liability', 'indemnif', 'limitation', 'cap', 'consequential', 'exclude'",
+      "Extract each clause with its section number and full text",
+      "Classify each clause: mutual cap, one-sided cap, exclusion, indemnity, carve-out",
+      "Identify the monetary cap amount and its basis (fees paid, fixed sum, insurance limit)",
+      "List carve-outs from the cap: fraud, IP infringement, data breach, wilful misconduct",
+      "Flag asymmetric liability structures that disproportionately burden one party",
+      "Output as a structured table: Section | Type | Cap Amount | Carve-outs"
+    ],
+    "tools_used": ["pdf_reader", "clause_extractor", "regex"],
+    "constraints": [
+      "preserve exact monetary figures and multipliers",
+      "do not paraphrase carve-out language — quote it exactly",
+      "flag missing mutual caps explicitly"
+    ],
+    "failure_modes": [
+      "missing indirect / consequential loss exclusions buried in definitions",
+      "overlooking carve-outs defined by reference to another section",
+      "confusing aggregate cap with per-incident cap",
+      "ignoring insurance-backed liability clauses that shift risk"
+    ]
+  },
+  "outcome_quality": 4.2,
+  "confidence": 0.86,
+  "reuse_count": 0,
+  "success_rate": null,
+  "scope": "team",
+  "status": "active",
+  "created_at": "2026-05-25T10:00:00Z",
+  "expires_at": "2026-11-25T10:00:00Z",
+  "last_reinforced": null,
+  "transfer_domains": [],
+  "transfer_confidence": null,
+  "evolution_gen": 0
+}

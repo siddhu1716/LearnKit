@@ -1,0 +1,46 @@
+{
+  "id": "e5f6a7b8-c9d0-1234-ef01-456789012345",
+  "version": 1,
+  "type": "skill",
+  "domains": {
+    "coding": 0.9,
+    "ops": 0.15
+  },
+  "task_type": "refactor_for_readability",
+  "content": {
+    "steps": [
+      "Ensure full test coverage before touching any code",
+      "Identify the primary readability issue: naming, length, nesting, or mixed abstraction levels",
+      "Rename variables and functions to reflect their purpose, not their type",
+      "Extract long functions at natural seams — each function should do one thing",
+      "Flatten deep nesting with early returns or guard clauses",
+      "Remove dead code, commented-out blocks, and unused imports",
+      "Run all tests after each atomic change to catch accidental behaviour change",
+      "Do not change behaviour — open a separate PR if a bug is found"
+    ],
+    "tools_used": ["pytest", "rope", "ast"],
+    "constraints": [
+      "no behaviour change — refactor only",
+      "commit at each atomic step for easy bisect",
+      "do not mix refactor and feature in one PR"
+    ],
+    "failure_modes": [
+      "breaking behaviour while renaming — always run tests in between",
+      "over-abstracting simple code into frameworks",
+      "renaming to shorter names that lose meaning",
+      "mixing unrelated cleanup into one large commit"
+    ]
+  },
+  "outcome_quality": 4.0,
+  "confidence": 0.83,
+  "reuse_count": 0,
+  "success_rate": null,
+  "scope": "team",
+  "status": "active",
+  "created_at": "2026-05-25T10:00:00Z",
+  "expires_at": "2026-11-25T10:00:00Z",
+  "last_reinforced": null,
+  "transfer_domains": [],
+  "transfer_confidence": null,
+  "evolution_gen": 0
+}

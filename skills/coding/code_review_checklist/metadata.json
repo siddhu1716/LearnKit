@@ -1,0 +1,46 @@
+{
+  "id": "d4e5f6a7-b8c9-0123-def0-345678901234",
+  "version": 1,
+  "type": "skill",
+  "domains": {
+    "coding": 0.92,
+    "ops": 0.3
+  },
+  "task_type": "code_review_checklist",
+  "content": {
+    "steps": [
+      "Read the PR description to understand intent before reading code",
+      "Check correctness: does the code do what the description claims?",
+      "Check for security issues: injection, hardcoded secrets, unvalidated input",
+      "Check error handling: are failure paths explicit and recoverable?",
+      "Check test coverage: are new code paths exercised by new tests?",
+      "Check readability: are names self-documenting? Is complexity justified?",
+      "Check for unnecessary scope creep beyond the stated goal",
+      "Leave actionable, specific comments — never vague praise or criticism"
+    ],
+    "tools_used": ["git diff", "static analysis", "linter"],
+    "constraints": [
+      "distinguish blocking issues from suggestions",
+      "approve only when blocking issues are resolved",
+      "do not request changes that are out of scope for the PR"
+    ],
+    "failure_modes": [
+      "nitpicking style over catching logic bugs",
+      "approving without reading tests",
+      "conflating personal preference with correctness",
+      "blocking on formatting issues that a linter should enforce"
+    ]
+  },
+  "outcome_quality": 4.1,
+  "confidence": 0.85,
+  "reuse_count": 0,
+  "success_rate": null,
+  "scope": "team",
+  "status": "active",
+  "created_at": "2026-05-25T10:00:00Z",
+  "expires_at": "2026-11-25T10:00:00Z",
+  "last_reinforced": null,
+  "transfer_domains": [],
+  "transfer_confidence": null,
+  "evolution_gen": 0
+}

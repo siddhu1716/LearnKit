@@ -1,0 +1,46 @@
+{
+  "id": "b8c9d0e1-f2a3-4567-1234-789012345678",
+  "version": 1,
+  "type": "skill",
+  "domains": {
+    "coding": 0.8,
+    "ops": 0.75
+  },
+  "task_type": "api_integration_debugging",
+  "content": {
+    "steps": [
+      "Capture the raw HTTP request and response — headers, body, status code",
+      "Verify authentication: token present, not expired, correct scope",
+      "Check the request shape against the API spec: method, URL, content-type, required fields",
+      "Isolate the failure by reproducing with a minimal curl or httpx call outside the application",
+      "Check for network-layer issues: DNS, TLS cert, proxy, firewall",
+      "Review rate limiting and retry logic — check Retry-After headers",
+      "Validate response parsing — check for schema changes in the API response",
+      "Add structured logging for request/response at the integration boundary"
+    ],
+    "tools_used": ["curl", "httpx", "wireshark", "openapi spec"],
+    "constraints": [
+      "reproduce outside the app before blaming the app code",
+      "never log full auth tokens — truncate to last 4 chars",
+      "check API changelog before assuming a bug"
+    ],
+    "failure_modes": [
+      "assuming auth is correct without verifying the token scope",
+      "ignoring Retry-After headers causing cascade rate-limit failures",
+      "not pinning API version causing silent contract changes",
+      "parsing errors from HTML error pages returned as 200 OK"
+    ]
+  },
+  "outcome_quality": 4.1,
+  "confidence": 0.84,
+  "reuse_count": 0,
+  "success_rate": null,
+  "scope": "team",
+  "status": "active",
+  "created_at": "2026-05-25T10:00:00Z",
+  "expires_at": "2026-11-25T10:00:00Z",
+  "last_reinforced": null,
+  "transfer_domains": [],
+  "transfer_confidence": null,
+  "evolution_gen": 0
+}
