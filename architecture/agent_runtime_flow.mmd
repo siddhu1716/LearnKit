@@ -1,0 +1,36 @@
+flowchart TD
+    A[User Task] -->|task string| B[LearnKit.agent_learn wrapper]
+    B -->|prepare_run task| C[Classifier classify_task]
+    C -->|ClassificationOutput domains/task_type| D[SemanticRetriever.retrieve]
+    D -->|candidate MemoryRecords| E[MemoryRouter.route]
+    E -->|bounded records| F[compose_context]
+    F -->|_learnkit_context string| G[ToolTracker injected via _learnkit_tools]
+
+    G --> H[_select_procedure / _match_procedure]
+    H -->|signature-coverage gate| I{match kind}
+
+    I -->|exact| J[replay_plan tracker, tools]
+    J -->|proven tool sequence, 0 LLM planning calls| K[ToolTracker.record per replayed step]
+
+    I -->|sibling| L[procedure injected into _learnkit_context as guidance]
+    L --> M[Wrapped agent runs ReAct loop]
+
+    I -->|no match| N[Wrapped agent explores from scratch - cold start]
+    N --> M
+
+    M -->|each tool call| O[ToolTracker.record / wrap]
+    O -->|dead ends marked productive=False| O
+    K --> P[ToolTracker.outcome_score - tool-success gate 0-5]
+    M --> P
+
+    P -->|finalize_run| Q{score >= threshold}
+    Q -->|yes| R[procedural.extract_procedure]
+    R -->|SkillRecord: tool_sequence / slots / SKILL.md| S[procedure_evolution reinforce]
+    Q -->|no| T[procedure_evolution demote]
+    S --> U[memory_quality.decide_storage]
+    T --> U
+    U -->|store/reinforce/demote| V[Backend add/replace/update]
+    V -->|persisted procedural skills| W[(SQLite records + FTS + optional vec)]
+    W -->|retrieved on next encounter| D
+
+    P -->|final response| X[Caller receives output]

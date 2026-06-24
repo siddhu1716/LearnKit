@@ -7,10 +7,56 @@ on:
   pull_request:
     branches: [main]
 
+# Cancel superseded runs on the same ref (e.g. rapid pushes to a PR) so CI
+# minutes are spent only on the latest commit.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least-privilege default. Individual jobs widen this only if they need to.
+permissions:
+  contents: read
+
 jobs:
-  build-test:
+  # ── Lint & type-check ────────────────────────────────────────────────
+  # Fast feedback, runs once on 3.11. Ruff GATES (the learnkit package is
+  # kept clean); mypy is advisory until the tree is fully annotated.
+  lint:
+    name: Lint & types
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install lint tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff mypy
+
+      - name: Ruff (gating, learnkit package)
+        run: ruff check learnkit
+
+      - name: Ruff format check (gating, learnkit package)
+        run: ruff format --check learnkit
+
+      - name: Mypy (advisory)
+        continue-on-error: true
+        run: mypy learnkit
+
+  # ── Test matrix ──────────────────────────────────────────────────────
+  test:
+    name: Test (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.11", "3.12"]
     steps:
@@ -23,45 +69,42 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
 
-      - name: Install build dependencies
+      # sentence-transformers downloads model weights on first import. Cache
+      # them across runs so the test job is not re-downloading every time.
+      - name: Cache Hugging Face models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            hf-${{ runner.os }}-
+
+      - name: Install project (editable, with dev extras)
         run: |
           python -m pip install --upgrade pip
-          pip install hatchling build
-
-      - name: Install project in editable mode with dev dependencies
-        run: |
           pip install -e .[dev]
 
-      - name: Run lint (ruff)
-        continue-on-error: true
-        run: |
-          pip install ruff
-          ruff check .
-
-      - name: Run type checking (mypy)
-        continue-on-error: true
-        run: |
-          pip install mypy
-          mypy learnkit
-
-      - name: Run tests
+      - name: Run tests with coverage
         env:
           PYTHONPATH: .
         run: |
-          pytest -q
+          pytest --cov=learnkit --cov-report=term-missing --cov-report=xml
 
-      - name: Build package (wheel)
-        run: |
-          python -m build
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-py${{ matrix.python-version }}
+          path: coverage.xml
+          if-no-files-found: ignore
 
-  publish:
-    needs: build-test
+  # ── Smoke: the agent_learn (procedural) path ─────────────────────────
+  # Deterministic, no API key required. Proves the @lk.agent_learn capture →
+  # replay loop imports and runs end-to-end on every commit.
+  agent-learn-smoke:
+    name: agent_learn smoke
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    # Expose the secret as a job-level env var so the upload step can
-    # gate on its presence. Secrets cannot be referenced in job-level `if`.
-    env:
-      TEST_PYPI_TOKEN: ${{ secrets.TEST_PYPI_TOKEN }}
+    timeout-minutes: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -70,19 +113,89 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.11"
+          cache: "pip"
 
-      - name: Install build tools
+      - name: Cache Hugging Face models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            hf-${{ runner.os }}-
+
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+
+      - name: Run agent_learn example (offline, deterministic)
+        env:
+          PYTHONPATH: .
+        run: python examples/agent_learn_demo.py
+
+  # ── Build distribution ───────────────────────────────────────────────
+  build:
+    name: Build wheel & sdist
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [lint, test]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install build tooling
         run: |
           python -m pip install --upgrade pip
           pip install build twine
 
-      - name: Build distribution files
+      - name: Build distribution
+        run: python -m build
+
+      - name: Check distribution metadata
+        run: twine check dist/*
+
+      - name: Upload distribution artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/*
+
+  # ── Publish (Test PyPI, main only) ───────────────────────────────────
+  publish:
+    name: Publish to Test PyPI
+    needs: [build, agent-learn-smoke]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # Secrets cannot be referenced in a job-level `if`, so expose the token as
+    # an env var and gate the upload step on its presence.
+    env:
+      TEST_PYPI_TOKEN: ${{ secrets.TEST_PYPI_TOKEN }}
+    steps:
+      - name: Download built distribution
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install Twine
         run: |
-          python -m build --sdist --wheel
+          python -m pip install --upgrade pip
+          pip install twine
 
       - name: Publish to Test PyPI (optional)
         # Skipped until TEST_PYPI_TOKEN is configured in repo secrets.
-        # When the secret is added, this step runs automatically.
         if: env.TEST_PYPI_TOKEN != ''
         env:
           TWINE_USERNAME: __token__

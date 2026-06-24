@@ -1,5 +1,5 @@
 flowchart TD
-    A[User Task] -->|task string| B[LearnKit.agent wrapper]
+    A[User Task] -->|task string| B[LearnKit.learn wrapper - model path]
     B -->|prepare_run task| C[Classifier classify_task]
     C -->|ClassificationOutput domains/task_type| D[SemanticRetriever.retrieve]
     D -->|query/domain/scope| E[Backend search/hybrid_search]

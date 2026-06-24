@@ -40,7 +40,13 @@ mem0 = ["mem0ai>=0.0.20"]
 zep = ["zep-python>=2.0.0"]
 qdrant = ["qdrant-client>=1.10.0"]
 langchain = ["langchain>=1.0.0", "langchain-anthropic>=1.0.0", "langchain-core>=1.0.0"]
-dev = ["pytest>=8.0.0", "pytest-asyncio>=0.23.0"]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.6.0",
+    "mypy>=1.11.0",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["learnkit"]
@@ -52,4 +58,29 @@ piwheels = "https://www.piwheels.org/project/learnkit-ai/"
 
 [project.scripts]
 learnkit = "learnkit.cli:main"
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-q"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+# Conservative gating set: pyflakes (F) + a slice of pycodestyle (E).
+# Keep the gate tight enough to catch real bugs (unused imports, undefined
+# names) without forcing a stylistic rewrite of the whole tree.
+select = ["E", "F", "W"]
+ignore = ["E501"]  # line length is enforced by the formatter, not the linter
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+warn_unused_ignores = false
+warn_redundant_casts = true
+no_implicit_optional = true
 

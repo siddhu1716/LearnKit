@@ -78,3 +78,6 @@ logs/
 
 # Node
 node_modules/
+
+#graphify
+graphify-out/

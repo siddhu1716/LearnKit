@@ -147,7 +147,7 @@ def my_tool_agent(task: str, _learnkit_context: str = "", _learnkit_tools=None) 
 
 This path supports exact replay (zero-LLM for exact re-encounters) and guided sibling reuse.
 
-See `benchmarks/injection_ablation.py` for a quality-focused ablation that isolates the effect of playbook injection on novel sibling tasks.
+A runnable, offline demo of the cold→warm capture-and-replay loop (no API key) lives at [`examples/agent_learn_demo.py`](examples/agent_learn_demo.py). See `benchmarks/injection_ablation.py` for a quality-focused ablation that isolates the effect of playbook injection on novel sibling tasks.
 
 ---
 

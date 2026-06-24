@@ -18,14 +18,13 @@ from .errors import PostProcessError
 from .evaluator import Evaluator
 from .inference_mode import determine_inference_mode
 from .logging import get_logger
-from .memory_quality import apply_retrieval_feedback, decide_storage, demote_existing, reinforce_existing, update_utility
+from .memory_quality import apply_retrieval_feedback, decide_storage, reinforce_existing, update_utility
 from .procedural import (
     extract_procedure,
     match_kind,
     procedure_fingerprint,
     signature_coverage,
     signature_fingerprint,
-    task_signature,
 )
 from .procedure_evolution import (
     demote_procedure,

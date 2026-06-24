@@ -2,8 +2,10 @@ flowchart TB
     subgraph Entry[Entry and Integration]
         A1[User App or Framework]
         A2[Adapters langchain langgraph autogen openai_raw]
-        A3[LearnKit.agent decorator]
+        A3[LearnKit.learn decorator - model path]
+        A3b[LearnKit.agent_learn decorator - agent path]
         A1 --> A2 --> A3
+        A2 --> A3b
     end
 
     subgraph Online[Online Request Path]
@@ -18,6 +20,26 @@ flowchart TB
         B9[finalize_run]
         A3 --> B1
         B1 --> B2 --> B3 --> B4 --> B5 --> B6 --> B7 --> B8 --> B9
+    end
+
+    subgraph AgentPath[Agent Path Procedure Capture and Replay]
+        F1[tool_tracker.py ToolTracker injected via _learnkit_tools]
+        F2[core.py _select_procedure / _match_procedure]
+        F3{match kind exact / sibling / none}
+        F4[replay.py replay_plan - proven sequence 0 LLM calls]
+        F5[agent runs ReAct loop - guided or cold]
+        F6[ToolTracker.record per tool call - dead ends excluded]
+        F7[ToolTracker.outcome_score tool-success gate]
+        F8[procedural.py extract_procedure SkillRecord tool_sequence]
+        F9[procedure_evolution.py reinforce / demote]
+        A3b --> B1
+        B6 --> F1 --> F2 --> F3
+        F3 -->|exact| F4 --> F7
+        F3 -->|sibling| F5
+        F3 -->|none| F5
+        F5 --> F6 --> F7
+        F7 --> B9
+        F7 -->|score pass| F8 --> F9
     end
 
     subgraph Post[Post Process and Learning]
@@ -53,6 +75,8 @@ flowchart TB
         D8 --> D7 --> D2
         D2 -->|search results| B3
     end
+
+    F9 -->|procedural skill store/reinforce/demote| C5
 
     subgraph Benchmark[Benchmark Harness]
         E1[benchmarks run_custom run_slr_bench run_pbebench]

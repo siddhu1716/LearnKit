@@ -1,6 +1,5 @@
 import argparse
 import sys
-from pathlib import Path
 from learnkit import __version__
 from learnkit.core import LearnKit
 

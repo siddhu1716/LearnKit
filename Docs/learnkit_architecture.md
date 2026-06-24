@@ -18,6 +18,36 @@ This is not a new agent. It is infrastructure that plugs into whatever agent you
 
 ---
 
+## Two Learning Paths
+
+LearnKit ships **two complementary decorators**. They share the same retrieval, scoring, and storage substrate (the 7 modules below); they differ in *what* they learn and *how* the agent consumes it.
+
+| | **Model path — `@lk.learn`** (alias `@lk.agent`) | **Agent path — `@lk.agent_learn`** |
+|---|---|---|
+| Treats the agent as | a black box: task in, answer string out | a tool-using loop whose steps are observable |
+| Injected via | `_learnkit_context` (text memory) | `_learnkit_context` **+** `_learnkit_tools` (a `ToolTracker`) |
+| Learns | the **outcome** — distilled facts / skills / failures from the final answer | the **procedure** — the cleaned sequence of tool calls that solved the task |
+| Substrate | declarative + semantic memory | **procedural** memory (`SkillRecord` with `tool_sequence` / `procedure`) |
+| Reuse on repeat | injects distilled context the model reads as background | **replays** the proven tool sequence directly (exact match, zero re-derivation) or **guides** a sibling task |
+| Measured by | answer quality (LLM-judge score) | tool-calls/task, planning (LLM) calls, success over repeats |
+| Use it for | single-shot generations, QA, models that don't expose tool calls | ReAct / LangChain / tool-calling agents where step count and cost matter |
+
+**The same `LearnKit` instance exposes both** — pick the decorator per function:
+
+```python
+memory = lk.LearnKit(memory_backend="sqlite", scope="user")
+
+@memory.learn(domain="coding")                       # model path
+def answer(task, _learnkit_context=""): ...
+
+@memory.agent_learn(domain="pipeline")               # agent path
+def run(task, _learnkit_context="", _learnkit_tools=None): ...
+```
+
+The model path is documented module-by-module first because it defines the shared substrate. The agent path then layers procedure capture, matching, and replay on top of it — see [Agent Path Architecture](#agent-path-architecture-lkagent_learn).
+
+---
+
 ## Core Philosophy: Experience Distillation
 
 The critical distinction from naive memory systems:
@@ -206,6 +236,8 @@ Implementation: DSPy ChainOfThought module that reads the trace and outputs stru
 
 **Confidence decay:** Every record's confidence score decays by approximately 2% per week unless reinforced by a new successful reuse. This prevents stale high-confidence records from misleading future runs.
 
+> **Agent path note:** this module distills the *final answer*. When you use `@lk.agent_learn`, a parallel **procedure distiller** (`procedural.py`) also captures the *tool sequence* of a passing run into a procedural `SkillRecord` that can be replayed verbatim. See [Agent Path Architecture](#agent-path-architecture-lkagent_learn).
+
 ---
 
 ## Complete Architecture Flow
@@ -280,6 +312,82 @@ Implementation: DSPy ChainOfThought module that reads the trace and outputs stru
 │  Scoped as:   user-private | team-shared | public         │
 └───────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Agent Path Architecture (`@lk.agent_learn`)
+
+The flow above learns from the agent's **final answer**. The agent path learns from the agent's **tool calls** — the procedure. It reuses every module above (classifier, retriever, router, evaluator gate, store) and adds four components on top.
+
+### What changes vs. the model path
+
+1. **Capture.** A `ToolTracker` is injected via `_learnkit_tools`. The agent reports each call with `tracker.record(name, args, output)` or `tracker.wrap(tool_fn)`. Dead-end / exploration calls marked `productive=False` are kept in the trajectory but **excluded** from the stored procedure, so what gets learned is the *cleaned* successful path.
+2. **Distill to a procedure.** On a passing run the tool sequence is captured by `procedural.py` into a `SkillRecord` carrying `tool_sequence` / `procedure` / `trigger`, which renders as a Hermes-style `SKILL.md`. Arguments that vary across a task family are parameterized into slots (`{"__slot__": "table"}`) so one procedure serves many sibling tasks.
+3. **Match on re-encounter.** `_select_procedure` / `_match_procedure` score the retrieved records against the current task by **task signature** (a coverage gate, `procedure_match_threshold`). The match is classified as `exact` (safe to hard-replay) or `sibling` (same family, needs argument adaptation).
+4. **Replay or guide.**
+   - **Exact** → `replay.py::replay_plan(tracker, tools)` executes the proven tool sequence directly against the caller's tool map — **zero LLM planning calls, zero re-derivation**. Slot args are re-bound via `bind_args` from caller-supplied overrides.
+   - **Sibling** → the procedure is composed into `_learnkit_context` as guidance; the live agent still plans, but follows the proven shape and explores far less.
+
+The outcome is gated by a **tool-success signal** rather than (only) the LLM judge: `tracker.outcome_score()` returns a 0–5 score derived from `mark_outcome(...)` or the tool success rate, and that score drives whether the procedure is stored / reinforced / demoted.
+
+### Agent-path flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                 AGENT PATH — @lk.agent_learn                 │
+│                                                              │
+│  User Task                                                   │
+│      │                                                       │
+│      ▼                                                       │
+│  prepare_run  ─→ classify ─→ retrieve ─→ route ─→ compose     │
+│      │            (shared model-path modules)                │
+│      ▼                                                       │
+│  ToolTracker injected (_learnkit_tools)                      │
+│      │                                                       │
+│      ▼                                                       │
+│  _select_procedure / _match_procedure                        │
+│      │                                                       │
+│      ├── exact match ──────► replay_plan(tracker, tools)      │
+│      │                       proven tool sequence,           │
+│      │                       0 LLM planning calls             │
+│      │                                                       │
+│      ├── sibling match ────► procedure → _learnkit_context    │
+│      │                       agent plans, guided by shape     │
+│      │                                                       │
+│      └── no match ─────────► agent explores from scratch      │
+│                              (cold start, captures procedure) │
+│      │                                                       │
+│      ▼                                                       │
+│  agent runs · tracker records each tool call                 │
+│  (dead ends marked productive=False → excluded)              │
+│      │                                                       │
+│      ▼                                                       │
+│  tracker.outcome_score()  (tool-success gate, 0–5)           │
+│      │                                                       │
+│   score ≥ threshold?                                         │
+│      │ yes                                                   │
+│      ▼                                                       │
+│  procedural.extract_procedure → SkillRecord                  │
+│  (tool_sequence · slots · SKILL.md)                          │
+│      │                                                       │
+│      ▼                                                       │
+│  store / reinforce / demote  ──► MEMORY STORE (shared)        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Agent-path components
+
+| Component | File | Role |
+|---|---|---|
+| **ToolTracker** | `tool_tracker.py` | Records each tool call onto the trajectory; counts calls; carries the outcome (tool-success) gate; holds an attached plan for replay. |
+| **Procedure distiller** | `procedural.py` | Extracts the cleaned productive tool sequence from a passing trajectory into a procedural `SkillRecord`; computes the task signature. |
+| **Procedure selector / matcher** | `core.py` (`_select_procedure`, `_match_procedure`) | Picks the best stored procedure for a task and classifies the match as `exact` / `sibling` via the signature-coverage gate. |
+| **Replay engine** | `replay.py` (`replay_plan`, `bind_args`) | Executes a stored procedure against the caller's tool map with zero LLM calls; re-binds slot arguments for sibling tasks. |
+| **Procedure evolution** | `procedure_evolution.py` | Reinforces a procedure on successful reuse and demotes it on failure (confidence / reuse-count bookkeeping). |
+
+### Why this is the ReaComp insight, realized
+
+The model path is "memory as context." The agent path is "compile the trace into reusable logic and run it at zero LLM cost, falling back to the model only when no procedure matches" — exactly the ReaComp result, expressed as portable, auditable `SkillRecord`s instead of one-off Python solvers. On repeated and parameterized tasks this cuts planning (LLM) calls and tool calls while holding success, which is what the agent-path benchmarks measure (see the [control-plane addendum](#2026-06-21-architecture-addendum--agentic-learning-control-plane)).
 
 ---
 
@@ -471,14 +579,35 @@ lk = LearnKit(
     scope="team"
 )
 
-@lk.agent(domain="legal", task_type="contract_summarization")
-def my_agent(task: str) -> str:
+# Model path — learn from the final answer.
+@lk.learn(domain="legal", task_type="contract_summarization")
+def my_agent(task: str, _learnkit_context: str = "") -> str:
     return langchain_agent.run(task)
 
 # LearnKit handles everything else:
 # classifies task → retrieves memories → composes context →
 # captures trace → evaluates quality → distills and stores
 ```
+
+For a tool-using agent, use the **agent path** instead — same instance, learns the
+tool *procedure* and replays it on repeats:
+
+```python
+from learnkit.replay import replay_plan
+
+@lk.agent_learn(domain="pipeline")
+def my_agent(task: str, _learnkit_context: str = "", _learnkit_tools=None) -> str:
+    if _learnkit_tools.plan_kind == "exact":
+        replay_plan(_learnkit_tools, TOOLS)        # proven sequence, 0 LLM calls
+        return "done (replayed)"
+    # cold / sibling: run your tool loop, recording each call
+    for name, kwargs in plan_and_call(task, _learnkit_context):
+        _learnkit_tools.record(name, kwargs, TOOLS[name](**kwargs))
+    _learnkit_tools.mark_outcome(True)             # tool-success gate → capture
+    return "done"
+```
+
+A runnable, offline version of this is in `examples/agent_learn_demo.py`.
 
 ---
 
