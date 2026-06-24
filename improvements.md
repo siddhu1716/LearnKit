@@ -1,6 +1,6 @@
 # improvements.md — LearnKit Enhancement Tracking
 
-Last updated: 2026-06-21
+Last updated: 2026-06-25
 
 ---
 
@@ -226,3 +226,72 @@ different generation regimes (single-call and parallel-call) now PASS the
 gate with no per-model code changes. The reference 7B numbers remain
 published in `Docs/FINAL_BENCHMARK_NUMBERS_2026-06-21.txt`; the full
 cross-model table is in `Docs/FINAL_MODEL_MATRIX_2026-06-21.txt`.
+
+---
+
+## 🆕 2026-06-25 — SkillOpt + SkillLens adaptation pass (shipped + validated)
+
+Studied two Microsoft Research projects against LearnKit and transplanted only
+the validated, low-risk mechanisms that reinforce the existing spine (no
+rewrites, no new deps, no labeled datasets).
+
+| Item | Source | Where | Notes |
+|---|---|---|---|
+| **Validation-gated, monotonic procedure refinement** | SkillOpt (validation-gated acceptance + monotonic `best_skill`) | `learnkit/procedure_evolution.py` | A strictly shorter tool path is accepted only when the run does **not** regress the family's proven outcome score (`_established_best_score` + `_REFINE_TOLERANCE`). Keeps a monotonic `_best_score` and a `_prev_procedure` rollback snapshot; a later failed replay self-heals back to the proven body instead of quarantining. Reuses existing `outcome_score` — zero extra calls. |
+| **3-dimension quality rubric in the reflection prompt** | SkillLens RQ3 meta-skill (+1.55pp, 9/9 cells) | `learnkit/distiller.py` (`REFLECT_PROMPT`) | Steers each playbook bullet toward *failure-mechanism encoding*, *actionable specificity*, or *high-risk action blacklist*, with concrete vs. anti-example phrasing; bans generic platitudes. Same JSON contract, no extra calls. |
+| **Generic-advice gate in the insight filter** | SkillLens (surface plausibility ≠ utility; judge 46.4%, format p>0.34) | `learnkit/playbook.py` (`is_durable_insight`) | Whole-string-anchored `_GENERIC_ADVICE_RE` drops platitudes ("be systematic", "verify results", "handle errors carefully") while keeping concrete rules that merely share a verb. Complements the existing env/tool/transient/narration filters. |
+| **Architecture docs: agent path made first-class** | — | `Docs/learnkit_architecture.md`, `architecture/*.mmd`, `architecture/README.md` | "Two Learning Paths" + "Agent Path Architecture" sections; new `agent_runtime_flow.mmd`; `full_system_flow.mmd` AgentPath subgraph. |
+
+**Validation (live, 2026-06-25):** `react_live` on `Qwen/Qwen2.5-14B-Instruct`
+(port 8002) — PASS. Cold 14 → warmed 9 LLM calls (−36%), success 6/6 → 6/6,
+2 replayed + 2 guided; reinforce / signature-reject / family-seed events all
+fire correctly. Unit suite: **167 passed, 1 xfailed**. New tests:
+`test_refine_rejected_when_run_regresses_quality`,
+`test_refine_accepted_keeps_rollback_snapshot_and_best_score`,
+`test_demote_rolls_back_to_previous_body_then_quarantines`,
+`test_merge_insights_drops_generic_advice_keeps_concrete_rules`.
+
+---
+
+## 🚀 High-Scale & Rapid-Iteration Roadmap (added 2026-06-25)
+
+Forward-looking work for scaling the memory layer and iterating fast. Grouped by
+theme; each item lists **Source**, **Value**, **Effort**, and concrete landing
+notes. None block current functionality; ordered roughly by value/effort.
+
+### A. Skill quality & negative-transfer control (highest strategic value)
+
+| Item | Source | Value | Effort | Landing notes |
+|---|---|---|---|---|
+| **Per-consumer negative-transfer guard on the model path** | SkillLens (25% of pairs hurt; same skill +4.93 GPT vs −1.69 Qwen-9B) | HIGH | M | The agent path already demotes on failed replay; the **model path has no guard**. Track per-target outcome attribution on retrieval (`attribution.py` already summarises retrieval/injection) and demote/suppress a record *for the targets it measurably hurts* while keeping it for those it helps. LearnKit can do this online; SkillLens (offline) cannot. This is the single most strategic item. |
+| **Held-out non-regression gate generalized to prose `SkillRecord` promotion** | SkillOpt validation gate | HIGH | M | Extend the agent-path gate to `memory_quality.decide_storage`: before promoting a distilled record to `active`, replay/score it against the last *k* sibling tasks in the family and accept only on non-regression. Reuses `replay_plan` + `outcome_score` for tool skills; needs a lightweight scorer for prose skills. |
+| **Drop LLM-judge skill ranking; score on concrete failure-mechanism content** | SkillLens (judge worse-than-chance; format inert) | MED | S | Audit `evaluator.py` / quality scoring so skill utility is **not** weighted by prose polish. Add a deterministic specificity/failure-mechanism signal (named tools/objects, blacklist verbs) as a tiebreak. |
+| **Reflection quality scorecard + semantic dedup** | improvements (carried) + SkillLens | MED | M | Score reflected bullets for specificity, non-contradiction, semantic de-dup (`cosine > τ`); demote low-quality updates. Pairs naturally with the rubric prompt just shipped. |
+
+### B. Distillation at scale (batch / offline)
+
+| Item | Source | Value | Effort | Landing notes |
+|---|---|---|---|---|
+| **Minibatch distillation** | SkillOpt reflect (minibatch) + SkillLens | MED | M | Distil *N* recent trajectories per domain jointly instead of one-at-a-time — less noise, catches cross-episode patterns. `consolidate_skills` already half-does this in the background; make the primary distill path batch-aware. |
+| **Mode-based extraction intermediate (success/failure modes → hierarchical merge)** | SkillLens parallel extraction | MED | M | Add an explicit `{success_modes, failure_modes}` intermediate before skill synthesis so consolidation's umbrella-merge is principled and parallelizable. LearnKit half-has this via Fact/Heuristic/Failure records. |
+| **Offline `learnkit sleep` consolidation job** | SkillOpt-Sleep | MED | M | A nightly batch (harvest stored trajectories → minibatch re-distill → re-gate skills) complementing the online `background_postprocess`. Natural home for the held-out gate (item A.2) and edit-budget (below). |
+| **Edit-budget + rejected-edit buffer for consolidation** | SkillOpt (LR / gradient-clip / rejected buffer) | LOW | S | Bound how much one consolidation pass can change a skill (top-L edits) and remember candidates that failed the gate so they aren't re-derived/re-rejected. Cheap thrash protection for `consolidation.py` / GEPA. |
+| **Experience success/failure ratio balancing per domain** | SkillLens (all-failure pools = worst; optimum domain-specific) | LOW | S | When selecting trajectories to distil, balance success/failure mix per domain rather than distilling whatever is present; never distil from only-failures. |
+
+### C. Storage & retrieval scale-out
+
+| Item | Source | Value | Effort | Landing notes |
+|---|---|---|---|---|
+| **Native vector embeddings (sqlite-vec push-down)** | carried (Hermes + sqlite-vec) | HIGH | M | Replaces the bounded `list_all(100)` lexical-fallback scan in `retriever.py` with a push-down ANN query. Unblocks semantic dedup (A.4) and large stores. |
+| **Async / batched backend writes** | — | MED | M | Post-processing currently writes records one at a time. Add a batched `add_many` + write-behind queue so high-throughput agents don't serialize on the DB. |
+| **Backend sharding / scoped partitions** | — | MED | L | Partition by `scope`/`domain` (or tenant) so per-user stores stay small and retrieval is bounded. Keep the `BaseBackend` contract; add a routing layer. |
+| **Retrieval result + embedding cache** | — | LOW | S | Cache classify→retrieve for repeated/sibling tasks (the agent path already detects exact/sibling); memoize embeddings keyed by content hash. |
+
+### D. Rapid-iteration / developer velocity
+
+| Item | Source | Value | Effort | Landing notes |
+|---|---|---|---|---|
+| **Offline deterministic gold-task harness for CI** | improvements (carried) | HIGH | M | Fixed mock model/tool outputs for fast, stable PR gating; keep live-model runs for nightly. Removes live-model variance from the merge path. |
+| **Bootstrap CIs on `playbook_effect` + gate on lower bound** | improvements (carried) | MED | S | ≥3 seeds × ≥3 trials, gate on the lower bound not the mean (`run_agentic_suite.py`). |
+| **Per-model parser/health preflight before matrix runs** | improvements (carried) | MED | S | Record `parses_tool_calls=true/false` per endpoint (the Hermes-3 FAIL was a parser-config gap, not a framework gap). |
+| **Standard adapters (TAU-bench-style, SWE-bench Lite subset)** | improvements (carried) | MED | L | External credibility on top of the internal suite for the agent path. |

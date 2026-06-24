@@ -92,8 +92,22 @@ know BEFORE starting a task like this. Respond with JSON only:
 
 Rules:
 - Each bullet is ONE short, durable, reusable insight (<= 25 words).
+- Prefer concrete, domain-specific knowledge over generic advice: a narrow rule
+  that names a real failure mechanism with an executable fix is worth far more
+  than polished general best-practice. Aim each bullet at one of:
+    * FAILURE MECHANISM - the specific reason agents fail here and its causal
+      chain (e.g. "the orders API caps results at 100; later pages are silently
+      dropped"), NOT "handle errors carefully".
+    * ACTIONABLE STEP - a concrete procedure referencing real tools/objects
+      (e.g. "after a refund, re-query the order to confirm status == refunded"),
+      NOT "decompose into smaller steps".
+    * HIGH-RISK ACTION TO AVOID - a specific pattern that looks right but
+      reliably fails, with the reason (e.g. "never issue a refund before
+      verifying the order exists; the tool errors on unknown ids").
 - Capture knowledge that GENERALIZES to the whole class of task, not this one
   instance's specific values, names, or numbers.
+- Do NOT write generic platitudes ("be systematic", "verify results", "be
+  careful"): they read plausible but do not improve outcomes and are discarded.
 - Do NOT capture: environment/setup failures (missing binary, not installed,
   bad credentials), negative claims that a tool "doesn't work", transient errors
   that resolved on retry, or one-off task narration. These harden into bad rules.

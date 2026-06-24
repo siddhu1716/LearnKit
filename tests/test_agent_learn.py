@@ -214,6 +214,46 @@ def test_longer_path_does_not_replace():
     assert len(existing.content["procedure"]) == 2  # kept the shorter one
 
 
+def test_refine_rejected_when_run_regresses_quality():
+    """SkillOpt-style validation gate: a shorter path that scores worse than the
+    family's proven best is rejected — brevity must not cost reliability."""
+    backend = _FakeBackend()
+    existing = _proc_skill(4)
+    existing.content["_quality_score"] = 5.0  # proven family quality
+    g0 = existing.evolution_gen
+    outcome = reinforce_or_refine(backend, existing, _proc_skill(2).content, score=3.0)
+    assert outcome == "refine_rejected"
+    assert len(existing.content["procedure"]) == 4  # proven body kept
+    assert existing.evolution_gen == g0  # not evolved
+    assert "_prev_procedure" not in existing.content  # nothing snapshotted
+
+
+def test_refine_accepted_keeps_rollback_snapshot_and_best_score():
+    backend = _FakeBackend()
+    existing = _proc_skill(4)
+    existing.content["_quality_score"] = 5.0
+    outcome = reinforce_or_refine(backend, existing, _proc_skill(2).content, score=5.0)
+    assert outcome == "refined"
+    assert len(existing.content["procedure"]) == 2
+    assert existing.content["_best_score"] == 5.0
+    assert len(existing.content["_prev_procedure"]["procedure"]) == 4  # proven body kept
+
+
+def test_demote_rolls_back_to_previous_body_then_quarantines():
+    backend = _FakeBackend()
+    rec = _proc_skill(2)  # a refined (shorter) body...
+    rec.content["_prev_procedure"] = {  # ...carrying its proven predecessor
+        "procedure": [{"tool": f"t{i}", "arg_template": {}} for i in range(4)],
+        "tool_sequence": [f"t{i}" for i in range(4)],
+    }
+    q1 = demote_procedure(backend, rec, max_failures=1)
+    assert q1 is False and rec.status == "active"  # self-healed, not quarantined
+    assert len(rec.content["procedure"]) == 4  # restored proven body
+    assert "_prev_procedure" not in rec.content  # snapshot consumed
+    q2 = demote_procedure(backend, rec, max_failures=1)
+    assert q2 is True and rec.status == "quarantine"  # no snapshot left -> quarantine
+
+
 def test_reinforce_reactivates_quarantined():
     backend = _FakeBackend()
     existing = _proc_skill(3)
@@ -276,6 +316,29 @@ def test_merge_insights_drops_non_durable_bullets():
         ],
     )
     assert merged == [durable, "Prefer recent papers over surveys"]
+
+
+def test_merge_insights_drops_generic_advice_keeps_concrete_rules():
+    """SkillLens (arXiv:2605.23899): generic best-practice is inert; concrete,
+    domain-specific failure knowledge is what drives utility. The filter must
+    drop platitudes while keeping concrete rules that merely share a verb."""
+    concrete = [
+        "Verify the order exists before issuing a refund or the tool 500s",
+        "After a refund, re-query the order to confirm status == refunded",
+    ]
+    merged = merge_insights(
+        concrete,
+        [
+            "Be systematic",                    # generic platitude
+            "verify results",                   # generic platitude
+            "Handle errors carefully",          # generic platitude (rubric anti-example)
+            "Decompose into smaller steps",     # generic platitude (rubric anti-example)
+            "be careful with dangerous operations",  # generic platitude (rubric anti-example)
+            "Always double-check your work.",   # generic platitude w/ prefix + period
+            "Think step by step",               # generic platitude
+        ],
+    )
+    assert merged == concrete  # every generic bullet dropped, concrete rules kept
 
 
 def test_reinforce_accumulates_playbook_across_runs():

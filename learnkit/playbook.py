@@ -50,6 +50,39 @@ _NARRATION_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Generic-advice gate (SkillLens, arXiv:2605.23899). Their study found that
+# surface-plausible but generic best-practice ("be systematic", "verify
+# results") is INERT — it does not improve downstream utility and a reformat of
+# the same platitude changes nothing (p > 0.34). What drives utility is concrete,
+# domain-specific failure knowledge. So a bullet whose *entire* content is a
+# generic platitude is dropped; a concrete rule that merely contains a verb like
+# "verify" (e.g. "verify the order exists before issuing a refund") is kept,
+# because the pattern is whole-string anchored and stays short.
+_GENERIC_ADVICE_RE = re.compile(
+    r"^(?:please |always |remember to |make sure to |try to |you should |be sure to )?"
+    r"(?:"
+    r"be (?:careful|systematic|thorough|precise|methodical|diligent|cautious|mindful|organized)"
+    r"|be careful with (?:dangerous|risky) (?:operations|actions|commands)"
+    r"|handle (?:errors?|exceptions?|edge cases?) (?:carefully|gracefully|properly|appropriately)"
+    r"|(?:carefully )?verify (?:the |your )?(?:results?|output|work|everything)"
+    r"|double[- ]check (?:your |the )?(?:work|results?|everything|output)"
+    r"|decompose (?:the task )?into (?:smaller )?(?:steps|subtasks|sub-tasks)"
+    r"|break (?:it|the task|the problem|things) down(?: into (?:smaller )?steps)?"
+    r"|think (?:step by step|carefully|things through)"
+    r"|plan (?:your approach|the work|ahead|carefully)"
+    r"|proceed (?:carefully|methodically|step by step)"
+    r"|follow (?:best practices|the guidelines)"
+    r"|use (?:good|sound) judg?ment"
+    r"|pay (?:close )?attention(?: to detail| to details)?"
+    r"|test (?:your )?(?:code|work|everything) (?:thoroughly|carefully)"
+    r"|make sure (?:everything )?(?:is correct|works|is right)"
+    r"|check (?:your )?work"
+    r"|keep it simple"
+    r"|stay focused"
+    r")$",
+    re.IGNORECASE,
+)
+
 
 def _normalize(text: str) -> str:
     """Normalise an insight for dedup: lowercased, whitespace/punctuation-trimmed."""
@@ -60,8 +93,10 @@ def is_durable_insight(text) -> bool:
     """Return ``True`` if ``text`` is a keepable, durable playbook insight.
 
     Rejects the Hermes "do-not-capture" categories (environment/setup failures,
-    negative tool claims, transient errors, one-off narration) plus malformed
-    bullets (empty, too short to be meaningful, or too long to be a focused rule).
+    negative tool claims, transient errors, one-off narration), generic best-
+    practice platitudes that SkillLens found inert (e.g. "be systematic"), plus
+    malformed bullets (empty, too short to be meaningful, or too long to be a
+    focused rule).
     """
     if not isinstance(text, str):
         return False
@@ -74,6 +109,8 @@ def is_durable_insight(text) -> bool:
     if _NARRATION_RE.search(clean):
         return False
     if _REJECT_RE.search(clean):
+        return False
+    if _GENERIC_ADVICE_RE.match(_normalize(clean)):
         return False
     return True
 
