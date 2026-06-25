@@ -1,11 +1,15 @@
 """AutoGen reply_func adapter for LearnKit.
 
 Integrates LearnKit into AutoGen multi-agent conversations via the
-reply_func registration mechanism. Captures conversation turns as
-trajectory steps and injects memory context into each agent's
-system message.
+``register_reply`` mechanism. Each wrapped reply retrieves memory, injects it
+via the ``_learnkit_context`` keyword, and finalizes the run on the reply's
+output. When tool capture is enabled the agent path is armed too, so AutoGen
+tool/function calls can be captured for procedure learning by wrapping them with
+:meth:`wrap_tool`.
 
-Usage (once implemented):
+Usage::
+
+    from learnkit import LearnKit
     from learnkit.adapters.autogen import AutoGenAdapter
 
     lk = LearnKit(memory_backend="sqlite")
@@ -13,12 +17,14 @@ Usage (once implemented):
     adapter.register(autogen_agent)
 """
 
+from .base import BaseAdapter
+from .registry import register_adapter
 
-class AutoGenAdapter:
-    """AutoGen-style reply wrapper that injects LearnKit context into replies."""
 
-    def __init__(self, learnkit_instance):
-        self.lk = learnkit_instance
+class AutoGenAdapter(BaseAdapter):
+    """AutoGen integration with both the model and agent learning paths."""
+
+    name = "autogen"
 
     def register(self, agent):
         """Register LearnKit memory hooks on an AutoGen agent."""
@@ -28,10 +34,17 @@ class AutoGenAdapter:
         return agent
 
     def wrap_reply(self, reply_func):
+        """Wrap an AutoGen reply function with the LearnKit memory loop."""
+
         def wrapped(task: str, *args, **kwargs):
-            run = self.lk.prepare_run(task)
-            kwargs["_learnkit_context"] = run["context"]
+            handle = self.start_run(task)
+            kwargs["_learnkit_context"] = handle.context
+            if handle.tracker is not None:
+                kwargs["_learnkit_tools"] = handle.tracker
             response = reply_func(task, *args, **kwargs)
-            return self.lk.finalize_run(run, response)
+            return self.complete_run(handle, response)
 
         return wrapped
+
+
+register_adapter(AutoGenAdapter.name, AutoGenAdapter)

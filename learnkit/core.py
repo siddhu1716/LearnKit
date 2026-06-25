@@ -488,18 +488,7 @@ class LearnKit:
             @functools.wraps(fn)
             def wrapper(task: str, *args, **kwargs) -> str:
                 run = self.prepare_run(task)
-                tracker = ToolTracker(run["trajectory"])
-
-                # Replay: if a previously-learned procedure matches this task,
-                # attach it so the agent can follow the proven tool sequence
-                # instead of re-deriving it (Hermes / AWM step-reduction).
-                proc, source_id = self._select_procedure(run["records"], task=task)
-                if proc:
-                    kind, _, _ = self._match_procedure(run["records"], task)
-                    tracker.set_plan(proc, source_id=source_id, kind=kind)
-                    # Remember which stored procedure we replayed so the outcome
-                    # can reinforce it (success) or demote it (failure).
-                    run["replayed_source_id"] = source_id
+                tracker = self.arm_tool_tracker(run)
 
                 enriched_kwargs = {
                     **kwargs,
@@ -577,6 +566,31 @@ class LearnKit:
             "attribution": attribution,
             "trajectory": traj,
         }
+
+    def arm_tool_tracker(self, run: dict) -> ToolTracker:
+        """Attach a :class:`ToolTracker` to a prepared run and wire procedure
+        replay, mirroring what :meth:`agent_learn` does internally.
+
+        Adapters use this so any framework integration gets the procedural
+        (tool-capture + replay) learning path for free. Returns the tracker;
+        the caller must set ``run["tool_calls"]`` and ``run["outcome_score"]``
+        from it before calling :meth:`finalize_run` to engage the tool-success
+        gate.
+        """
+        tracker = ToolTracker(run["trajectory"])
+        task = run["trajectory"].task
+
+        # Replay: if a previously-learned procedure matches this task, attach it
+        # so the agent can follow the proven tool sequence instead of
+        # re-deriving it (Hermes / AWM step-reduction).
+        proc, source_id = self._select_procedure(run["records"], task=task)
+        if proc:
+            kind, _, _ = self._match_procedure(run["records"], task)
+            tracker.set_plan(proc, source_id=source_id, kind=kind)
+            # Remember which stored procedure we replayed so the outcome can
+            # reinforce it (success) or demote it (failure).
+            run["replayed_source_id"] = source_id
+        return tracker
 
     def finalize_run(self, run: dict, response: str) -> str:
         traj = run["trajectory"]

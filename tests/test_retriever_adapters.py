@@ -178,3 +178,82 @@ def test_langchain_adapter_lifecycle():
     assert "inspect traceback" in context
     assert result == "fixed"
     assert lk.last_trajectory.outcome == "success"
+
+
+# ── Pluggable adapter architecture ───────────────────────────────────
+
+
+def test_builtin_adapters_are_registered_and_resolvable():
+    from learnkit.adapters import available_adapters, get_adapter
+
+    names = available_adapters()
+    for name in ("langchain", "langgraph", "autogen", "openai_raw"):
+        assert name in names
+        assert get_adapter(name) is get_adapter(name.upper())  # case-insensitive
+
+
+def test_get_adapter_unknown_raises_with_available_listed():
+    from learnkit.adapters import get_adapter
+
+    with pytest.raises(KeyError) as exc:
+        get_adapter("does_not_exist")
+    assert "langchain" in str(exc.value)
+
+
+def test_register_adapter_rejects_non_base_subclass():
+    from learnkit.adapters import register_adapter
+
+    class NotAnAdapter:
+        pass
+
+    with pytest.raises(TypeError):
+        register_adapter("bad", NotAnAdapter)
+
+
+def test_third_party_adapter_via_decorator_is_discoverable():
+    from learnkit.adapters import BaseAdapter, adapter, get_adapter
+
+    @adapter("my_framework")
+    class MyFrameworkAdapter(BaseAdapter):
+        name = "my_framework"
+
+    assert get_adapter("my_framework") is MyFrameworkAdapter
+
+    # A registered adapter drives a full run through the universal contract.
+    lk = build_learnkit()
+    inst = get_adapter("my_framework")(lk)
+    handle = inst.start_run("debug this traceback")
+    assert "inspect traceback" in handle.context
+    assert inst.complete_run(handle, "fixed") == "fixed"
+    assert lk.last_trajectory.outcome == "success"
+
+
+def test_base_adapter_tool_capture_path_records_calls_and_gates_outcome():
+    lk = build_learnkit()
+    adapter = LangChainAdapter(lk)
+
+    handle = adapter.start_run("debug this traceback")
+    assert handle.tracker is not None  # agent path armed by default
+
+    def search(q):
+        return f"results for {q}"
+
+    wrapped = adapter.wrap_tool(handle, search, name="search")
+    assert wrapped("traceback") == "results for traceback"
+    assert handle.tracker.call_count == 1
+
+    assert adapter.complete_run(handle, "fixed") == "fixed"
+    # A successful tool call gates the outcome on the tool, not the LLM judge.
+    assert lk.last_trajectory.outcome == "success"
+
+
+def test_capture_tools_disabled_yields_no_tracker():
+    lk = build_learnkit()
+    adapter = LangChainAdapter(lk, capture_tools=False)
+
+    handle = adapter.start_run("debug this traceback")
+    assert handle.tracker is None
+    # wrap_tool is a safe no-op when capture is off.
+    fn = lambda x: x
+    assert adapter.wrap_tool(handle, fn) is fn
+    assert adapter.complete_run(handle, "fixed") == "fixed"
