@@ -12,7 +12,6 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarOpen }) 
 
   const navLinks = [
     { to: '/', label: 'Dashboard' },
-    { to: '/docs', label: 'Docs' },
     { to: '/settings', label: 'Settings' },
   ];
 
@@ -40,6 +39,9 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarOpen }) 
 
         {/* Desktop nav */}
         <nav className={styles.nav} aria-label="Main navigation">
+          <a href="index.html" className={styles.navLink}>
+            Home
+          </a>
           {navLinks.map((link) => (
             <Link
               key={link.to}
@@ -51,6 +53,14 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarOpen }) 
               {link.label}
             </Link>
           ))}
+          <a
+            href="docs.html"
+            target="_blank"
+            rel="noopener"
+            className={styles.navLink}
+          >
+            Docs
+          </a>
         </nav>
 
         {/* Right side */}

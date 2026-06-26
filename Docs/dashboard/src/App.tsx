@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppShell } from './components/layout/AppShell';
 import { Overview } from './pages/Overview';
 import { MemoryExplorer } from './pages/MemoryExplorer';
@@ -14,7 +14,7 @@ import { ToastContainer } from './components/ui/Toast';
 
 export const App: React.FC = () => {
   return (
-    <BrowserRouter basename="/dashboard">
+    <HashRouter>
       <AppShell>
         <Routes>
           <Route path="/" element={<Overview />} />
@@ -37,7 +37,7 @@ export const App: React.FC = () => {
         </Routes>
       </AppShell>
       <ToastContainer />
-    </BrowserRouter>
+    </HashRouter>
   );
 };
 export default App;

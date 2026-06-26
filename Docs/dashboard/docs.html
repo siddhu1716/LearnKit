@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LearnKit Documentation — Experience Distillation SDK</title>
+    <meta name="description"
+        content="LearnKit documentation: experience distillation, the 8-step loop, memory types, lifecycle, framework adapters, and the observability dashboard API." />
+    <link rel="icon"
+        href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='6'%20fill='%23030303'/%3E%3Ctext%20x='16'%20y='22'%20font-family='monospace'%20font-size='17'%20font-weight='700'%20fill='%2300ff88'%20text-anchor='middle'%3E%7B%20%7D%3C/text%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=JetBrains+Mono:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #030303;
+            --surface: #0a0a0a;
+            --surface-accent: #111111;
+            --accent: #00ff88;
+            --accent-dim: rgba(0, 255, 136, 0.06);
+            --accent-glow: rgba(0, 255, 136, 0.15);
+            --secondary: #a78bfa;
+            --warn: #f59e0b;
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1aa;
+            --text-muted: #52525b;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(255, 255, 255, 0.15);
+            --font-main: 'Geist', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+        html { scroll-behavior: smooth; background: var(--bg); scroll-padding-top: 90px; }
+        body { font-family: var(--font-main); background: var(--bg); color: var(--text-primary); line-height: 1.6; }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        .bg-grid {
+            position: fixed; inset: 0; z-index: -1; opacity: 0.35;
+            background-image: linear-gradient(to right, var(--border) 1px, transparent 1px), linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+            background-size: 40px 40px;
+            mask-image: radial-gradient(circle at 50% 0%, black, transparent 80%);
+        }
+
+        /* HEADER */
+        header {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 50; height: 64px;
+            display: flex; align-items: center;
+            background: rgba(3, 3, 3, 0.8); backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border);
+        }
+        .header-inner { width: 100%; max-width: 1280px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; }
+        .logo { font-size: 19px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px; letter-spacing: -0.02em; }
+        .logo:hover { text-decoration: none; }
+        .logo-brace { color: var(--accent); font-family: var(--font-mono); }
+        .logo-badge { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); border: 1px solid var(--border); border-radius: 6px; padding: 2px 7px; margin-left: 4px; }
+        .header-nav { display: flex; gap: 22px; align-items: center; }
+        .header-nav a { color: var(--text-secondary); font-size: 14px; font-weight: 500; }
+        .header-nav a:hover { color: var(--accent); text-decoration: none; }
+        .header-cta { border: 1px solid var(--border); border-radius: 8px; padding: 7px 14px; color: var(--text-primary) !important; }
+        .header-cta:hover { border-color: var(--accent); }
+
+        /* LAYOUT */
+        .layout { max-width: 1280px; margin: 0 auto; padding: 96px 24px 80px; display: grid; grid-template-columns: 240px 1fr; gap: 48px; }
+
+        /* SIDEBAR TOC */
+        .toc { position: sticky; top: 96px; align-self: start; max-height: calc(100vh - 120px); overflow-y: auto; padding-right: 8px; }
+        .toc-title { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 14px; }
+        .toc ul { list-style: none; }
+        .toc li a { display: block; color: var(--text-secondary); font-size: 14px; padding: 6px 0 6px 12px; border-left: 2px solid var(--border); }
+        .toc li a:hover { color: var(--text-primary); border-left-color: var(--text-muted); text-decoration: none; }
+        .toc li a.active { color: var(--accent); border-left-color: var(--accent); }
+        .toc .sub a { padding-left: 24px; font-size: 13px; }
+
+        /* CONTENT */
+        .content { min-width: 0; max-width: 820px; }
+        .doc-hero { margin-bottom: 56px; }
+        .doc-kicker { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 16px; display: inline-flex; align-items: center; gap: 8px; }
+        .doc-kicker::before { content: ''; width: 22px; height: 1px; background: var(--accent); }
+        h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 16px; }
+        .lede { font-size: 1.15rem; color: var(--text-secondary); max-width: 64ch; }
+
+        section { padding-top: 56px; }
+        h2 { font-size: 1.7rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 18px; scroll-margin-top: 90px; }
+        h3 { font-size: 1.15rem; font-weight: 600; margin: 32px 0 12px; color: var(--text-primary); }
+        p { color: var(--text-secondary); margin-bottom: 16px; }
+        ul.body-list, ol.body-list { color: var(--text-secondary); margin: 0 0 18px 20px; display: flex; flex-direction: column; gap: 8px; }
+        strong { color: var(--text-primary); }
+
+        code { font-family: var(--font-mono); font-size: 0.86em; background: var(--surface-accent); border: 1px solid var(--border); border-radius: 5px; padding: 1.5px 6px; color: var(--accent); }
+        pre { background: #000; border: 1px solid var(--border); border-radius: 14px; padding: 22px 24px; overflow-x: auto; margin-bottom: 22px; }
+        pre code { background: none; border: none; padding: 0; color: var(--code-fg, #dbe8ff); font-size: 13px; line-height: 1.7; }
+        .tok-kw { color: #a78bfa; } .tok-str { color: #00ff88; } .tok-fn { color: #60a5fa; } .tok-com { color: #52525b; }
+
+        .callout { border-left: 3px solid var(--accent); background: var(--accent-dim); border-radius: 0 12px 12px 0; padding: 16px 20px; margin: 24px 0; }
+        .callout p { margin: 0; color: var(--text-secondary); font-size: 0.95rem; }
+        .callout strong { color: var(--accent); }
+        .callout.violet { border-left-color: var(--secondary); background: rgba(167, 139, 250, 0.06); }
+        .callout.violet strong { color: var(--secondary); }
+
+        /* TABLE */
+        .doc-table { width: 100%; border-collapse: collapse; margin: 22px 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; font-size: 0.92rem; }
+        .doc-table th, .doc-table td { text-align: left; padding: 14px 18px; border-bottom: 1px solid var(--border); vertical-align: top; }
+        .doc-table thead th { background: var(--surface-accent); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+        .doc-table td { color: var(--text-secondary); }
+        .doc-table td:first-child { color: var(--text-primary); font-weight: 500; white-space: nowrap; }
+        .doc-table tr:last-child td { border-bottom: none; }
+        .doc-table .good { color: var(--accent); }
+
+        /* STEP LIST */
+        .steps { counter-reset: step; list-style: none; display: flex; flex-direction: column; gap: 14px; margin: 22px 0; }
+        .steps li { counter-increment: step; position: relative; padding: 18px 20px 18px 64px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; }
+        .steps li::before { content: counter(step, decimal-leading-zero); position: absolute; left: 18px; top: 18px; font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--accent); }
+        .steps li h4 { font-size: 1rem; margin-bottom: 4px; }
+        .steps li p { margin: 0; font-size: 0.9rem; }
+
+        /* TYPE GRID */
+        .type-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin: 22px 0; }
+        .type-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+        .type-card h4 { font-family: var(--font-mono); font-size: 0.95rem; margin-bottom: 6px; color: var(--accent); }
+        .type-card p { margin: 0; font-size: 0.88rem; }
+
+        /* CARDS ROW */
+        .sub-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 22px 0; }
+        .sub-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 22px; }
+        .sub-card .tag { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--secondary); }
+        .sub-card h4 { font-size: 1.05rem; margin: 8px 0; }
+        .sub-card p { margin: 0; font-size: 0.86rem; }
+
+        footer { border-top: 1px solid var(--border); margin-top: 80px; padding: 40px 0; }
+        .footer-inner { max-width: 1280px; margin: 0 auto; padding: 0 24px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px; color: var(--text-muted); font-size: 14px; }
+        .footer-inner a { color: var(--text-secondary); }
+
+        @media (max-width: 900px) {
+            .layout { grid-template-columns: 1fr; gap: 0; }
+            .toc { display: none; }
+            .type-grid, .sub-cards { grid-template-columns: 1fr; }
+            .header-nav a:not(.header-cta) { display: none; }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="bg-grid"></div>
+
+    <header>
+        <div class="header-inner">
+            <a href="index.html" class="logo">
+                <span class="logo-brace">{ }</span>
+                <span>LearnKit</span>
+                <span class="logo-badge">Docs</span>
+            </a>
+            <nav class="header-nav">
+                <a href="index.html">Home</a>
+                <a href="app.html">Dashboard</a>
+                <a href="https://pypi.org/project/learnkit-ai/" target="_blank" rel="noopener">PyPI</a>
+                <a href="https://github.com/siddhu1716/LearnKit" target="_blank" rel="noopener" class="header-cta">GitHub ↗</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="layout">
+        <!-- SIDEBAR TOC -->
+        <aside class="toc">
+            <div class="toc-title">On this page</div>
+            <ul>
+                <li><a href="#overview">Overview</a></li>
+                <li><a href="#install">Getting started</a></li>
+                <li><a href="#philosophy">Experience distillation</a></li>
+                <li><a href="#loop">The 8-step loop</a></li>
+                <li><a href="#subsystems">Key subsystems</a></li>
+                <li><a href="#memory-types">Memory types</a></li>
+                <li><a href="#lifecycle">Memory lifecycle</a></li>
+                <li><a href="#paths">Two learning paths</a></li>
+                <li><a href="#integration">Framework adapters</a></li>
+                <li><a href="#dashboard">Dashboard &amp; API</a></li>
+                <li><a href="#resources">Resources</a></li>
+            </ul>
+        </aside>
+
+        <!-- CONTENT -->
+        <main class="content">
+            <div class="doc-hero">
+                <span class="doc-kicker">Documentation · v0.1.0</span>
+                <h1>LearnKit Documentation</h1>
+                <p class="lede">
+                    LearnKit is an agent-agnostic SDK that gives any AI agent a self-improving memory layer
+                    through <strong>experience distillation</strong> — "fine-tuning without fine-tuning."
+                    Performance improves over time while the underlying model weights never change.
+                </p>
+            </div>
+
+            <!-- OVERVIEW -->
+            <section id="overview">
+                <h2>Overview</h2>
+                <p>
+                    Unlike traditional memory systems that store raw chat logs, LearnKit analyzes agent
+                    execution traces to extract structured, reusable artifacts — successful workflows, verified
+                    facts, and known failure patterns. These distilled artifacts are injected back into the
+                    agent's context on future runs, so the agent compounds knowledge instead of starting from
+                    scratch each time.
+                </p>
+                <ul class="body-list">
+                    <li><strong>Agent-agnostic</strong> — wraps any agent with a single decorator.</li>
+                    <li><strong>Typed &amp; auditable</strong> — every record is a structured, scored JSON entry.</li>
+                    <li><strong>Bounded context</strong> — retrieval is token-capped (max ~1,200 tokens), never "memory soup."</li>
+                    <li><strong>No retraining</strong> — zero GPU hours, no model changes, no vendor lock-in.</li>
+                </ul>
+            </section>
+
+            <!-- GETTING STARTED -->
+            <section id="install">
+                <h2>Getting started</h2>
+                <p>Install the package from PyPI:</p>
+                <pre><code><span class="tok-com"># Python 3.10+</span>
+pip install learnkit-ai</code></pre>
+                <p>Wrap your agent with the <code>@lk.agent</code> decorator and run it as normal — LearnKit
+                    handles classification, retrieval, and distillation in the background.</p>
+                <pre><code><span class="tok-kw">import</span> learnkit
+lk = learnkit.LearnKit()
+
+<span class="tok-kw">@lk.agent</span>(domain=<span class="tok-str">"legal"</span>)
+<span class="tok-kw">def</span> <span class="tok-fn">agent</span>(task):
+    <span class="tok-kw">return</span> llm.run(task)
+
+<span class="tok-com"># Run 1:  Figures it out from scratch</span>
+<span class="tok-com"># Run 10: Has distilled workflows from 9 prior runs</span>
+<span class="tok-com"># Run 50: Has a curated wiki of domain expertise</span></code></pre>
+                <div class="callout">
+                    <p><strong>Local-first.</strong> By default, records persist to a local SQLite store. No
+                        external services are required to start.</p>
+                </div>
+            </section>
+
+            <!-- PHILOSOPHY -->
+            <section id="philosophy">
+                <h2>Core philosophy: experience distillation</h2>
+                <p>
+                    The central tenet of LearnKit is that <strong>distilled experience is superior to raw
+                        memory</strong>. Raw chat logs create "memory soup" — exploding context windows with a
+                    high noise-to-signal ratio. LearnKit replaces this with a curated wiki of expertise.
+                </p>
+                <table class="doc-table">
+                    <thead>
+                        <tr><th></th><th>Raw memory storage</th><th>LearnKit distillation</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Storage content</td><td>Raw chat logs / full history</td><td class="good">Structured, typed records</td></tr>
+                        <tr><td>Context management</td><td>Grows linearly; "memory soup"</td><td class="good">Bounded, curated, ~1,200-token cap</td></tr>
+                        <tr><td>Quality control</td><td>None; stores everything</td><td class="good">LLM-as-judge scores every run</td></tr>
+                        <tr><td>Reusability</td><td>Hard to generalize</td><td class="good">Cross-domain via task classification</td></tr>
+                        <tr><td>Failure handling</td><td>Repeats mistakes</td><td class="good">Failures are first-class, used for avoidance</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- LOOP -->
+            <section id="loop">
+                <h2>The 8-step loop</h2>
+                <p>When an agent is decorated with <code>@lk.agent</code>, LearnKit orchestrates a continuous
+                    loop of classification, retrieval, execution, and distillation around your existing logic.</p>
+                <ol class="steps">
+                    <li><h4>Classify</h4><p><code>TaskClassifier</code> uses DSPy to generate a domain vector and task type.</p></li>
+                    <li><h4>Route</h4><p><code>MemoryRouter</code> selects which memory stores and record types are relevant.</p></li>
+                    <li><h4>Retrieve</h4><p><code>SemanticRetriever</code> runs hybrid search (BM25 + vector) for the top ~8 records.</p></li>
+                    <li><h4>Compose</h4><p><code>ContextComposer</code> compresses matches into a prompt block (~1,200-token cap).</p></li>
+                    <li><h4>Execute</h4><p>Your agent function runs with the distilled context injected.</p></li>
+                    <li><h4>Evaluate</h4><p><code>Evaluator</code> (LLM-as-judge) assigns a quality score from 0–5.</p></li>
+                    <li><h4>Distill</h4><p>If the score clears the gate, <code>MemoryDistiller</code> extracts reusable artifacts.</p></li>
+                    <li><h4>Store</h4><p><code>SQLiteBackend</code> persists the new records for future runs.</p></li>
+                </ol>
+                <div class="callout violet">
+                    <p><strong>Quality gate.</strong> Only runs scoring above the <code>quality_threshold</code>
+                        (default <strong>3.5</strong>) produce skills or facts. Failures are stored immediately to
+                        prevent repeating dead-end paths.</p>
+                </div>
+            </section>
+
+            <!-- SUBSYSTEMS -->
+            <section id="subsystems">
+                <h2>Key subsystems</h2>
+                <div class="sub-cards">
+                    <div class="sub-card">
+                        <span class="tag">Ingest</span>
+                        <h4>The Distiller</h4>
+                        <p>Analyzes the <code>Trajectory</code> after each task. Successes become Skill/Fact records; failures become Failure records.</p>
+                    </div>
+                    <div class="sub-card">
+                        <span class="tag">Query</span>
+                        <h4>The Retriever</h4>
+                        <p>Hybrid BM25 + vector search returns the top 8 records (or 1,200 tokens) of relevant experience before execution.</p>
+                    </div>
+                    <div class="sub-card">
+                        <span class="tag">Maintain</span>
+                        <h4>The Evolver</h4>
+                        <p>Confidence decay, quarantine promotion, and GEPA (Genetic-Pareto Prompt Evolution) keep memory curated.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- MEMORY TYPES -->
+            <section id="memory-types">
+                <h2>The 7 memory types</h2>
+                <p>Every distilled artifact is one of seven typed records, each with its own schema and retrieval behavior.</p>
+                <div class="type-grid">
+                    <div class="type-card"><h4>Skill</h4><p>A reusable, step-by-step procedure proven to work on a class of tasks.</p></div>
+                    <div class="type-card"><h4>Fact</h4><p>A verified statement of truth, optionally with temporal validity that can expire.</p></div>
+                    <div class="type-card"><h4>Failure</h4><p>A known dead-end or mistake, surfaced immediately to steer the agent away.</p></div>
+                    <div class="type-card"><h4>Strategy</h4><p>A higher-level approach or plan for tackling a category of problems.</p></div>
+                    <div class="type-card"><h4>Preference</h4><p>A user- or domain-specific convention the agent should honor.</p></div>
+                    <div class="type-card"><h4>Heuristic</h4><p>A rule-of-thumb that biases decisions without guaranteeing an outcome.</p></div>
+                    <div class="type-card"><h4>Trace</h4><p>A captured execution trajectory used for replay and procedure induction.</p></div>
+                </div>
+            </section>
+
+            <!-- LIFECYCLE -->
+            <section id="lifecycle">
+                <h2>Memory lifecycle</h2>
+                <p>Records move through three states, managed by the <code>maintain_memory()</code> routine:</p>
+                <ul class="body-list">
+                    <li><strong>Quarantine</strong> — newly distilled records are held on probation before they can influence runs.</li>
+                    <li><strong>Active</strong> — promoted records that are eligible for retrieval and injection.</li>
+                    <li><strong>Stale</strong> — records whose confidence has decayed from disuse; eventually pruned.</li>
+                </ul>
+                <div class="callout">
+                    <p><strong>Self-curating.</strong> Memory is bounded by design — confidence decays over time,
+                        high-value skills are optimized via GEPA, and low-performers stale out automatically.</p>
+                </div>
+            </section>
+
+            <!-- PATHS -->
+            <section id="paths">
+                <h2>Two learning paths</h2>
+                <p>Pick the decorator that fits how your agent runs — both write to the same persistent backend and share the same quality gates.</p>
+                <h3>Path A — <code>@lk.learn</code> (model path)</h3>
+                <p>For any LLM agent. Distilled skills and failures are injected as text context. No tool instrumentation needed.</p>
+                <pre><code><span class="tok-kw">@lk.learn</span>(domain=<span class="tok-str">"legal"</span>)
+<span class="tok-kw">def</span> <span class="tok-fn">agent</span>(task, _learnkit_context=<span class="tok-str">""</span>):
+    <span class="tok-com"># distilled context injected on every call</span>
+    <span class="tok-kw">return</span> llm.run(task, system=_learnkit_context)</code></pre>
+                <h3>Path B — <code>@lk.agent_learn</code> (tool-agent path)</h3>
+                <p>For agents that call tools. Captures every tool sequence, replays proven procedures on exact
+                    re-encounters, and guides similar tasks — cutting LLM calls by up to 66% across rounds.</p>
+                <pre><code><span class="tok-kw">@lk.agent_learn</span>(domain=<span class="tok-str">"pipeline"</span>)
+<span class="tok-kw">def</span> <span class="tok-fn">tool_agent</span>(task, _learnkit_tools=<span class="tok-kw">None</span>):
+    rows = _learnkit_tools.record(<span class="tok-str">"query"</span>, args, result)
+    <span class="tok-com"># procedure captured ↑  replayed next run</span>
+    <span class="tok-kw">return</span> rows</code></pre>
+            </section>
+
+            <!-- INTEGRATION -->
+            <section id="integration">
+                <h2>Framework adapters</h2>
+                <p>LearnKit is framework-agnostic and ships adapters for popular agent frameworks. Integration
+                    typically requires only a few lines using the <code>LearnKit</code> orchestrator class.</p>
+                <ul class="body-list">
+                    <li><strong>LangChain</strong> — wrap <code>create_agent()</code> / <code>agent.invoke()</code>; context is spliced in via <code>_learnkit_context</code>.</li>
+                    <li><strong>LangGraph</strong> — node-level memory injection across graph state.</li>
+                    <li><strong>AutoGen</strong> — distillation around multi-agent conversations.</li>
+                    <li><strong>OpenAI</strong> — direct integration for the OpenAI SDK.</li>
+                </ul>
+            </section>
+
+            <!-- DASHBOARD / API -->
+            <section id="dashboard">
+                <h2>Dashboard &amp; API</h2>
+                <p>The <a href="app.html">observability dashboard</a> inspects memory records, retrieval quality,
+                    task history, traces, and the memory lifecycle. It talks to the FastAPI server in
+                    <code>Docs/server.py</code> and falls back to local mock data when the backend is offline.</p>
+                <table class="doc-table">
+                    <thead>
+                        <tr><th>Endpoint</th><th>Purpose</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>GET /healthz</td><td>Liveness check and loaded playground stores.</td></tr>
+                        <tr><td>GET /api/domains</td><td>Available playground domains and record counts.</td></tr>
+                        <tr><td>POST /api/inspect</td><td>Run classify → retrieve → compose and return the injected context.</td></tr>
+                        <tr><td>GET /api/v1/records</td><td>Memory records and related lifecycle routes.</td></tr>
+                    </tbody>
+                </table>
+                <div class="callout">
+                    <p><strong>Run locally:</strong> start the backend with <code>python Docs/server.py</code>,
+                        then run <code>npm run dev</code> in <code>Docs/dashboard</code> — the dev server proxies
+                        <code>/api</code> to the backend automatically.</p>
+                </div>
+            </section>
+
+            <!-- RESOURCES -->
+            <section id="resources">
+                <h2>Resources</h2>
+                <ul class="body-list">
+                    <li><a href="https://github.com/siddhu1716/LearnKit" target="_blank" rel="noopener">GitHub repository</a></li>
+                    <li><a href="https://pypi.org/project/learnkit-ai/" target="_blank" rel="noopener">PyPI package — learnkit-ai</a></li>
+                    <li><a href="https://deepwiki.com/siddhu1716/LearnKit/1-learnkit-overview" target="_blank" rel="noopener">DeepWiki — full architecture reference</a></li>
+                    <li><a href="app.html">Observability dashboard</a></li>
+                </ul>
+            </section>
+        </main>
+    </div>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 LearnKit · Built by developers for developers.</span>
+            <span><a href="index.html">Home</a> &nbsp;·&nbsp; <a href="app.html">Dashboard</a> &nbsp;·&nbsp; <a href="https://github.com/siddhu1716/LearnKit" target="_blank" rel="noopener">GitHub</a></span>
+        </div>
+    </footer>
+
+    <script>
+        // Scroll-spy: highlight the active TOC link
+        const tocLinks = Array.from(document.querySelectorAll('.toc a'));
+        const sections = tocLinks
+            .map(a => document.getElementById(a.getAttribute('href').slice(1)))
+            .filter(Boolean);
+
+        const spy = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const id = entry.target.id;
+                    tocLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + id));
+                }
+            });
+        }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+
+        sections.forEach(s => spy.observe(s));
+    </script>
+</body>
+
+</html>

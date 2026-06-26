@@ -1,17 +1,2433 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LearnKit Dashboard — Observability &amp; Memory Inspector</title>
-    <meta name="description" content="LearnKit Observability Dashboard — inspect memory records, retrieval quality, task history, and memory lifecycle for your AI agents." />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='6'%20fill='%23030303'/%3E%3Ctext%20x='16'%20y='22'%20font-family='monospace'%20font-size='17'%20font-weight='700'%20fill='%2300ff88'%20text-anchor='middle'%3E%7B%20%7D%3C/text%3E%3C/svg%3E" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LearnKit — The Experience Distillation SDK for AI Agents</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #030303;
+            --surface: #0a0a0a;
+            --surface-accent: #111111;
+            --accent: #00ff88;
+            --accent-dim: rgba(0, 255, 136, 0.06);
+            --accent-glow: rgba(0, 255, 136, 0.15);
+            --secondary: #a78bfa;          /* violet — replaces blue */
+            --secondary-glow: rgba(167, 139, 250, 0.15);
+            --warn: #f59e0b;
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1aa;
+            --text-muted: #52525b;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(255, 255, 255, 0.15);
+            --font-main: 'Geist', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            background-color: var(--bg);
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg);
+            color: var(--text-primary);
+            line-height: 1.5;
+            overflow-x: hidden;
+        }
+
+        .bg-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: linear-gradient(to right, var(--border) 1px, transparent 1px), linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+            background-size: 40px 40px;
+            mask-image: radial-gradient(circle at 50% 50%, black, transparent 80%);
+            z-index: -1;
+            opacity: 0.4;
+        }
+
+        .bg-glow {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background:
+                /* Deep violet crown — very top of the page */
+                radial-gradient(ellipse 130% 55% at 50% -20%, rgba(139, 92, 246, 0.28), transparent 58%),
+                /* Emerald green mid-hero */
+                radial-gradient(ellipse 90% 45% at 50% 25%, rgba(0, 255, 136, 0.14), transparent 55%),
+                /* Soft violet left accent */
+                radial-gradient(ellipse 60% 35% at 5%  35%, rgba(167, 139, 250, 0.07), transparent 55%),
+                /* Soft emerald right accent */
+                radial-gradient(ellipse 60% 35% at 95% 35%, rgba(0, 200, 120, 0.06), transparent 55%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4 {
+            font-weight: 700;
+            letter-spacing: -0.03em;
+        }
+
+        .text-gradient {
+            background: linear-gradient(to bottom right, #fff 30%, #a1a1aa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        .section {
+            padding: 120px 0;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .section.revealed {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* HERO */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            padding: 80px 24px;
+        }
+
+        /* Full-bleed gradient overlay — violet crown → emerald → transparent */
+        .hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100vw;
+            background:
+                linear-gradient(to bottom,
+                    rgba(139, 92, 246, 0.12) 0%,
+                    rgba(80, 200, 150, 0.08) 35%,
+                    rgba(0, 255, 136, 0.04) 60%,
+                    transparent             85%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Keep hero children above the ::before overlay */
+        .hero>* {
+            position: relative;
+            z-index: 1;
+        }
+
+        .badge-new {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            color: var(--accent);
+            padding: 4px 12px;
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 24px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            animation: fadeIn 1s ease;
+        }
+
+        .badge-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: pulse-dot 2s infinite;
+        }
+
+        @keyframes pulse-dot {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1)
+            }
+
+            50% {
+                opacity: 0.4;
+                transform: scale(0.8)
+            }
+        }
+
+        .hero h1 {
+            font-size: clamp(2.2rem, 7vw, 4.2rem);
+            line-height: 1.1;
+            margin-bottom: 24px;
+            max-width: 860px;
+            min-height: 1.2em;
+        }
+
+        .hero>p {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            max-width: 580px;
+            margin-bottom: 40px;
+        }
+
+        .waitlist-form {
+            display: flex;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 8px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(12px);
+            width: 100%;
+            max-width: 480px;
+            transition: border-color 0.3s;
+        }
+
+        .waitlist-form:focus-within {
+            border-color: rgba(0, 255, 136, 0.3);
+        }
+
+        .waitlist-form input {
+            background: transparent;
+            border: none;
+            padding: 12px 16px;
+            color: white;
+            font-family: var(--font-main);
+            font-size: 16px;
+            flex: 1;
+            outline: none;
+        }
+
+        .btn-submit {
+            background: var(--text-primary);
+            color: var(--bg);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            font-family: var(--font-main);
+        }
+
+        .btn-submit:hover {
+            background: #e5e5e5;
+            transform: scale(1.02);
+        }
+
+        .hero-stat {
+            margin-top: 28px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .counter-val {
+            color: var(--text-primary);
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* HERO ANIMATION — memory growth chart */
+        .hero-visual {
+            margin-top: 56px;
+            width: 100%;
+            max-width: 700px;
+        }
+
+        .chart-wrap {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 28px 32px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chart-label-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .chart-title {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-family: var(--font-mono);
+        }
+
+        .chart-live {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--accent);
+            font-family: var(--font-mono);
+        }
+
+        .live-dot {
+            width: 5px;
+            height: 5px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: pulse-dot 1.5s infinite;
+        }
+
+        .chart-canvas-wrap {
+            position: relative;
+            height: 100px;
+        }
+
+        canvas#growth-chart {
+            width: 100% !important;
+        }
+
+        .chart-x-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+        }
+
+        .chart-x-labels span {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+
+        .record-pills {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .pill {
+            background: var(--surface-accent);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .pill-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .pill-count {
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* PROBLEM */
+        .problem-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-top: 64px;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 40px;
+            border-radius: 24px;
+            transition: all 0.3s;
+        }
+
+        .card:hover {
+            border-color: var(--border-hover);
+            background: var(--surface-accent);
+        }
+
+        .card h3 {
+            font-size: 1.2rem;
+            margin-bottom: 16px;
+        }
+
+        .card p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        /* CODE */
+        .code-container {
+            margin-top: 64px;
+            background: #000;
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 40px;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            line-height: 1.7;
+            position: relative;
+        }
+
+        .code-label {
+            position: absolute;
+            top: 20px;
+            right: 24px;
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .code-comment {
+            color: #52525b;
+        }
+
+        .code-keyword {
+            color: #3b82f6;
+        }
+
+        .code-string {
+            color: #00ff88;
+        }
+
+        .code-func {
+            color: #8b5cf6;
+        }
+
+        /* FLOW */
+        .flow-wrap {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 80px;
+            gap: 12px;
+        }
+
+        .flow-item {
+            flex: 1;
+            text-align: center;
+            padding: 32px 20px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            transition: all 0.5s;
+        }
+
+        .flow-item.active {
+            border-color: var(--accent);
+            box-shadow: 0 0 30px var(--accent-glow);
+        }
+
+        .flow-num {
+            font-size: 12px;
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: block;
+            font-family: var(--font-mono);
+        }
+
+        .flow-item h4 {
+            font-size: 1rem;
+            margin-bottom: 8px;
+        }
+
+        .flow-item p {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+        }
+
+        /* ARCHITECTURE DIAGRAM */
+        .arch-wrap {
+            margin-top: 80px;
+            position: relative;
+        }
+
+        .arch-canvas-container {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        canvas#arch-canvas {
+            display: block;
+            width: 100%;
+        }
+
+        .arch-legend {
+            display: flex;
+            gap: 24px;
+            justify-content: center;
+            margin-top: 24px;
+            flex-wrap: wrap;
+        }
+
+        .arch-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+
+        .arch-legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+        }
+
+        /* TABLE */
+        .comparison-wrap {
+            margin-top: 64px;
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            overflow: hidden;
+            background: var(--surface);
+        }
+
+        .table-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .table-row:last-child {
+            border-bottom: none;
+        }
+
+        .table-cell {
+            padding: 24px 32px;
+            font-size: 0.95rem;
+        }
+
+        .table-cell:first-child {
+            color: var(--text-secondary);
+            border-right: 1px solid var(--border);
+        }
+
+        .table-header {
+            background: var(--surface-accent);
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .table-cell.good {
+            color: var(--accent);
+        }
+
+        /* USE CASES */
+        .use-case-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            margin-top: 64px;
+        }
+
+        .use-case-card {
+            display: flex;
+            gap: 24px;
+            padding: 40px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            transition: all 0.3s;
+        }
+
+        .use-case-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-4px);
+        }
+
+        .use-case-icon {
+            font-size: 24px;
+            width: 48px;
+            height: 48px;
+            background: var(--surface-accent);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        /* CITATIONS */
+        .citation-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            margin-top: 64px;
+        }
+
+        .citation-card {
+            padding: 32px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            transition: border-color 0.3s;
+        }
+
+        .citation-card:hover {
+            border-color: rgba(167, 139, 250, 0.35);
+        }
+
+        .citation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .citation-tag {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--secondary);
+            font-weight: 600;
+            font-family: var(--font-mono);
+        }
+
+        /* FOOTER CTA */
+        .footer-cta {
+            text-align: center;
+        }
+
+        .footer-cta h2 {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            margin-bottom: 24px;
+            max-width: 760px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        footer {
+            padding: 80px 0 40px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 32px;
+            margin-bottom: 32px;
+        }
+
+        .footer-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--text-primary);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        .typewriter-cursor {
+            display: inline-block;
+            width: 3px;
+            height: 0.85em;
+            background: var(--accent);
+            margin-left: 4px;
+            animation: blink 1s infinite;
+            vertical-align: middle;
+            border-radius: 1px;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: 0
+            }
+        }
+
+        .success-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .success-modal {
+            background: var(--surface);
+            border: 1px solid var(--accent);
+            padding: 48px;
+            border-radius: 32px;
+            text-align: center;
+            max-width: 400px;
+        }
+
+        @media(max-width:768px) {
+
+            .problem-grid,
+            .use-case-grid,
+            .citation-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .flow-wrap {
+                flex-direction: column;
+            }
+
+            .table-row {
+                grid-template-columns: 1fr;
+            }
+
+            .table-cell:first-child {
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .section {
+                padding: 80px 0;
+            }
+
+            .record-pills {
+                gap: 8px;
+            }
+        }
+
+        /* ── HEADER STYLES ── */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 50;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        header.scrolled {
+            background: rgba(3, 3, 3, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header-inner {
+            width: 100%;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            letter-spacing: -0.02em;
+        }
+
+        .logo-brace {
+            color: var(--accent);
+            font-family: var(--font-mono);
+            font-weight: 700;
+        }
+
+        nav.desk {
+            display: flex;
+            align-items: center;
+            gap: 28px;
+        }
+
+        nav.desk a {
+            font-size: 14.5px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s ease;
+            font-weight: 500;
+        }
+
+        nav.desk a:hover {
+            color: var(--accent);
+        }
+
+        .ghost-btn {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-decoration: none;
+            padding: 8px 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            background: transparent;
+        }
+
+        .ghost-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            box-shadow: 0 0 15px var(--accent-dim);
+            transform: translateY(-1px);
+        }
+
+        .hamburger {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            flex-direction: column;
+            gap: 6px;
+            padding: 4px;
+            z-index: 60;
+        }
+
+        .hamburger span {
+            display: block;
+            width: 22px;
+            height: 2px;
+            background: var(--text-primary);
+            transition: all 0.3s ease;
+            border-radius: 2px;
+        }
+
+        .hamburger.open span:nth-child(1) {
+            transform: translateY(8px) rotate(45deg);
+        }
+
+        .hamburger.open span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .hamburger.open span:nth-child(3) {
+            transform: translateY(-8px) rotate(-45deg);
+        }
+
+        .mnav {
+            position: fixed;
+            inset: 70px 0 auto 0;
+            background: rgba(3, 3, 3, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            z-index: 49;
+            display: none;
+            flex-direction: column;
+            padding: 24px;
+            gap: 16px;
+            transform: translateY(-10px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .mnav.open {
+            display: flex;
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .mnav a {
+            font-size: 16px;
+            color: var(--text-primary);
+            text-decoration: none;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            font-weight: 500;
+        }
+
+        .mnav a:hover {
+            color: var(--accent);
+        }
+
+        .mnav .ghost-btn {
+            text-align: center;
+            margin-top: 8px;
+        }
+
+        /* ── CONTACT SECTION ── */
+        .contact-wrap {
+            max-width: 650px;
+            margin: 0 auto;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 32px;
+            position: relative;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            transition: border-color 0.3s;
+        }
+
+        .contact-wrap:focus-within {
+            border-color: rgba(167, 139, 250, 0.3);
+        }
+
+        .contact-tabs {
+            display: flex;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 4px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            margin-bottom: 28px;
+        }
+
+        .contact-tab {
+            flex: 1;
+            padding: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            font-family: var(--font-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .contact-tab.active {
+            background: var(--surface-accent);
+            color: var(--text-primary);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+        }
+
+        .contact-tab.active.email-tab {
+            border-bottom: 2px solid var(--secondary);
+        }
+
+        .contact-tab.active.wa-tab {
+            border-bottom: 2px solid var(--accent);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .form-control {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-family: var(--font-main);
+            font-size: 15px;
+            outline: none;
+            transition: all 0.25s ease;
+        }
+
+        .form-control:focus {
+            border-color: var(--secondary);
+            background: rgba(255, 255, 255, 0.04);
+            box-shadow: 0 0 15px var(--secondary-glow);
+        }
+
+        .wa-active .form-control:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        textarea.form-control {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .btn-contact {
+            width: 100%;
+            padding: 14px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            border: none;
+            transition: all 0.25s ease;
+            font-family: var(--font-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-email-submit {
+            background: var(--secondary);
+            color: var(--text-primary);
+        }
+
+        .btn-email-submit:hover {
+            background: #b59dfb;
+            transform: scale(1.01);
+            box-shadow: 0 0 20px var(--secondary-glow);
+        }
+
+        .btn-wa-submit {
+            background: var(--accent);
+            color: var(--bg);
+        }
+
+        .btn-wa-submit:hover {
+            background: #33ff9e;
+            transform: scale(1.01);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        /* ── DEVELOPER SETTINGS DRAWER ── */
+        .dev-settings-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 18px;
+            transition: color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dev-settings-toggle:hover {
+            color: var(--text-primary);
+        }
+
+        .dev-settings-panel {
+            background: var(--surface-accent);
+            border: 1px dashed var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 24px;
+            text-align: left;
+            display: none;
+            animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .dev-settings-panel h4 {
+            font-size: 13px;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dev-settings-panel p {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            line-height: 1.4;
+        }
+
+        .dev-input-group {
+            margin-bottom: 12px;
+        }
+
+        .dev-input-group label {
+            display: block;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            font-family: var(--font-mono);
+        }
+
+        .dev-control {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-family: var(--font-mono);
+            outline: none;
+        }
+
+        .dev-control:focus {
+            border-color: var(--accent);
+        }
+
+        /* ── RESPONSIVE CANVAS & OTHER FIXES ── */
+        .arch-canvas-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .arch-canvas-container canvas {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .hamburger {
+                display: flex;
+            }
+            nav.desk, .ghost-btn.head-cta {
+                display: none;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .contact-wrap {
+                padding: 20px;
+            }
+            .waitlist-form {
+                flex-direction: column;
+                gap: 10px;
+                padding: 12px;
+                background: rgba(255, 255, 255, 0.02);
+            }
+            .waitlist-form input {
+                width: 100%;
+                padding: 10px 8px;
+                text-align: center;
+            }
+            .btn-submit {
+                width: 100%;
+                padding: 12px;
+                justify-content: center;
+            }
+        }
+            .record-pills {
+                gap: 8px;
+            }
+        }
+
+        /* ── BENCHMARK CARDS ── */
+        .bench-badges { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+        .bench-badge { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text-secondary); padding:4px 14px; border-radius:100px; font-size:0.82rem; font-weight:500; font-family:var(--font-mono); }
+        .bench-badge--green { background:rgba(0,255,136,0.08); border-color:rgba(0,255,136,0.2); color:var(--accent); }
+        .bench-model-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; }
+        .bench-model-card { background:var(--surface); border:1px solid var(--border); border-radius:24px; padding:32px; position:relative; transition:all 0.4s cubic-bezier(0.16,1,0.3,1); overflow:hidden; }
+        .bench-model-card::before { content:''; position:absolute; top:0; left:-100%; width:60%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.03),transparent); transition:left 0.6s ease; }
+        .bench-model-card:hover::before { left:150%; }
+        .bench-model-card:hover { border-color:var(--border-hover); transform:translateY(-4px); box-shadow:0 16px 40px rgba(0,0,0,0.3); }
+        .bench-model-card--featured { border-color:rgba(0,255,136,0.2); background:linear-gradient(135deg,var(--surface) 0%,rgba(0,255,136,0.03) 100%); }
+        .bench-model-card--featured:hover { border-color:rgba(0,255,136,0.35); box-shadow:0 16px 40px rgba(0,255,136,0.08); }
+        .bench-model-card-tag { position:absolute; top:16px; right:16px; background:rgba(0,255,136,0.1); border:1px solid rgba(0,255,136,0.2); color:var(--accent); padding:2px 10px; border-radius:100px; font-size:11px; font-weight:600; font-family:var(--font-mono); }
+        .bench-model-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
+        .bench-model-size { display:inline-block; padding:2px 10px; border-radius:6px; font-size:12px; font-weight:700; font-family:var(--font-mono); margin-right:8px; }
+        .bench-model-size--blue { background:rgba(59,130,246,0.15); color:#60a5fa; }
+        .bench-model-size--green { background:rgba(0,255,136,0.12); color:var(--accent); }
+        .bench-model-size--violet { background:rgba(167,139,250,0.15); color:var(--secondary); }
+        .bench-model-name { font-size:0.8rem; color:var(--text-secondary); font-family:var(--font-mono); }
+        .bench-gate { font-size:11px; font-weight:700; padding:3px 10px; border-radius:100px; font-family:var(--font-mono); }
+        .bench-gate--pass { background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.25); color:#10b981; }
+        .bench-metric { margin-bottom:16px; line-height:1; }
+        .bench-metric-val { font-size:3rem; font-weight:800; letter-spacing:-0.04em; color:var(--text-primary); font-variant-numeric:tabular-nums; }
+        .bench-metric-unit { font-size:1.6rem; font-weight:700; color:var(--text-secondary); margin-left:2px; }
+        .bench-metric-label { display:block; font-size:0.75rem; color:var(--text-muted); margin-top:6px; text-transform:uppercase; letter-spacing:0.06em; font-weight:500; }
+        .bench-bar-wrap { background:rgba(255,255,255,0.04); border-radius:100px; height:5px; overflow:hidden; margin-bottom:20px; }
+        .bench-bar { height:100%; border-radius:100px; width:0; transition:width 1.6s cubic-bezier(0.16,1,0.3,1); }
+        .bench-bar.animated { width:var(--target); }
+        .bench-sub-stats { display:flex; gap:20px; }
+        .bench-sub-val { display:block; font-size:1rem; font-weight:700; color:var(--text-primary); font-family:var(--font-mono); }
+        .bench-sub-lbl { display:block; font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-top:2px; }
+        .bench-tabs-wrap { border:1px solid var(--border); border-radius:24px; overflow:hidden; background:var(--surface); }
+        .bench-tabs { display:flex; border-bottom:1px solid var(--border); background:var(--surface-accent); }
+        .bench-tab { flex:1; padding:16px 16px; background:transparent; border:none; color:var(--text-muted); font-family:var(--font-main); font-size:13.5px; font-weight:500; cursor:pointer; transition:all 0.25s; border-bottom:2px solid transparent; }
+        .bench-tab:hover { color:var(--text-secondary); }
+        .bench-tab.active { color:var(--accent); border-bottom-color:var(--accent); background:rgba(0,255,136,0.03); }
+        .bench-tab-content { display:none; padding:32px; animation:fadeIn 0.3s ease; }
+        .bench-tab-content.active { display:block; }
+        .bench-tab-desc { color:var(--text-secondary); font-size:0.9rem; margin-bottom:24px; line-height:1.6; max-width:700px; }
+        .model-tag { display:inline-block; padding:1px 8px; border-radius:4px; font-size:11px; font-weight:700; font-family:var(--font-mono); margin-right:8px; vertical-align:middle; }
+        .model-tag--blue { background:rgba(59,130,246,0.15); color:#60a5fa; }
+        .model-tag--green { background:rgba(0,255,136,0.12); color:var(--accent); }
+        .model-tag--violet { background:rgba(167,139,250,0.15); color:var(--secondary); }
+        .bench-callout { margin:0 24px 24px; border-left:3px solid var(--accent); padding:12px 20px; font-size:0.9rem; color:var(--text-secondary); line-height:1.6; background:rgba(0,255,136,0.03); border-radius:0 12px 12px 0; }
+        /* ── TWO PATHS ── */
+        .paths-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+        .path-card { background:var(--surface); border:1px solid var(--border); border-radius:24px; padding:36px 40px; transition:all 0.35s cubic-bezier(0.16,1,0.3,1); }
+        .path-card:hover { border-color:var(--border-hover); transform:translateY(-4px); }
+        .path-card--accent { border-color:rgba(0,255,136,0.18); background:linear-gradient(135deg,var(--surface) 0%,rgba(0,255,136,0.025) 100%); }
+        .path-card--accent:hover { border-color:rgba(0,255,136,0.35); box-shadow:0 12px 40px rgba(0,255,136,0.07); }
+        .path-tag { display:inline-block; padding:4px 12px; border-radius:100px; font-size:12px; font-weight:600; border:1px solid; margin-bottom:16px; font-family:var(--font-mono); }
+        .path-card h4 { font-size:1.3rem; margin-bottom:10px; font-family:var(--font-mono); }
+        .path-desc { color:var(--text-secondary); font-size:0.92rem; margin-bottom:20px; line-height:1.6; }
+        .path-code { background:rgba(0,0,0,0.45); border:1px solid var(--border); border-radius:12px; padding:18px 20px; font-family:var(--font-mono); font-size:12.5px; margin-bottom:20px; overflow-x:auto; line-height:1.7; white-space:pre; }
+        .path-bullets { list-style:none; padding:0; display:flex; flex-direction:column; gap:8px; }
+        .path-bullets li { font-size:0.88rem; color:var(--text-secondary); }
+        @media(max-width:900px) { .bench-model-grid { grid-template-columns:1fr 1fr; } }
+        @media(max-width:768px) {
+            .bench-model-grid { grid-template-columns:1fr; }
+            .paths-grid { grid-template-columns:1fr; }
+            .bench-tabs { flex-direction:column; }
+            .bench-tab { border-bottom:none; border-left:2px solid transparent; text-align:left; }
+            .bench-tab.active { border-left-color:var(--accent); border-bottom:none; }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="bg-grid"></div>
+    <div class="bg-glow"></div>
+
+    <!-- HEADER & NAVIGATION -->
+    <header id="hdr">
+        <div class="header-inner">
+            <a href="#top" class="logo">
+                <span class="logo-brace">{ }</span>
+                <span>LearnKit</span>
+            </a>
+            <nav class="desk">
+                <a href="#problem">Problem</a>
+                <a href="#solution">Solution</a>
+                <a href="#how-it-works">Mechanism</a>
+                <a href="#benchmarks">Benchmarks</a>
+                <a href="#use-cases">Use Cases</a>
+                <a href="docs.html" target="_blank" rel="noopener">Docs</a>
+                <a href="https://github.com/siddhu1716/LearnKit" target="_blank" rel="noopener">GitHub</a>
+            </nav>
+            <a href="app.html" class="ghost-btn head-cta">Launch Dashboard →</a>
+            <button class="hamburger" id="ham" aria-label="Menu" aria-expanded="false">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </header>
+
+    <div class="mnav" id="mnav">
+        <a href="#problem" onclick="toggleMenu(false)">Problem</a>
+        <a href="#solution" onclick="toggleMenu(false)">Solution</a>
+        <a href="#how-it-works" onclick="toggleMenu(false)">Mechanism</a>
+        <a href="#benchmarks" onclick="toggleMenu(false)">Benchmarks</a>
+        <a href="#use-cases" onclick="toggleMenu(false)">Use Cases</a>
+        <a href="docs.html" target="_blank" rel="noopener">Docs</a>
+        <a href="https://github.com/siddhu1716/LearnKit" target="_blank" rel="noopener">GitHub Repository</a>
+        <a href="app.html" class="ghost-btn">Launch Dashboard →</a>
+    </div>
+
+    <!-- HERO -->
+    <section class="hero container">
+        <a href="https://github.com/siddhu1716/LearnKit" target="_blank" rel="noopener" style="text-decoration:none">
+            <span class="badge-new"><span class="badge-dot"></span>v0.1.0 · View on GitHub</span>
+        </a>
+        <h1 id="headline" class="text-gradient"></h1>
+        <p>Introducing <b><i>LearnKit</i></b> — a thin experience distillation layer that wraps any agent and makes it
+            compound knowledge over time.</p>
+
+        <div style="display:flex;gap:16px;justify-content:center;margin-top:16px;flex-wrap:wrap;">
+            <a href="app.html" class="btn-submit" style="text-decoration:none;padding:12px 32px;display:inline-flex;align-items:center;justify-content:center;min-height:48px;">Launch Dashboard →</a>
+            <a href="docs.html" target="_blank" rel="noopener" class="ghost-btn" style="padding:12px 24px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;min-height:48px;">Read the Docs</a>
+        </div>
+
+        <!-- PyPI Installation Card -->
+        <div class="pypi-install-card" style="margin: 24px auto 0; max-width: 320px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; backdrop-filter: blur(10px); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);">
+            <div style="display: flex; align-items: center; gap: 8px; font-family: 'Fira Code', monospace; font-size: 14px; color: var(--text-primary);">
+                <span style="color: var(--accent); user-select: none;">$</span>
+                <span id="install-cmd" style="font-family: inherit;">pip install learnkit-ai</span>
+            </div>
+            <button onclick="copyInstallCommand()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; transition: color 0.2s;" title="Copy to Clipboard" id="copy-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+            </button>
+        </div>
+
+        <p class="hero-stat">Your agent has solved this problem <span class="counter-val" id="counter">0</span> times.
+            It doesn't know that.</p>
+
+        <!-- HERO ANIMATION: live memory growth chart -->
+        <div class="hero-visual">
+            <div class="chart-wrap">
+                <div class="chart-label-row">
+                    <span class="chart-title">Agent quality score · across runs</span>
+                    <span class="chart-live"><span class="live-dot"></span>LIVE SIM</span>
+                </div>
+                <div class="chart-canvas-wrap">
+                    <canvas id="growth-chart" height="100"></canvas>
+                </div>
+                <div class="chart-x-labels">
+                    <span>Run 1</span><span>Run 10</span><span>Run 20</span><span>Run 30</span><span>Run
+                        40</span><span>Run 50</span>
+                </div>
+                <div class="record-pills">
+                    <div class="pill"><span class="pill-dot" style="background:#00ff88"></span>Skills <span
+                            class="pill-count" id="pill-skills">0</span></div>
+                    <div class="pill"><span class="pill-dot" style="background:#3b82f6"></span>Workflows <span
+                            class="pill-count" id="pill-workflows">0</span></div>
+                    <div class="pill"><span class="pill-dot" style="background:#f59e0b"></span>Failures <span
+                            class="pill-count" id="pill-failures">0</span></div>
+                    <div class="pill"><span class="pill-dot" style="background:#8b5cf6"></span>Facts <span
+                            class="pill-count" id="pill-facts">0</span></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PROBLEM -->
+    <section class="section container" id="problem">
+        <div style="text-align:center;max-width:700px;margin:0 auto;">
+            <h2 class="text-gradient" style="font-size:3rem;margin-bottom:24px;">Agents are amnesiac by design.</h2>
+            <p style="color:var(--text-secondary);font-size:1.1rem;">Retraining isn't an option. Storing raw logs isn't
+                learning. We need a better way.</p>
+        </div>
+        <div class="problem-grid">
+            <div class="card">
+                <h3>Zero-sum runs</h3>
+                <p>Your agent solved this exact problem last Tuesday. Today it's hallucinating again because it has no
+                    persistent skill layer.</p>
+            </div>
+            <div class="card">
+                <h3>The log haystack</h3>
+                <p>Raw vector memory is just a bigger haystack. Without distillation, your agent gets lost in the noise
+                    of its own past.</p>
+            </div>
+            <div class="card">
+                <h3>Retraining barrier</h3>
+                <p>Retraining models is slow and expensive. LearnKit gives you fine-tuning results with zero GPU hours
+                    and no model changes.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- SOLUTION: code -->
+    <section class="section container" id="solution">
+        <div style="text-align:center;">
+            <h2 class="text-gradient" style="font-size:3rem;margin-bottom:24px;">Institutional knowledge in 5 lines.
+            </h2>
+        </div>
+        <div class="code-container">
+            <div class="code-label">Python SDK</div>
+            <pre><code><span class="code-keyword">import</span> learnkit
+lk = learnkit.LearnKit()
+
+<span class="code-keyword">@lk.agent</span>(domain=<span class="code-string">"legal"</span>)
+<span class="code-keyword">def</span> <span class="code-func">agent</span>(task):
+    <span class="code-keyword">return</span> llm.run(task)
+
+<span class="code-comment"># Run 1:  Figures it out from scratch</span>
+<span class="code-comment"># Run 10: Has distilled workflows from 9 prior runs</span>
+<span class="code-comment"># Run 50: Has a curated wiki of domain expertise</span></code></pre>
+        </div>
+        <div style="display:flex;justify-content:center;gap:40px;margin-top:48px;color:var(--text-muted);font-size:14px;flex-wrap:wrap;gap:24px;">
+            <span>✦ Works with any framework</span>
+            <span>✦ Auditable JSON records</span>
+            <span>✦ Zero infra to start</span>
+        </div>
+
+        <!-- TWO LEARNING PATHS -->
+        <div style="margin-top:80px;">
+            <div style="text-align:center;margin-bottom:48px;">
+                <span style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.1em;color:var(--accent);text-transform:uppercase;">v0.1 Architecture</span>
+                <h3 style="font-size:2rem;margin-top:12px;margin-bottom:12px;">Two paths. One memory store.</h3>
+                <p style="color:var(--text-secondary);max-width:560px;margin:0 auto;">Pick the decorator that fits how your agent runs — both write to the same persistent backend and share the same quality gates.</p>
+            </div>
+            <div class="paths-grid">
+                <div class="path-card">
+                    <div class="path-tag" style="background:rgba(167,139,250,0.1);color:var(--secondary);border-color:rgba(167,139,250,0.25);">Path A · @lk.learn</div>
+                    <h4>Model path</h4>
+                    <p class="path-desc">For any LLM agent. Distilled skills and failures are injected as text context — your model gets richer prompts and compounds quality over time. No tool instrumentation needed.</p>
+                    <div class="path-code"><span class="code-keyword">@lk.learn</span>(domain=<span class="code-string">"legal"</span>)
+<span class="code-keyword">def</span> <span class="code-func">agent</span>(task, _learnkit_context=<span class="code-string">""</span>):
+    <span class="code-comment"># distilled context injected on every call</span>
+    <span class="code-keyword">return</span> llm.run(task, system=_learnkit_context)</div>
+                    <ul class="path-bullets">
+                        <li>✦ Works with any framework or model</li>
+                        <li>✦ Quality lift on novel sibling tasks</li>
+                        <li>✦ Zero tool-instrumentation needed</li>
+                    </ul>
+                </div>
+                <div class="path-card path-card--accent">
+                    <div class="path-tag" style="background:rgba(0,255,136,0.1);color:var(--accent);border-color:rgba(0,255,136,0.25);">Path B · @lk.agent_learn · New in v0.1</div>
+                    <h4>Tool-agent path</h4>
+                    <p class="path-desc">For agents that call tools. Captures every tool sequence, replays proven procedures on exact re-encounters, and guides similar tasks — slashing LLM overhead by up to <b style="color:var(--accent)">66%</b> across rounds.</p>
+                    <div class="path-code"><span class="code-keyword">@lk.agent_learn</span>(domain=<span class="code-string">"pipeline"</span>)
+<span class="code-keyword">def</span> <span class="code-func">tool_agent</span>(task, _learnkit_tools=<span class="code-string">None</span>):
+    rows = _learnkit_tools.record(<span class="code-string">"query"</span>, args, result)
+    <span class="code-comment"># procedure captured ↑  replayed next run</span>
+    <span class="code-keyword">return</span> rows</div>
+                    <ul class="path-bullets">
+                        <li>✦ Tool-call capture &amp; procedure replay</li>
+                        <li>✦ Up to 66% fewer LLM calls (multi-round)</li>
+                        <li>✦ Zero-LLM cost on exact re-encounters</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- HOW IT WORKS: flow + ARCHITECTURE -->
+    <section class="section container" id="how-it-works">
+        <div style="text-align:center;">
+            <h2 class="text-gradient" style="font-size:3rem;margin-bottom:16px;">Experience distillation.</h2>
+            <p style="color:var(--text-secondary);">How LearnKit compounds knowledge in the background — every single
+                run.</p>
+        </div>
+
+        <div class="flow-wrap" id="flow-diagram">
+            <div class="flow-item"><span class="flow-num">01</span>
+                <h4>CLASSIFY</h4>
+                <p>Task domain detected automatically</p>
+            </div>
+            <div class="flow-item"><span class="flow-num">02</span>
+                <h4>RETRIEVE</h4>
+                <p>Best past strategies injected into context</p>
+            </div>
+            <div class="flow-item"><span class="flow-num">03</span>
+                <h4>COMPOSE</h4>
+                <p>Agent runs with rich curated experience</p>
+            </div>
+            <div class="flow-item"><span class="flow-num">04</span>
+                <h4>DISTILL</h4>
+                <p>Successes stored as typed skills + workflows</p>
+            </div>
+        </div>
+
+        <!-- ARCHITECTURE DIAGRAM -->
+        <div class="arch-wrap">
+            <div style="margin-bottom:24px;">
+                <h3 style="font-size:1.5rem;margin-bottom:8px;">Architecture</h3>
+                <p style="color:var(--text-secondary);font-size:0.95rem;">A live trace of a single agent run flowing
+                    through the LearnKit layer.</p>
+            </div>
+            <div class="arch-canvas-container">
+                <canvas id="arch-canvas" height="380"></canvas>
+            </div>
+            <div class="arch-legend">
+                <div class="arch-legend-item"><span class="arch-legend-dot" style="background:#00ff88"></span>Active
+                    signal</div>
+                <div class="arch-legend-item"><span class="arch-legend-dot" style="background:#3b82f6"></span>LearnKit
+                    layer</div>
+                <div class="arch-legend-item"><span class="arch-legend-dot" style="background:#8b5cf6"></span>Memory
+                    store</div>
+                <div class="arch-legend-item"><span class="arch-legend-dot" style="background:#f59e0b"></span>Agent /
+                    LLM</div>
+            </div>
+        </div>
+
+        <div class="comparison-wrap" style="margin-top:64px;">
+            <div class="table-row table-header">
+                <div class="table-cell">Raw Memory Storage</div>
+                <div class="table-cell">LearnKit Distillation</div>
+            </div>
+            <div class="table-row">
+                <div class="table-cell">Stores chat logs</div>
+                <div class="table-cell good">Stores distilled strategies</div>
+            </div>
+            <div class="table-row">
+                <div class="table-cell">Grows linearly, bloats</div>
+                <div class="table-cell good">Bounded, scored, curated</div>
+            </div>
+            <div class="table-row">
+                <div class="table-cell">No quality signal</div>
+                <div class="table-cell good">Every record has a quality gate</div>
+            </div>
+            <div class="table-row">
+                <div class="table-cell">Failures buried in logs</div>
+                <div class="table-cell good">Failures activate immediately</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- BENCHMARKS -->
+    <section class="section container" id="benchmarks">
+        <div style="text-align:center;margin-bottom:56px;">
+            <h2 class="text-gradient" style="font-size:3rem;margin-bottom:16px;">Verified Benchmarks</h2>
+            <div class="bench-badges">
+                <span class="bench-badge">2026-06-21 Matrix Run</span>
+                <span class="bench-badge">3 Qwen Models Tested</span>
+                <span class="bench-badge bench-badge--green">100% Task Completion</span>
+            </div>
+            <p style="color:var(--text-secondary);margin-top:16px;max-width:620px;margin-left:auto;margin-right:auto;">Live agentic benchmarks across three model sizes. LearnKit's distilled playbook and procedural replay reduce LLM calls on every model — while maintaining perfect task success across all rounds.</p>
+        </div>
+
+        <!-- Model overview cards -->
+        <div class="bench-model-grid" id="bench-model-grid">
+            <div class="bench-model-card">
+                <div class="bench-model-header">
+                    <div>
+                        <span class="bench-model-size bench-model-size--blue">7B</span>
+                        <span class="bench-model-name">Qwen2.5-7B-Instruct</span>
+                    </div>
+                    <span class="bench-gate bench-gate--pass">✓ PASS</span>
+                </div>
+                <div class="bench-metric">
+                    <span class="bench-metric-val" data-count="66">0</span><span class="bench-metric-unit">%</span>
+                    <span class="bench-metric-label">LLM call reduction</span>
+                </div>
+                <div class="bench-bar-wrap"><div class="bench-bar" style="--target:66%;background:var(--secondary)"></div></div>
+                <div class="bench-sub-stats">
+                    <div><span class="bench-sub-val">+2.625</span><span class="bench-sub-lbl">quality lift</span></div>
+                    <div><span class="bench-sub-val">6/6</span><span class="bench-sub-lbl">tasks solved</span></div>
+                </div>
+            </div>
+
+            <div class="bench-model-card bench-model-card--featured">
+                <div class="bench-model-card-tag">Recommended</div>
+                <div class="bench-model-header">
+                    <div>
+                        <span class="bench-model-size bench-model-size--green">14B</span>
+                        <span class="bench-model-name">Qwen2.5-14B-Instruct</span>
+                    </div>
+                    <span class="bench-gate bench-gate--pass">✓ PASS</span>
+                </div>
+                <div class="bench-metric">
+                    <span class="bench-metric-val" data-count="45">0</span><span class="bench-metric-unit">%</span>
+                    <span class="bench-metric-label">LLM call reduction</span>
+                </div>
+                <div class="bench-bar-wrap"><div class="bench-bar" style="--target:45%;background:var(--accent)"></div></div>
+                <div class="bench-sub-stats">
+                    <div><span class="bench-sub-val">+1.875</span><span class="bench-sub-lbl">quality lift</span></div>
+                    <div><span class="bench-sub-val">16/16</span><span class="bench-sub-lbl">tasks solved</span></div>
+                </div>
+            </div>
+
+            <div class="bench-model-card">
+                <div class="bench-model-header">
+                    <div>
+                        <span class="bench-model-size bench-model-size--violet">32B</span>
+                        <span class="bench-model-name">Qwen2.5-32B-Instruct</span>
+                    </div>
+                    <span class="bench-gate bench-gate--pass">✓ PASS</span>
+                </div>
+                <div class="bench-metric">
+                    <span class="bench-metric-val" data-count="37">0</span><span class="bench-metric-unit">%</span>
+                    <span class="bench-metric-label">LLM call reduction</span>
+                </div>
+                <div class="bench-bar-wrap"><div class="bench-bar" style="--target:37%;background:var(--secondary)"></div></div>
+                <div class="bench-sub-stats">
+                    <div><span class="bench-sub-val">+1.75</span><span class="bench-sub-lbl">quality lift</span></div>
+                    <div><span class="bench-sub-val">16/16</span><span class="bench-sub-lbl">tasks solved</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed benchmark tabs -->
+        <div class="bench-tabs-wrap" style="margin-top:48px;">
+            <div class="bench-tabs">
+                <button class="bench-tab active" onclick="switchBenchTab(0)">ReAct Tasks (6 per arm)</button>
+                <button class="bench-tab" onclick="switchBenchTab(1)">Multi-Round Durability (16 tasks)</button>
+                <button class="bench-tab" onclick="switchBenchTab(2)">Knowledge Injection Quality</button>
+            </div>
+
+            <div class="bench-tab-content active" id="btab-0">
+                <p class="bench-tab-desc">Cold start (no memory) vs warmed start (distilled playbook injected). 6 ReAct reasoning tasks per arm — all models completed all tasks successfully in both arms.</p>
+                <div class="comparison-wrap" style="margin-top:0;border:none;border-radius:0;background:transparent;">
+                    <div class="table-row table-header" style="grid-template-columns:1.8fr 1.2fr 0.7fr;">
+                        <div class="table-cell">Model</div>
+                        <div class="table-cell" style="text-align:right;">LLM Calls: Before → After LearnKit</div>
+                        <div class="table-cell" style="text-align:right;">Savings</div>
+                    </div>
+                    <div class="table-row" style="grid-template-columns:1.8fr 1.2fr 0.7fr;">
+                        <div class="table-cell"><span class="model-tag model-tag--blue">7B</span> Qwen2.5-7B-Instruct</div>
+                        <div class="table-cell" style="text-align:right;font-family:var(--font-mono);">21 → 8</div>
+                        <div class="table-cell good" style="text-align:right;font-weight:700;font-size:1.1rem;">62%</div>
+                    </div>
+                    <div class="table-row" style="grid-template-columns:1.8fr 1.2fr 0.7fr;">
+                        <div class="table-cell"><span class="model-tag model-tag--green">14B</span> Qwen2.5-14B-Instruct</div>
+                        <div class="table-cell" style="text-align:right;font-family:var(--font-mono);">15 → 9</div>
+                        <div class="table-cell good" style="text-align:right;font-weight:700;font-size:1.1rem;">40%</div>
+                    </div>
+                    <div class="table-row" style="grid-template-columns:1.8fr 1.2fr 0.7fr;">
+                        <div class="table-cell"><span class="model-tag model-tag--violet">32B</span> Qwen2.5-32B-Instruct</div>
+                        <div class="table-cell" style="text-align:right;font-family:var(--font-mono);">12 → 8</div>
+                        <div class="table-cell good" style="text-align:right;font-weight:700;font-size:1.1rem;">33%</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bench-tab-content" id="btab-1">
+                <p class="bench-tab-desc">Multi-round durability over 16 tasks. LearnKit compounds knowledge across rounds — later rounds cost significantly less while maintaining full task success.</p>
+                <div class="comparison-wrap" style="margin-top:0;border:none;border-radius:0;background:transparent;">
+                    <div class="table-row table-header" style="grid-template-columns:1.8fr 1.2fr 0.7fr;">
+                        <div class="table-cell">Model</div>
+                        <div class="table-cell" style="text-align:right;">LLM Calls: Before → After LearnKit</div>
+                        <div class="table-cell" style="text-align:right;">Savings</div>
+                    </div>
+                    <div class="table-row" style="grid-template-columns:1.8fr 1.2fr 0.7fr;">
+                        <div class="table-cell"><span class="model-tag model-tag--blue">7B</span> Qwen2.5-7B-Instruct</div>
+                        <div class="table-cell" style="text-align:right;font-family:var(--font-mono);">58 → 20</div>
+                        <div class="table-cell good" style="text-align:right;font-weight:700;font-size:1.1rem;">66%</div>
+                    </div>
+                    <div class="table-row" style="grid-template-columns:1.8fr 1.2fr 0.7fr;">
+                        <div class="table-cell"><span class="model-tag model-tag--green">14B</span> Qwen2.5-14B-Instruct</div>
+                        <div class="table-cell" style="text-align:right;font-family:var(--font-mono);">38 → 21</div>
+                        <div class="table-cell good" style="text-align:right;font-weight:700;font-size:1.1rem;">45%</div>
+                    </div>
+                    <div class="table-row" style="grid-template-columns:1.8fr 1.2fr 0.7fr;">
+                        <div class="table-cell"><span class="model-tag model-tag--violet">32B</span> Qwen2.5-32B-Instruct</div>
+                        <div class="table-cell" style="text-align:right;font-family:var(--font-mono);">32 → 20</div>
+                        <div class="table-cell good" style="text-align:right;font-weight:700;font-size:1.1rem;">37.5%</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bench-tab-content" id="btab-2">
+                <p class="bench-tab-desc">Novel unseen sibling tasks — no memory vs distilled playbook injected. Score is 0–3 per task (3 output-format conventions). All models reached perfect compliance <b>only with LearnKit</b>.</p>
+                <div class="comparison-wrap" style="margin-top:0;border:none;border-radius:0;background:transparent;">
+                    <div class="table-row table-header" style="grid-template-columns:1.8fr 1fr 1fr 0.8fr;">
+                        <div class="table-cell">Model</div>
+                        <div class="table-cell" style="text-align:right;">Without LearnKit</div>
+                        <div class="table-cell" style="text-align:right;">With LearnKit</div>
+                        <div class="table-cell" style="text-align:right;">Quality Lift</div>
+                    </div>
+                    <div class="table-row" style="grid-template-columns:1.8fr 1fr 1fr 0.8fr;">
+                        <div class="table-cell"><span class="model-tag model-tag--blue">7B</span> Qwen2.5-7B-Instruct</div>
+                        <div class="table-cell" style="text-align:right;color:var(--text-secondary);">0.375 / 3</div>
+                        <div class="table-cell" style="text-align:right;color:var(--accent);font-weight:600;">3.0 / 3 ✓</div>
+                        <div class="table-cell good" style="text-align:right;font-weight:700;font-size:1.1rem;">+2.625</div>
+                    </div>
+                    <div class="table-row" style="grid-template-columns:1.8fr 1fr 1fr 0.8fr;">
+                        <div class="table-cell"><span class="model-tag model-tag--green">14B</span> Qwen2.5-14B-Instruct</div>
+                        <div class="table-cell" style="text-align:right;color:var(--text-secondary);">1.125 / 3</div>
+                        <div class="table-cell" style="text-align:right;color:var(--accent);font-weight:600;">3.0 / 3 ✓</div>
+                        <div class="table-cell good" style="text-align:right;font-weight:700;font-size:1.1rem;">+1.875</div>
+                    </div>
+                    <div class="table-row" style="grid-template-columns:1.8fr 1fr 1fr 0.8fr;">
+                        <div class="table-cell"><span class="model-tag model-tag--violet">32B</span> Qwen2.5-32B-Instruct</div>
+                        <div class="table-cell" style="text-align:right;color:var(--text-secondary);">1.25 / 3</div>
+                        <div class="table-cell" style="text-align:right;color:var(--accent);font-weight:600;">3.0 / 3 ✓</div>
+                        <div class="table-cell good" style="text-align:right;font-weight:700;font-size:1.1rem;">+1.75</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bench-callout">
+                <b>Production pick:</b> Qwen/Qwen2.5-14B-Instruct passes all suite gates at the lowest cost — 40–45% LLM-call reduction across react and evolution benches. Use Qwen2.5-32B as a high-fidelity reference baseline when running stricter grading.
+            </div>
+        </div>
+    </section>
+
+    <!-- USE CASES -->
+    <section class="section container" id="use-cases">
+        <div style="text-align:center;margin-bottom:64px;">
+            <h2 class="text-gradient" style="font-size:3rem;">Built for production agents.</h2>
+        </div>
+        <div class="use-case-grid">
+            <div class="use-case-card">
+                <div class="use-case-icon">🔧</div>
+                <div>
+                    <h3>Coding Agents</h3>
+                    <p style="color:var(--text-secondary);margin-top:8px;">Remembers your stack and debugging patterns.
+                        Stores working solutions as runnable, tested code.</p>
+                </div>
+            </div>
+            <div class="use-case-card">
+                <div class="use-case-icon">⚖️</div>
+                <div>
+                    <h3>Legal Assistants</h3>
+                    <p style="color:var(--text-secondary);margin-top:8px;">Builds jurisdiction-specific templates. Flags
+                        patterns and known failure modes with root causes.</p>
+                </div>
+            </div>
+            <div class="use-case-card">
+                <div class="use-case-icon">🔬</div>
+                <div>
+                    <h3>Research Agents</h3>
+                    <p style="color:var(--text-secondary);margin-top:8px;">Accumulates templates for common research
+                        patterns. Facts carry temporal validity — outdated citations auto-expire.</p>
+                </div>
+            </div>
+            <div class="use-case-card">
+                <div class="use-case-icon">🎧</div>
+                <div>
+                    <h3>Customer Support</h3>
+                    <p style="color:var(--text-secondary);margin-top:8px;">Workflow templates per ticket category.
+                        Skills distilled from high-CSAT resolutions.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- RESEARCH -->
+    <section class="section container" id="research">
+        <div style="text-align:center;margin-bottom:64px;">
+            <h2 class="text-gradient" style="font-size:3rem;">Backed by research.</h2>
+            <p style="color:var(--text-secondary);margin-top:16px;font-size:1rem;">LearnKit's core ideas are validated
+                by published research from Google, CMU, and MineDojo.</p>
+        </div>
+        <div class="citation-grid">
+            <div class="citation-card">
+                <div class="citation-header">
+                    <h4>ReasoningBank</h4><span class="citation-tag">Google · ICLR 2026</span>
+                </div>
+                <p style="color:var(--text-secondary);font-size:0.9rem;">Distilled experience outperforms raw memory
+                    retrieval. Validated on SWE-Bench and WebArena.</p>
+            </div>
+            <div class="citation-card">
+                <div class="citation-header">
+                    <h4>Agent Workflow Memory</h4><span class="citation-tag">CMU · 2024</span>
+                </div>
+                <p style="color:var(--text-secondary);font-size:0.9rem;">Parameterized workflow templates generalize
+                    better than raw skill logs. LearnKit auto-induces these after 5+ similar tasks.</p>
+            </div>
+            <div class="citation-card">
+                <div class="citation-header">
+                    <h4>Voyager</h4><span class="citation-tag">MineDojo · 2023</span>
+                </div>
+                <p style="color:var(--text-secondary);font-size:0.9rem;">Ever-growing executable skill libraries enable
+                    compounding agent knowledge across sessions.</p>
+            </div>
+            <div class="citation-card">
+                <div class="citation-header">
+                    <h4>SIA</h4><span class="citation-tag">Hexo AI · arXiv 2026</span>
+                </div>
+                <p style="color:var(--text-secondary);font-size:0.9rem;">56.6% gain on LawBench via self-improvement
+                    loops. Validates the self-improving AI thesis in production.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER CTA -->
+    <section class="section container footer-cta">
+        <h2 class="text-gradient">"Agents don't learn. Until now."</h2>
+        <p style="color:var(--text-secondary);margin-bottom:48px;font-size:1.2rem;margin-top:16px;">Be first to give
+            your agents a memory that compounds.</p>
+        <div style="display:flex;justify-content:center;margin-top:16px;">
+            <a href="#contact" class="btn-submit" style="text-decoration:none;padding:12px 32px;display:inline-flex;align-items:center;justify-content:center;min-height:48px;">Get Early Access Now</a>
+        </div>
+        <p style="margin-top:24px;color:var(--text-muted);font-size:14px;">Open source core · MIT license · No credit
+            card</p>
+    </section>
+
+    <!-- CONTACT SECTION -->
+    <section class="section container" id="contact" style="text-align:center;">
+        <div style="text-align:center;margin-bottom:48px;">
+            <h2 class="text-gradient" style="font-size:3rem;margin-bottom:16px;">Connect with LearnKit</h2>
+            <p style="color:var(--text-secondary);font-size:1.1rem;max-width:580px;margin:0 auto;">
+                Have questions about experience distillation, custom adapters, or production integration? Reach out to us.
+            </p>
+        </div>
+
+        <div class="contact-wrap" id="contact-card">
+            <!-- Form content area -->
+            <form id="contact-form" onsubmit="handleContactSubmit(event)">
+                <!-- Name input -->
+                <div class="form-group">
+                    <label for="contact-name">Your Name</label>
+                    <input type="text" class="form-control" id="contact-name" placeholder="John Doe" required>
+                </div>
+
+                <!-- Email address input -->
+                <div class="form-group">
+                    <label for="contact-email">Email Address</label>
+                    <input type="email" class="form-control" id="contact-email" placeholder="john@organization.com" required>
+                </div>
+
+                <!-- Organization input -->
+                <div class="form-group">
+                    <label for="contact-org">Organization / Company</label>
+                    <input type="text" class="form-control" id="contact-org" placeholder="e.g. CMU or Google AI">
+                </div>
+
+                <!-- Message textarea -->
+                <div class="form-group">
+                    <label for="contact-message" id="message-label">How can we help?</label>
+                    <textarea class="form-control" id="contact-message" placeholder="Describe your agent architecture, memory goals, or custom use case..." required></textarea>
+                </div>
+
+                <!-- Submission buttons -->
+                <button type="submit" class="btn-contact btn-email-submit" id="submit-contact">
+                    <span id="btn-text-content">Submit Application</span>
+                    <svg id="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="footer-links">
+                <a href="https://github.com/siddhu1716/LearnKit">GitHub</a>
+                <a href="https://github.com/siddhu1716/LearnKit#readme">Documentation</a>
+                <a href="https://pypi.org/project/learnkit-ai/" target="_blank" rel="noopener">PyPI Package</a>
+                <a href="https://github.com/siddhu1716/LearnKit/issues" target="_blank" rel="noopener">Support Issues</a>
+            </div>
+            <p style="color:var(--text-muted);font-size:14px;">© 2026 LearnKit · Built by developers for developers.</p>
+        </div>
+    </footer>
+
+    <div class="success-overlay" id="success-overlay">
+        <div class="success-modal">
+            <h2 style="margin-bottom:16px;">You're in.</h2>
+            <p style="color:var(--text-secondary);margin-bottom:32px;">We'll reach out as soon as a spot opens up.</p>
+            <button class="btn-submit" onclick="closeModal()">Got it</button>
+        </div>
+    </div>
+
+    <script>
+        /* ── TYPEWRITER ── */
+        const headline = "Your agents die at the end of every conversation.";
+        const headlineEl = document.getElementById('headline');
+        let ti = 0;
+        function type() {
+            if (ti < headline.length) {
+                headlineEl.innerHTML = headline.substring(0, ti + 1) + '<span class="typewriter-cursor"></span>';
+                ti++;
+                setTimeout(type, 42);
+            }
+        }
+        type();
+
+        /* ── RUN COUNTER ── */
+        const counterEl = document.getElementById('counter');
+        const counterTarget = 47, counterDur = 2200, counterStart = Date.now();
+        function updateCounter() {
+            const p = Math.min((Date.now() - counterStart) / counterDur, 1);
+            counterEl.textContent = Math.floor(p * counterTarget);
+            if (p < 1) requestAnimationFrame(updateCounter);
+        }
+        updateCounter();
+
+        /* ── HERO GROWTH CHART ── */
+        (function () {
+            const canvas = document.getElementById('growth-chart');
+            const ctx = canvas.getContext('2d');
+            const runs = 50;
+
+            // Generate quality score data — starts noisy, improves with memory
+            function generateData() {
+                const pts = [];
+                let base = 2.0;
+                for (let i = 0; i < runs; i++) {
+                    const memory_boost = Math.min(i * 0.045, 2.2);
+                    const noise = (Math.random() - 0.5) * 0.4;
+                    const val = Math.min(Math.max(base + memory_boost + noise, 1.5), 5.0);
+                    pts.push(val);
+                }
+                return pts;
+            }
+
+            const data = generateData();
+            let drawn = 0;
+            let animFrame;
+
+            const pillSkills = document.getElementById('pill-skills');
+            const pillWorkflows = document.getElementById('pill-workflows');
+            const pillFailures = document.getElementById('pill-failures');
+            const pillFacts = document.getElementById('pill-facts');
+
+            function resize() {
+                const dpr = window.devicePixelRatio || 1;
+                const rect = canvas.parentElement.getBoundingClientRect();
+                canvas.width = rect.width * dpr;
+                canvas.height = 100 * dpr;
+                canvas.style.width = rect.width + 'px';
+                canvas.style.height = '100px';
+                ctx.scale(dpr, dpr);
+            }
+            resize();
+            window.addEventListener('resize', () => { resize(); drawn = Math.min(drawn, data.length); drawChart(); });
+
+            function drawChart() {
+                const W = canvas.width / (window.devicePixelRatio || 1);
+                const H = 100;
+                ctx.clearRect(0, 0, W, H);
+
+                const pad = { l: 8, r: 8, t: 10, b: 10 };
+                const chartW = W - pad.l - pad.r;
+                const chartH = H - pad.t - pad.b;
+                const minV = 1, maxV = 5.2;
+
+                function px(i) { return pad.l + (i / (runs - 1)) * chartW; }
+                function py(v) { return pad.t + chartH - ((v - minV) / (maxV - minV)) * chartH; }
+
+                if (drawn < 2) return;
+
+                // Gradient fill
+                const grad = ctx.createLinearGradient(0, pad.t, 0, H - pad.b);
+                grad.addColorStop(0, 'rgba(0,255,136,0.25)');
+                grad.addColorStop(1, 'rgba(0,255,136,0)');
+
+                ctx.beginPath();
+                ctx.moveTo(px(0), py(data[0]));
+                for (let i = 1; i < drawn; i++) {
+                    const cx = (px(i - 1) + px(i)) / 2;
+                    ctx.bezierCurveTo(cx, py(data[i - 1]), cx, py(data[i]), px(i), py(data[i]));
+                }
+                ctx.lineTo(px(drawn - 1), H - pad.b);
+                ctx.lineTo(px(0), H - pad.b);
+                ctx.closePath();
+                ctx.fillStyle = grad;
+                ctx.fill();
+
+                // Line
+                ctx.beginPath();
+                ctx.moveTo(px(0), py(data[0]));
+                for (let i = 1; i < drawn; i++) {
+                    const cx = (px(i - 1) + px(i)) / 2;
+                    ctx.bezierCurveTo(cx, py(data[i - 1]), cx, py(data[i]), px(i), py(data[i]));
+                }
+                ctx.strokeStyle = '#00ff88';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Head dot
+                const hx = px(drawn - 1), hy = py(data[drawn - 1]);
+                ctx.beginPath();
+                ctx.arc(hx, hy, 4, 0, Math.PI * 2);
+                ctx.fillStyle = '#00ff88';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(hx, hy, 8, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0,255,136,0.2)';
+                ctx.fill();
+
+                // Update pills
+                pillSkills.textContent = Math.floor((drawn / runs) * 34);
+                pillWorkflows.textContent = Math.floor((drawn / runs) * 8);
+                pillFailures.textContent = Math.floor((drawn / runs) * 12);
+                pillFacts.textContent = Math.floor((drawn / runs) * 21);
+            }
+
+            function animate() {
+                if (drawn < data.length) {
+                    drawn += 0.5;
+                    drawChart();
+                    animFrame = requestAnimationFrame(animate);
+                } else {
+                    drawn = data.length;
+                    drawChart();
+                    // Restart after pause
+                    setTimeout(() => {
+                        drawn = 0;
+                        const newData = generateData();
+                        data.splice(0, data.length, ...newData);
+                        animate();
+                    }, 3000);
+                }
+            }
+            setTimeout(animate, 800);
+        })();
+
+
+        /* ── ARCHITECTURE DIAGRAM ── */
+        (function () {
+            const canvas = document.getElementById('arch-canvas');
+            const ctx = canvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
+
+            function setup() {
+                const parentW = canvas.parentElement.getBoundingClientRect().width;
+                const W = Math.max(parentW, 750); // Enforce minimum width to prevent node overlapping on mobile
+                const H = 380;
+                canvas.width = W * dpr;
+                canvas.height = H * dpr;
+                canvas.style.width = W + 'px';
+                canvas.style.height = H + 'px';
+                ctx.scale(dpr, dpr);
+                return { W, H };
+            }
+
+            let dims = setup();
+            window.addEventListener('resize', () => { dims = setup(); });
+
+            // Node definitions — positions as fractions of W/H
+            const NODES = [
+                // Row 0 — user task
+                { id: 'task', label: 'User Task', sub: 'incoming request', col: '#f0f0f0', x: 0.5, y: 0.10, r: 38 },
+                // Row 1 — LearnKit entry
+                { id: 'lk', label: 'LearnKit', sub: '@lk.agent wrapper', col: '#3b82f6', x: 0.5, y: 0.30, r: 44 },
+                // Row 2 — internals
+                { id: 'clf', label: 'Classifier', sub: 'domain · type', col: '#3b82f6', x: 0.18, y: 0.52, r: 36 },
+                { id: 'ret', label: 'Retriever', sub: 'BM25 + dense', col: '#3b82f6', x: 0.38, y: 0.52, r: 36 },
+                { id: 'eval', label: 'Evaluator', sub: 'quality gate', col: '#3b82f6', x: 0.62, y: 0.52, r: 36 },
+                { id: 'dist', label: 'Distiller', sub: 'trace → records', col: '#3b82f6', x: 0.82, y: 0.52, r: 36 },
+                // Row 3 — agent
+                { id: 'agent', label: 'Agent / LLM', sub: 'unchanged model', col: '#f59e0b', x: 0.5, y: 0.72, r: 44 },
+                // Row 4 — memory
+                { id: 'skills', label: 'Skills', sub: '', col: '#8b5cf6', x: 0.22, y: 0.92, r: 28 },
+                { id: 'workflows', label: 'Workflows', sub: '', col: '#8b5cf6', x: 0.40, y: 0.92, r: 28 },
+                { id: 'failures', label: 'Failures', sub: '', col: '#f59e0b', x: 0.58, y: 0.92, r: 28 },
+                { id: 'facts', label: 'Facts', sub: '', col: '#8b5cf6', x: 0.76, y: 0.92, r: 28 },
+            ];
+
+            // Edges: [from, to, label, style]  style: 'fwd'|'ret'|'distill'
+            const EDGES = [
+                ['task', 'lk', 'task', 'fwd'],
+                ['lk', 'clf', 'classify', 'fwd'],
+                ['lk', 'ret', 'retrieve', 'fwd'],
+                ['ret', 'agent', 'context', 'fwd'],
+                ['clf', 'agent', 'domain hint', 'fwd'],
+                ['agent', 'eval', 'response', 'fwd'],
+                ['eval', 'dist', 'if score≥3', 'fwd'],
+                ['dist', 'skills', '', 'distill'],
+                ['dist', 'workflows', '', 'distill'],
+                ['dist', 'failures', '', 'distill'],
+                ['dist', 'facts', '', 'distill'],
+                ['skills', 'ret', '', 'ret'],
+                ['workflows', 'ret', '', 'ret'],
+            ];
+
+            // Animation state
+            const STEP_DURATION = 900; // ms per step
+            const STEPS = [
+                { active: ['task'], label: 'Task received' },
+                { active: ['task', 'lk'], label: 'LearnKit intercepts' },
+                { active: ['lk', 'clf', 'ret'], label: 'Classify & retrieve' },
+                { active: ['ret', 'agent'], label: 'Context injected into agent' },
+                { active: ['clf', 'agent'], label: 'Domain hint applied' },
+                { active: ['agent'], label: 'Agent runs with rich context' },
+                { active: ['agent', 'eval'], label: 'Quality evaluated' },
+                { active: ['eval', 'dist'], label: 'Distilling experience...' },
+                { active: ['dist', 'skills', 'workflows', 'failures', 'facts'], label: 'Records stored to memory' },
+                { active: ['skills', 'ret', 'workflows'], label: 'Memory ready for next run' },
+            ];
+
+            let currentStep = 0;
+            let stepProgress = 0;
+            let lastTime = null;
+            let archAnimating = false;
+
+            function nodePos(id, W, H) {
+                const n = NODES.find(x => x.id === id);
+                return { x: n.x * W, y: n.y * H, r: n.r };
+            }
+
+            function activeNodes(step) {
+                return STEPS[step % STEPS.length].active;
+            }
+
+            function isEdgeActive(edge, step) {
+                const active = activeNodes(step);
+                return active.includes(edge[0]) && active.includes(edge[1]);
+            }
+
+            function hexAlpha(hex, a) {
+                const r = parseInt(hex.slice(1, 3), 16);
+                const g = parseInt(hex.slice(3, 5), 16);
+                const b = parseInt(hex.slice(5, 7), 16);
+                return `rgba(${r},${g},${b},${a})`;
+            }
+
+            function drawArch(timestamp) {
+                if (!lastTime) lastTime = timestamp;
+                const delta = timestamp - lastTime;
+                lastTime = timestamp;
+
+                stepProgress += delta / STEP_DURATION;
+                if (stepProgress >= 1) {
+                    stepProgress = 0;
+                    currentStep = (currentStep + 1) % STEPS.length;
+                }
+
+                const { W, H } = dims;
+                ctx.clearRect(0, 0, W, H);
+
+                // Background
+                ctx.fillStyle = '#0a0a0a';
+                ctx.fillRect(0, 0, W, H);
+
+                const step = currentStep;
+                const active = activeNodes(step);
+
+                // Draw edges first
+                EDGES.forEach(edge => {
+                    const fromN = NODES.find(x => x.id === edge[0]);
+                    const toN = NODES.find(x => x.id === edge[1]);
+                    if (!fromN || !toN) return;
+                    const fx = fromN.x * W, fy = fromN.y * H;
+                    const tx = toN.x * W, ty = toN.y * H;
+
+                    const isActive = isEdgeActive(edge, step);
+                    const style = edge[3];
+
+                    // Draw base edge
+                    ctx.beginPath();
+                    ctx.moveTo(fx, fy);
+                    // Curve
+                    const midX = (fx + tx) / 2, midY = (fy + ty) / 2;
+                    ctx.bezierCurveTo(fx, midY, tx, midY, tx, ty);
+
+                    if (isActive) {
+                        const edgeCol = style === 'distill' ? '#8b5cf6' : style === 'ret' ? '#00ff88' : '#3b82f6';
+                        ctx.strokeStyle = edgeCol;
+                        ctx.lineWidth = 2;
+                        ctx.setLineDash([]);
+                        ctx.globalAlpha = 0.9;
+                    } else {
+                        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+                        ctx.lineWidth = 1;
+                        ctx.setLineDash([4, 4]);
+                        ctx.globalAlpha = 1;
+                    }
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.globalAlpha = 1;
+
+                    // Animate a packet along active edges
+                    if (isActive) {
+                        const t = stepProgress;
+                        // bezier point
+                        const bx = Math.pow(1 - t, 3) * fx + 3 * Math.pow(1 - t, 2) * t * fx + 3 * (1 - t) * t * t * tx + Math.pow(t, 3) * tx;
+                        const by = Math.pow(1 - t, 3) * fy + 3 * Math.pow(1 - t, 2) * t * ((fy + ty) / 2) + 3 * (1 - t) * t * t * ((fy + ty) / 2) + Math.pow(t, 3) * ty;
+                        const edgeCol = style === 'distill' ? '#8b5cf6' : style === 'ret' ? '#00ff88' : '#3b82f6';
+                        ctx.beginPath();
+                        ctx.arc(bx, by, 5, 0, Math.PI * 2);
+                        ctx.fillStyle = edgeCol;
+                        ctx.shadowBlur = 12;
+                        ctx.shadowColor = edgeCol;
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+                    }
+                });
+
+                // Draw nodes
+                NODES.forEach(node => {
+                    const nx = node.x * W, ny = node.y * H;
+                    const isActive = active.includes(node.id);
+                    const r = node.r;
+
+                    // Glow ring for active
+                    if (isActive) {
+                        ctx.beginPath();
+                        ctx.arc(nx, ny, r + 8, 0, Math.PI * 2);
+                        ctx.fillStyle = hexAlpha(node.col, 0.12);
+                        ctx.fill();
+                    }
+
+                    // Node circle
+                    ctx.beginPath();
+                    ctx.arc(nx, ny, r, 0, Math.PI * 2);
+                    const grad = ctx.createRadialGradient(nx - r * 0.3, ny - r * 0.3, r * 0.1, nx, ny, r);
+                    if (isActive) {
+                        grad.addColorStop(0, hexAlpha(node.col, 0.6));
+                        grad.addColorStop(1, hexAlpha(node.col, 0.15));
+                    } else {
+                        grad.addColorStop(0, 'rgba(20,20,20,1)');
+                        grad.addColorStop(1, 'rgba(10,10,10,1)');
+                    }
+                    ctx.fillStyle = grad;
+                    ctx.fill();
+
+                    // Border
+                    ctx.beginPath();
+                    ctx.arc(nx, ny, r, 0, Math.PI * 2);
+                    ctx.strokeStyle = isActive ? node.col : 'rgba(255,255,255,0.1)';
+                    ctx.lineWidth = isActive ? 1.5 : 1;
+                    if (isActive) {
+                        ctx.shadowBlur = 20;
+                        ctx.shadowColor = node.col;
+                    }
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
+
+                    // Label
+                    ctx.fillStyle = isActive ? '#ffffff' : 'rgba(255,255,255,0.4)';
+                    ctx.font = `bold ${r > 35 ? 13 : 11}px Geist, sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(node.label, nx, ny - (node.sub ? 7 : 0));
+
+                    if (node.sub) {
+                        ctx.fillStyle = isActive ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)';
+                        ctx.font = `${r > 35 ? 10 : 9}px JetBrains Mono, monospace`;
+                        ctx.fillText(node.sub, nx, ny + 9);
+                    }
+                });
+
+                // Step label
+                const stepLabel = STEPS[step].label;
+                ctx.fillStyle = 'rgba(0,255,136,0.9)';
+                ctx.font = '12px JetBrains Mono, monospace';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                ctx.fillText('▶ ' + stepLabel, 20, 14);
+
+                // Step dots
+                for (let s = 0; s < STEPS.length; s++) {
+                    ctx.beginPath();
+                    ctx.arc(W - 20 - (STEPS.length - 1 - s) * 14, 20, 3, 0, Math.PI * 2);
+                    ctx.fillStyle = s === step ? '#00ff88' : 'rgba(255,255,255,0.15)';
+                    ctx.fill();
+                }
+
+                if (archAnimating) requestAnimationFrame(drawArch);
+            }
+
+            // Start arch animation when section is visible
+            const archSection = document.getElementById('how-it-works');
+            const archObserver = new IntersectionObserver((entries) => {
+                entries.forEach(e => {
+                    if (e.isIntersecting && !archAnimating) {
+                        archAnimating = true;
+                        lastTime = null;
+                        requestAnimationFrame(drawArch);
+                    } else if (!e.isIntersecting) {
+                        archAnimating = false;
+                    }
+                });
+            }, { threshold: 0.2 });
+            archObserver.observe(archSection);
+
+
+            /* ── SCROLL REVEAL ── */
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('revealed');
+                        if (entry.target.id === 'how-it-works') animateFlow();
+                    }
+                });
+            }, { threshold: 0.1 });
+            document.querySelectorAll('.section').forEach(s => observer.observe(s));
+
+            function animateFlow() {
+                document.querySelectorAll('.flow-item').forEach((item, idx) => {
+                    setTimeout(() => item.classList.add('active'), idx * 600);
+                });
+            }
+
+            /* ── HEADER & NAVIGATION SCROLL ── */
+            const headerEl = document.getElementById('hdr');
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 20) {
+                    headerEl.classList.add('scrolled');
+                } else {
+                    headerEl.classList.remove('scrolled');
+                }
+            });
+
+            /* ── MOBILE NAV HAMBURGER ── */
+            const ham = document.getElementById('ham');
+            const mnav = document.getElementById('mnav');
+            
+            window.toggleMenu = function (forceState) {
+                const open = forceState !== undefined ? forceState : !mnav.classList.contains('open');
+                if (open) {
+                    mnav.classList.add('open');
+                    ham.classList.add('open');
+                    ham.setAttribute('aria-expanded', 'true');
+                } else {
+                    mnav.classList.remove('open');
+                    ham.classList.remove('open');
+                    ham.setAttribute('aria-expanded', 'false');
+                }
+            };
+
+            ham.addEventListener('click', () => toggleMenu());
+
+            /* ── SUBMIT FORM HANDLERS ── */
+            window.closeModal = function () {
+                document.getElementById('success-overlay').style.display = 'none';
+            };
+
+            window.handleContactSubmit = async function (event) {
+                event.preventDefault();
+
+                const name = document.getElementById('contact-name').value.trim();
+                const email = document.getElementById('contact-email').value.trim();
+                const org = document.getElementById('contact-org').value.trim();
+                const message = document.getElementById('contact-message').value.trim();
+
+                if (!email) {
+                    alert('Please enter your email address.');
+                    return;
+                }
+
+                const btnSubmit = document.getElementById('submit-contact');
+                const btnText = document.getElementById('btn-text-content');
+                const origText = btnText.textContent;
+                btnText.textContent = 'Sending Message...';
+                btnSubmit.disabled = true;
+
+                const web3Key = '43a1a162-d9a3-4b9d-b45e-a4e1d36e6623';
+                const webhookUrl = localStorage.getItem('lk_webhook_url');
+
+                const payload = {
+                    name: name,
+                    email: email,
+                    org: org,
+                    message: message,
+                    subject: `LearnKit Waitlist Application from ${name}`,
+                };
+
+                let success = false;
+
+                // 1. Submit to Webhook
+                if (webhookUrl) {
+                    try {
+                        await fetch(webhookUrl, {
+                            method: 'POST',
+                            mode: 'no-cors',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        success = true;
+                    } catch (e) {
+                        console.error('Webhook failed:', e);
+                    }
+                }
+
+                // 2. Submit to Web3Forms
+                if (web3Key) {
+                    try {
+                        const res = await fetch('https://api.web3forms.com/submit', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                            body: JSON.stringify({
+                                access_key: web3Key,
+                                name: name,
+                                email: email,
+                                org: org,
+                                message: message,
+                                subject: `LearnKit Waitlist Application from ${name}`
+                            })
+                        });
+                        const data = await res.json();
+                        if (data.success) success = true;
+                    } catch (e) {
+                        console.error('Web3Forms failed:', e);
+                    }
+                }
+
+                // 3. Fallback simulated submission
+                if (!web3Key && !webhookUrl) {
+                    // Simulate speed delay
+                    await new Promise(resolve => setTimeout(resolve, 800));
+                    success = true;
+                    // Cache locally in local storage for developer reference
+                    const localSubmissions = JSON.parse(localStorage.getItem('lk_submissions') || '[]');
+                    localSubmissions.push({ timestamp: new Date().toISOString(), ...payload });
+                    localStorage.setItem('lk_submissions', JSON.stringify(localSubmissions));
+                    console.log('Simulated form submission stored in local storage:', payload);
+                }
+
+                btnText.textContent = origText;
+                btnSubmit.disabled = false;
+
+                if (success) {
+                    document.getElementById('success-overlay').style.display = 'flex';
+                    // Reset form
+                    document.getElementById('contact-form').reset();
+                } else {
+                    alert('Submission failed. Please check your developer settings cog or network connections.');
+                }
+            };
+
+            /* ── BENCH TABS ── */
+            window.switchBenchTab = function(idx) {
+                document.querySelectorAll('.bench-tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+                document.querySelectorAll('.bench-tab-content').forEach((c, i) => c.classList.toggle('active', i === idx));
+            };
+
+            /* ── BENCH CARD ANIMATIONS ── */
+            (function() {
+                const grid = document.getElementById('bench-model-grid');
+                if (!grid) return;
+                let fired = false;
+                const obs = new IntersectionObserver(function(entries) {
+                    if (fired) return;
+                    const entry = entries[0];
+                    if (!entry.isIntersecting) return;
+                    fired = true;
+                    // Stagger bar animations
+                    grid.querySelectorAll('.bench-bar').forEach(function(bar, i) {
+                        setTimeout(function() { bar.classList.add('animated'); }, i * 180);
+                    });
+                    // Count-up numbers
+                    grid.querySelectorAll('[data-count]').forEach(function(el, i) {
+                        const target = parseInt(el.dataset.count, 10);
+                        const dur = 1400;
+                        setTimeout(function() {
+                            const start = Date.now();
+                            function tick() {
+                                const p = Math.min((Date.now() - start) / dur, 1);
+                                const ease = 1 - Math.pow(1 - p, 3);
+                                el.textContent = Math.floor(ease * target);
+                                if (p < 1) requestAnimationFrame(tick);
+                            }
+                            tick();
+                        }, i * 150);
+                    });
+                    obs.disconnect();
+                }, { threshold: 0.2 });
+                obs.observe(grid);
+            })();
+
+            window.copyInstallCommand = function () {
+                const cmdText = document.getElementById('install-cmd').innerText;
+                navigator.clipboard.writeText(cmdText).then(() => {
+                    const btn = document.getElementById('copy-btn');
+                    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                    setTimeout(() => {
+                        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+                    }, 2000);
+                });
+            };
+        })();
+    </script>
+</body>
+
 </html>
