@@ -1,0 +1,379 @@
+===============================================================================
+LEARNKIT BENCHMARKING GUIDE
+How to benchmark, which LLMs to use (self-hosted vs API-key), and how to validate
+that the agent actually learns — before a public release.
+===============================================================================
+
+Last updated: 2026-06-27
+Audience: maintainers running the pre-release benchmark pass.
+Companion spec: ../BENCHMARK_SPEC.md (the short "what to prove" standard).
+This guide is the long-form "how to execute and validate it" manual.
+
+
+-------------------------------------------------------------------------------
+0. THE ONE CLAIM WE ARE PROVING
+-------------------------------------------------------------------------------
+
+   "An agent improves over time when LearnKit distills and reuses its own
+    experience — without fine-tuning — and does so without unacceptable
+    regressions in cost or reliability."
+
+Everything below exists to support or falsify exactly that sentence. We do NOT
+claim universal improvement, SOTA on public leaderboards, or that every model
+benefits. We claim a measured, per-model, per-workflow learning delta with
+confidence limits. (See section 8: What Not To Claim.)
+
+Why this is non-trivial to prove honestly:
+  - Memoization masquerades as learning. Exact-replay of a cached procedure
+    inflates numbers without any generalization. We MUST test novel siblings.
+  - Judge contamination. If the agent and the grader are the same model/vendor,
+    scores are self-congratulatory. We MUST keep them independent.
+  - Order/seed effects. LLMs are stochastic; a single run is an anecdote.
+  - Capability floor. Small models cannot exploit injected playbooks at all
+    (measured: Hermes-3-8B playbook_effect = 0.0). Report per-model, never a
+    single blended number.
+
+
+-------------------------------------------------------------------------------
+1. ARCHITECTURE RECAP (what the benchmarks are actually exercising)
+-------------------------------------------------------------------------------
+
+LearnKit has two learning paths; benchmark BOTH:
+
+  MODEL PATH  (@lk.learn / @memory)
+    classify -> retrieve -> compose context -> run -> evaluate (LLM judge) ->
+    distill SkillRecord/FactRecord/FailureRecord -> persist.
+    Value = answer QUALITY lift. Judge is on the critical path, so judge
+    independence matters most here.
+    Core code: core.py (.learn), classifier.py, retriever.py, evaluator.py,
+    distiller.py, backends/sqlite.py.
+
+  AGENT PATH  (@lk.agent_learn / @memory.agent)
+    ToolTracker records the tool trajectory -> procedure extraction
+    (procedural.py: task_signature, extract_procedure) -> reinforce/refine
+    across runs (procedure_evolution.py) -> on a sibling task, replay the
+    proven procedure + inject the natural-language playbook.
+    Value = COST/STEP reduction + correctness on siblings. Uses an EXTERNAL
+    outcome score (tool success), so the LLM judge is NOT on its critical path
+    -> this path is benchmarkable fully offline/keyless.
+    Core code: core.py (.agent_learn, ._select_procedure, ._match_procedure,
+    ._reflect_playbook), tool_tracker.py, procedural.py, procedure_evolution.py,
+    evolution/gepa.py.
+
+Three arms used throughout (matches BENCHMARK_SPEC):
+    control       LearnKit OFF. Raw model calls, no memory. The baseline.
+    cold_start    LearnKit ON, memory starts EMPTY. Learns as tasks run in order.
+                  Task N sees distilled records from tasks 1..N-1.
+    warmed_start  LearnKit ON, memory PRE-SEEDED from a prior cold_start run.
+
+For the agent path, the analogous ablation is the decisive "does it learn" test:
+    cold        base system prompt only
+    procedure   tool scaffold / step sequence only (no know-how)
+    playbook    scaffold + distilled natural-language playbook & pitfalls
+    Key metric: playbook_effect = avg_score(playbook) - avg_score(procedure).
+    This isolates GENUINE learning from mere procedure caching.
+
+
+-------------------------------------------------------------------------------
+2. TWO ACCESS TIERS — AND WHEN TO USE EACH
+-------------------------------------------------------------------------------
+
+Run BOTH. They answer different questions and have different cost/credibility
+profiles. Do not pick one.
+
+TIER 1 — SELF-HOSTED (vLLM on local GPU). THE PRIMARY SUBSTRATE.
+  Use it for breadth, statistical power, and reproducibility.
+  Why it leads:
+    - Zero marginal cost -> run the full model ladder, many trials, many seeds.
+    - No rate limits -> the matrix runner is built for this.
+    - Deterministic-ish at temperature=0 + fixed seed -> reproducible.
+    - Validates the "bring your own open model" story (a core selling point).
+    - Rule-based graders (PBE/SLR) need NO judge at all -> zero judge bias.
+  Use for: full model matrix, pass^k, regression gates, CI, the headline
+  learning curves.
+
+TIER 2 — API-KEY (frontier closed models). THE CREDIBILITY/HEADLINE TIER.
+  Use it narrow, for external trust.
+  Why it is needed:
+    - The question reviewers actually ask is "does it help GPT-4o / Claude /
+      Gemini, or only weak open models?" You need an honest answer.
+    - Tests whether memory still helps at the capability frontier (or diminishes).
+  Cost control:
+    - 1 trial, only the two highest-signal workflows (custom_clustered +
+      injection_ablation). Do NOT run the full matrix on paid APIs.
+    - Always cross-vendor judge (see section 5).
+  Use for: a small curated credibility pass, the SWE-bench-lite stretch goal.
+
+
+-------------------------------------------------------------------------------
+3. WHICH LLMs TO USE
+-------------------------------------------------------------------------------
+
+3A. SELF-HOSTED MODELS (vLLM)  — pick a CAPABILITY LADDER, not one model.
+The point of a ladder is to show WHERE learning starts working and to publish
+the floor honestly.
+
+  Tier               Model (HuggingFace id)               Role in the story
+  -----------------  -----------------------------------  ----------------------
+  Floor (negative)   NousResearch/Hermes-3-Llama-3.1-8B   documented null result
+  Floor (negative)   meta-llama/Llama-3.1-8B-Instruct     8B can't use playbooks
+  Mid                Qwen/Qwen2.5-7B-Instruct             first signs of lift
+  Mid                Qwen/Qwen2.5-14B-Instruct            clean, strong lift
+  Strong             Qwen/Qwen2.5-32B-Instruct            best general agent
+  Coding             Qwen/Qwen2.5-Coder-32B-Instruct      debug/sql workflows
+  Coding (alt)       deepseek-ai/deepseek-coder-33b-...   cross-family check
+
+  Why this set:
+    - Open weights -> fully reproducible by anyone, no key required.
+    - Qwen2.5 family has reliable instruction-following + tool/function calling,
+      which the agent path depends on; it is the current sweet spot for value.
+    - Including 8B models that FAIL the gate is intentional: it makes the strong-
+      model wins credible and documents the minimum capability LearnKit needs.
+
+  Serving recommendation (per model, one port each):
+    vllm serve Qwen/Qwen2.5-32B-Instruct \
+        --port 8001 --max-model-len 8192 \
+        --gpu-memory-utilization 0.90 --seed 7
+    Drive every benchmark at temperature=0 for determinism.
+    Defaults expected by run_agentic_matrix.py:
+        :8000 hermes-3-llama-3.1-8b, :8001 qwen2.5-32b, :8002 qwen2.5-14b
+    Override any target with --target "name|base_url|model".
+
+3B. API-KEY MODELS (frontier) — pick ONE SMALL + ONE LARGE from TWO vendors.
+Small shows the lift is not just a weak-model crutch; large shows whether memory
+still helps at the frontier.
+
+  Vendor     Small (cheap)            Large (headline)        Notes
+  ---------  ----------------------  ----------------------  --------------------
+  OpenAI     gpt-4o-mini             gpt-4o (or gpt-4.1)     strong tool-calling
+  Google     gemini-flash            gemini-pro              current default agent
+  Anthropic  claude-haiku            claude-sonnet           ONLY as AGENT if the
+                                                             judge is NOT Anthropic
+
+  Default agent for the existing custom suite: gemini-flash-lite-latest
+  Default independent judge: Anthropic Claude Haiku 4.5 (learnkit.Evaluator).
+  Therefore: when the JUDGE is Anthropic, the AGENT must be OpenAI or Google.
+  When ground truth exists (PBE/SLR/sql_exec), prefer the rule-based grader and
+  drop the LLM judge entirely.
+
+  Minimum API tier for a release: gpt-4o-mini + gpt-4o (OpenAI), judged by Haiku,
+  on custom_clustered + injection_ablation, 1 trial. That is enough for the
+  "it helps frontier models too" claim without a large bill.
+
+
+-------------------------------------------------------------------------------
+4. BENCHMARK FAMILIES TO RUN (all four — one is not enough)
+-------------------------------------------------------------------------------
+
+These map BENCHMARK_SPEC's four families onto concrete runners in this folder.
+
+FAMILY 1 — REUSE (primary proof).
+  A repeated task family with a shared latent pattern; memory should compound.
+  Runners:
+    run_pbebench.py     PBE string transforms (rule-based grader, keyless)
+    run_slr_bench.py    Prolog rule induction  (rule-based grader, keyless)
+    run_custom.py       python_debugging / sql_authoring / contract_summarization
+                        (LLM judge; clustered patterns; arms control/cold/warmed)
+    run_agent_learn.py  deterministic replay/reuse smoke (tool-calls/task)
+    agentic_bench.py    exact + sibling + unrelated mix (tool-calls, arg correctness)
+  Pass condition: warmed > control, stable across seeds.
+
+FAMILY 2 — TRANSFER (anti-memorization). THE MOST IMPORTANT honesty test.
+  Train on split A, evaluate on split B: same latent pattern, DISJOINT surface
+  text. If the win survives here, it is generalization, not memoization.
+  Runners:
+    injection_ablation.py   novel sibling tasks only, no exact replay; the
+                            cold/procedure/playbook arms; playbook_effect metric.
+    prepare_splits.py       build train|eval splits from the JSONL task files.
+  Pass condition: no score collapse on the held-out eval split;
+                  playbook_effect >= 0.5.
+
+FAMILY 3 — CONTAMINATION (robustness / no negative transfer).
+  Include near-neighbor-but-WRONG patterns and measure whether memory HURTS.
+  This is a real LearnKit failure mode (see section 8: sql06 case).
+  Runners / tooling:
+    attribution_summary.py  wrong_primary_rate from attribution records.
+    retrieval_eval.py       retrieval health; harmful_retrieval_rate
+                            (retrieval present AND score dropped).
+    contamination split in the JSONL tasks (split="contamination").
+  Pass condition: bounded harm — low wrong_primary_rate and harmful_retrieval_rate.
+
+FAMILY 4 — EFFICIENCY (cost / latency).
+  Quality gain per token and per second; retrieval overhead as memory grows.
+  Runners:
+    react_live.py       LLM-calls + tool-calls, cold vs warmed.
+    evolution_live.py   multi-round durability and reuse growth + cost.
+  Pass condition: warmed_llm_calls <= cold_llm_calls (no cost regression);
+                  retrieval overhead does not grow unbounded.
+
+ORCHESTRATION (run families together):
+    run_agentic_suite.py   runs react_live + evolution_live + injection_ablation,
+                           enforces the playbook_effect >= 0.5 gate by default.
+    run_agentic_matrix.py  runs the suite once per model (self-hosted matrix),
+                           writes a merged matrix report.
+
+
+-------------------------------------------------------------------------------
+5. HOW TO VALIDATE (methodology — non-negotiable)
+-------------------------------------------------------------------------------
+
+5.1 JUDGE INDEPENDENCE
+    - Agent model and judge model MUST differ in vendor.
+    - Prefer a DETERMINISTIC rule-based grader whenever ground truth exists
+      (PBE exact-match, SLR rule check, sql_exec). No judge => no judge bias.
+    - When an LLM judge is unavoidable (open-ended quality), use Anthropic Haiku
+      while the agent is OpenAI/Google, and report the judge ceiling caveat.
+
+5.2 ISOLATE LEARNING FROM MEMOIZATION
+    - Always include a NOVEL-SIBLING split (injection_ablation). Exact-replay
+      numbers are reported separately and never used as the headline learning
+      claim.
+    - Headline learning metric (agent path):
+          playbook_effect = avg_score(playbook) - avg_score(procedure)
+      procedure controls for "cheaper replay"; the delta is application quality.
+
+5.3 STATISTICAL RIGOR
+    - >= 3 seeds for any noisy/LLM-judged domain (--seed, shuffles task order).
+    - >= 3 trials and pass^k for stability (--trials, --k). pass^k_full = the
+      fraction of trials where ALL conventions were satisfied.
+    - Report deltas WITH a sense of variance; n=10 per cell is "indication",
+      not "evidence" (see RESULTS.md caveats). Aim for n>=20 per split/domain
+      before any external claim (BENCHMARK_SPEC rule).
+
+5.4 CONFOUND CONTROLS
+    - Same model, temperature, token limits, and prompt across all arms.
+    - Log model id + API base + git commit hash + seed in every result file.
+    - Negative-transfer guard: include unrelated/off-domain tasks and verify
+      memory does NOT degrade them beyond a small epsilon.
+
+5.5 METRICS TO REPORT (every benchmark x arm) — from BENCHMARK_SPEC:
+    success_rate / pass@1, mean_score (0-5), p50/p95 latency,
+    total_tokens (mean), learnkit_context_chars (mean).
+    LearnKit-specific validity:
+      delta_success_vs_control,
+      delta_success_warmed_vs_cold,
+      wrong_primary_rate (attribution),
+      harmful_retrieval_rate (retrieval present + score drop).
+
+
+-------------------------------------------------------------------------------
+6. RUN ORDER & COMMANDS
+-------------------------------------------------------------------------------
+
+Recommended order (sanity -> controlled -> custom -> transfer -> contamination):
+
+6.0 KEYLESS SANITY (no GPU, no key — proves the harness itself works):
+    set LEARNKIT_OFFLINE=1
+    python -m pytest                       # full unit suite
+    python -m benchmarks.run_agent_learn   # deterministic replay smoke
+    python -m benchmarks.agentic_bench     # exact + sibling + unrelated mix
+
+6.1 RETRIEVAL / ROUTING SANITY:
+    python benchmarks/retrieval_eval.py
+
+6.2 SELF-HOSTED — single model suite (start GPU/vLLM first):
+    export LK_BASE_URL=http://127.0.0.1:8001/v1
+    export LK_MODEL=Qwen/Qwen2.5-32B-Instruct
+    export LK_API_KEY=none
+    python -m benchmarks.run_agentic_suite --trials 3 --k 3 --seed 7 --reflect
+
+6.3 SELF-HOSTED — full model matrix (the headline self-hosted pass):
+    python -m benchmarks.run_agentic_matrix --trials 3 --k 3 --seed 7 \
+        --per-model-timeout 1800 --continue-on-fail
+    # Override targets:
+    #   --target "qwen2.5-14b|http://127.0.0.1:8002/v1|Qwen/Qwen2.5-14B-Instruct"
+
+6.4 KEYLESS DETERMINISTIC REUSE (rule-based, no judge):
+    python benchmarks/run_pbebench.py
+    python benchmarks/run_slr_bench.py
+
+6.5 API-KEY — custom clustered suite (Tier 2 credibility):
+    # benchmarks/.env: GEMINI_API_KEY=... (or OPENAI_API_KEY=...)
+    # global: ANTHROPIC_API_KEY=... (judge)
+    python benchmarks/run_custom.py
+
+6.6 TRANSFER + CONTAMINATION:
+    python benchmarks/prepare_splits.py       # build train|eval|contamination
+    python -m benchmarks.injection_ablation --trials 3 --k 3 --seed 7
+    python benchmarks/attribution_summary.py  # wrong_primary_rate
+    # inspect harmful_retrieval_rate from retrieval_eval.py output
+
+Artifacts land in benchmarks/results/ as
+    <name>_<timestamp>_detailed.json  (full per-task records)
+    <name>_<timestamp>_summary.json   (gates + aggregate metrics)
+
+
+-------------------------------------------------------------------------------
+7. RELEASE GATES (all must hold to ship)
+-------------------------------------------------------------------------------
+
+  G1  Reuse:        warmed > control on >= 2 workflows, stable across >= 3 seeds.
+  G2  Learning:     playbook_effect >= 0.5 on >= 3 self-hosted matrix models
+                    (already enforced by run_agentic_suite).
+  G3  Cost:         warmed_llm_calls <= cold_llm_calls (no cost regression).
+  G4  No harm:      wrong_primary_rate and harmful_retrieval_rate bounded;
+                    unrelated/off-domain quality not degraded beyond epsilon.
+  G5  Frontier:     >= 1 API-tier model shows non-negative learning effect.
+  G6  Floor honesty: at least one model that FAILS the gate is reported (the 8B
+                    capability floor) — do not hide negative results.
+
+Reference numbers on disk (self-hosted, 2026-06-27, trials=3, k=3, seed=7):
+  Qwen2.5-32B : playbook_effect +1.75, pass^k_full 1.0,
+                react LLM calls 12->8 (-33%), evolution LLM calls 32->20 (-37%),
+                react success 6/6, evolution success 16/16.
+  Qwen2.5-14B : playbook_effect +1.875, pass^k_full 1.0,
+                react LLM calls 14->9 (-36%), evolution LLM calls 39->21 (-46%).
+  Hermes-3-8B : playbook_effect 0.0  -> FAILS gate (the documented floor).
+  SLR-Bench   : control 100%, cold/warmed 90% (Instruct-32B; 2 overgeneralization
+                failures distilled as contrastive records; non-regression confirmed).
+  PBE-Lite    : control 10%, cold 10%, warm 5% (Instruct-32B — see note below).
+                NOTE: Prior 95%->100% numbers used Coder-32B. PBE is sensitive to
+                model family; compare only within the same model (Coder vs Coder).
+  Custom (Gemini Flash Lite, Haiku judge): +0.30 python_debug, +0.20 contract,
+                +0.00 sql (flat — one related-but-wrong retrieval hurt sql06).
+
+
+-------------------------------------------------------------------------------
+8. KNOWN FAILURE MODES & WHAT NOT TO CLAIM
+-------------------------------------------------------------------------------
+
+Failure modes to watch (these are real, observed):
+  - Related-but-wrong retrieval. sql06: control 5.0 -> treatment 2.0 because an
+    upsert-pattern skill was injected into a gap-detection task. Mitigations:
+    GEPA evolution (evolution/gepa.py), contrastive failure-prompting, and the
+    PRIMARY/SECONDARY k=1 confidence split. Track via wrong_primary_rate.
+  - Token cost. Treatment ~doubles per-task input tokens (the price of injecting
+    context). Acceptable when quality matters; always report it.
+  - FTS reserved words. A past bug (escape_fts) silently broke retrieval on any
+    query containing AND/OR/NOT/NEAR. Keep tests/test_sqlite_backend.py green;
+    if retrieval looks dead, suspect the search layer first.
+  - Capability floor. <= 8B models cannot apply injected playbooks. Expect and
+    report a 0.0 playbook_effect there.
+
+What NOT to claim (keeps LearnKit credible):
+  - No "universal improvement" from one run or one dataset.
+  - No SOTA / leaderboard claims from the custom suite (it is designed to test
+    the mechanism, not competitive parity — that is the SWE-bench-lite v0.2.0
+    job).
+  - Only ever claim: benchmark name+version, exact model, arm deltas, seeds, and
+    confidence limits.
+
+
+-------------------------------------------------------------------------------
+9. REPRODUCIBILITY LOGGING (must be in every result file)
+-------------------------------------------------------------------------------
+
+  - model id + API base URL (or vLLM endpoint)
+  - temperature, max tokens, and any sampling params (use temp=0)
+  - git commit hash of the LearnKit checkout
+  - seed(s), trials, k
+  - task file path + its git hash (no ad-hoc local-only tasks)
+  - arm definitions (control / cold_start / warmed_start, or cold/procedure/playbook)
+  - explicit list of failed or missing tasks
+
+If a number cannot be reproduced from the logged metadata alone, it does not
+ship.
+
+===============================================================================
+END OF GUIDE
+===============================================================================

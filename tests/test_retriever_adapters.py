@@ -1,6 +1,15 @@
 import pytest
 
-from learnkit.adapters import LangChainAdapter, LangGraphAdapter, OpenAIRawAdapter
+from learnkit.adapters import (
+    AutoGenAdapter,
+    CrewAIAdapter,
+    LangChainAdapter,
+    LangGraphAdapter,
+    LlamaIndexAdapter,
+    OpenAIAgentsAdapter,
+    OpenAIRawAdapter,
+    available_adapters,
+)
 from learnkit.backends.sqlite import SQLiteBackend
 from learnkit.classifier import ClassificationOutput
 from learnkit.core import LearnKit
@@ -257,3 +266,310 @@ def test_capture_tools_disabled_yields_no_tracker():
     fn = lambda x: x
     assert adapter.wrap_tool(handle, fn) is fn
     assert adapter.complete_run(handle, "fixed") == "fixed"
+
+
+# ── Bounded trajectory registry (leak fix) ───────────────────────────
+
+
+def test_trajectory_registry_is_bounded():
+    lk = build_learnkit()
+    lk._max_tracked_runs = 5
+
+    for i in range(20):
+        run = lk.prepare_run(f"debug traceback {i}")
+        lk.finalize_run(run, "fixed")
+
+    # Registries never grow past the cap despite 20 runs.
+    assert len(lk._trajectories) <= 5
+    assert len(lk._attributions) <= 5
+    # The most recent run is always retained.
+    assert lk.last_trajectory is not None
+
+
+def test_discard_run_releases_tracked_state():
+    lk = build_learnkit()
+    run = lk.prepare_run("debug this traceback")
+    run_id = run["trajectory"].id
+    assert run_id in lk._trajectories
+
+    lk.discard_run(run)
+
+    assert run_id not in lk._trajectories
+    assert run_id not in lk._attributions
+    # Idempotent.
+    lk.discard_run(run)
+
+
+# ── Exception-safe adapter session ───────────────────────────────────
+
+
+def test_session_finalizes_on_normal_exit():
+    lk = build_learnkit()
+    adapter = LangChainAdapter(lk)
+
+    with adapter.session("debug this traceback") as h:
+        assert "inspect traceback" in h.context
+        h.response = "fixed"
+
+    assert h.completed is True
+    assert lk.last_trajectory.outcome == "success"
+
+
+def test_session_discards_run_on_exception():
+    lk = build_learnkit()
+    adapter = LangChainAdapter(lk)
+
+    with pytest.raises(RuntimeError):
+        with adapter.session("debug this traceback") as h:
+            run_id = h.run["trajectory"].id
+            raise RuntimeError("framework crashed")
+
+    # Crashed run is discarded, not finalized or leaked.
+    assert run_id not in lk._trajectories
+    assert h.completed is True
+
+
+def test_session_without_response_discards_run():
+    lk = build_learnkit()
+    adapter = LangChainAdapter(lk)
+
+    with adapter.session("debug this traceback") as h:
+        run_id = h.run["trajectory"].id
+        # caller forgot to set h.response
+
+    assert run_id not in lk._trajectories
+    assert h.completed is True
+
+
+def test_complete_run_is_idempotent():
+    lk = build_learnkit()
+    adapter = LangChainAdapter(lk)
+
+    handle = adapter.start_run("debug this traceback")
+    assert adapter.complete_run(handle, "fixed") == "fixed"
+    # A second call is a no-op and does not double-distill.
+    assert adapter.complete_run(handle, "fixed again") == "fixed again"
+    assert handle.completed is True
+
+
+# ── Async adapter lifecycle ──────────────────────────────────────────
+
+
+async def test_async_session_finalizes_on_normal_exit():
+    lk = build_learnkit()
+    adapter = LangChainAdapter(lk)
+
+    async with adapter.asession("debug this traceback") as h:
+        assert "inspect traceback" in h.context
+        h.response = "fixed"
+
+    assert h.completed is True
+    assert lk.last_trajectory.outcome == "success"
+
+
+async def test_async_session_discards_run_on_exception():
+    lk = build_learnkit()
+    adapter = LangChainAdapter(lk)
+
+    with pytest.raises(RuntimeError):
+        async with adapter.asession("debug this traceback") as h:
+            run_id = h.run["trajectory"].id
+            raise RuntimeError("framework crashed")
+
+    assert run_id not in lk._trajectories
+    assert h.completed is True
+
+
+async def test_astart_and_acomplete_run():
+    lk = build_learnkit()
+    adapter = LangChainAdapter(lk)
+
+    handle = await adapter.astart_run("debug this traceback")
+    assert "inspect traceback" in handle.context
+    result = await adapter.acomplete_run(handle, "fixed")
+    assert result == "fixed"
+    assert lk.last_trajectory.outcome == "success"
+
+
+# ── LangChain native callback handler ────────────────────────────────
+
+
+def test_callback_handler_records_tool_calls_into_tracker():
+    lk = build_learnkit()
+    adapter = LangChainAdapter(lk)
+
+    handle = adapter.start_run("debug this traceback")
+    cb = adapter.callback_handler(handle)
+
+    cb.on_tool_start({"name": "search"}, "traceback", run_id="r1")
+    cb.on_tool_end("results", run_id="r1")
+    cb.on_tool_start({"name": "broken"}, "x", run_id="r2")
+    cb.on_tool_error(ValueError("boom"), run_id="r2")
+
+    assert handle.tracker.call_count == 2
+    assert handle.tracker.successes == 1
+    assert handle.tracker.failures == 1
+
+    # Capture is independent of completion; abort to avoid the distiller path.
+    adapter.abort_run(handle)
+
+
+def test_callback_handler_is_safe_without_capture():
+    lk = build_learnkit()
+    adapter = LangChainAdapter(lk, capture_tools=False)
+
+    handle = adapter.start_run("debug this traceback")
+    cb = adapter.callback_handler(handle)
+    # No tracker armed — callbacks must be no-ops, not crash.
+    cb.on_tool_start({"name": "search"}, "x", run_id="r1")
+    cb.on_tool_end("out", run_id="r1")
+    assert adapter.complete_run(handle, "fixed") == "fixed"
+
+
+# ── New connectors: registry + framework-correct integration ─────────
+
+
+def test_new_connectors_are_registered():
+    names = available_adapters()
+    for name in ("crewai", "llamaindex", "openai_agents", "autogen"):
+        assert name in names
+
+
+def test_autogen_inject_prepends_system_message():
+    lk = build_learnkit()
+    adapter = AutoGenAdapter(lk)
+
+    class FakeAgent:
+        system_message = "You are helpful."
+
+        def update_system_message(self, msg):
+            self.system_message = msg
+
+    agent = FakeAgent()
+    handle = adapter.inject(agent, "debug this traceback")
+    assert "inspect traceback" in agent.system_message
+    assert "You are helpful." in agent.system_message
+    assert adapter.complete_run(handle, "fixed") == "fixed"
+
+
+def test_autogen_reply_text_from_chatresult():
+    class ChatResult:
+        summary = "the summary"
+
+    assert AutoGenAdapter._reply_text(ChatResult()) == "the summary"
+    assert AutoGenAdapter._reply_text({"summary": "s"}) == "s"
+    assert AutoGenAdapter._reply_text("plain") == "plain"
+
+
+def test_crewai_step_callback_records_tool_calls():
+    lk = build_learnkit()
+    adapter = CrewAIAdapter(lk)
+
+    handle = adapter.start_run("debug this traceback")
+    cb = adapter.step_callback(handle)
+
+    class AgentAction:
+        def __init__(self, tool, tool_input, result):
+            self.tool = tool
+            self.tool_input = tool_input
+            self.result = result
+
+    class AgentFinish:
+        text = "done"
+
+    cb(AgentAction("search", "traceback", "results"))
+    cb(AgentFinish())  # must be ignored (no .tool)
+    assert handle.tracker.call_count == 1
+    assert handle.tracker.successes == 1
+    adapter.abort_run(handle)
+
+
+def test_crewai_inject_and_output_text():
+    lk = build_learnkit()
+    adapter = CrewAIAdapter(lk)
+
+    class Agent:
+        backstory = "A seasoned analyst."
+
+    agent = Agent()
+    handle = adapter.inject_into(agent, "debug this traceback")
+    assert "inspect traceback" in agent.backstory
+    assert "A seasoned analyst." in agent.backstory
+    adapter.abort_run(handle)
+
+    class CrewOutput:
+        raw = "final answer"
+
+    assert adapter._output_text(CrewOutput()) == "final answer"
+    assert adapter._output_text({"raw": "r"}) == "r"
+
+
+def test_llamaindex_callback_records_function_calls():
+    lk = build_learnkit()
+    adapter = LlamaIndexAdapter(lk)
+
+    handle = adapter.start_run("debug this traceback")
+    cb = adapter.callback_handler(handle)
+
+    cb.on_event_start("function_call", {"tool": "search", "input": "x"}, event_id="e1")
+    cb.on_event_end("function_call", {"output": "results"}, event_id="e1")
+    # A non-tool event must be ignored.
+    cb.on_event_start("llm", {}, event_id="e2")
+    cb.on_event_end("llm", {}, event_id="e2")
+
+    assert handle.tracker.call_count == 1
+    assert handle.tracker.successes == 1
+    adapter.abort_run(handle)
+
+
+def test_llamaindex_inject_and_response_text():
+    lk = build_learnkit()
+    adapter = LlamaIndexAdapter(lk)
+
+    handle = adapter.start_run("debug this traceback")
+    prompt = adapter.inject(handle, "Base system prompt.")
+    assert "inspect traceback" in prompt
+    assert "Base system prompt." in prompt
+    adapter.abort_run(handle)
+
+    class Response:
+        response = "the answer"
+
+    assert adapter._response_text(Response()) == "the answer"
+    assert adapter._response_text({"response": "r"}) == "r"
+
+
+async def test_openai_agents_run_hooks_record_tool_calls():
+    lk = build_learnkit()
+    adapter = OpenAIAgentsAdapter(lk)
+
+    handle = adapter.start_run("debug this traceback")
+    hooks = adapter.run_hooks(handle)
+
+    class Tool:
+        name = "search"
+
+    tool = Tool()
+    await hooks.on_tool_start(None, None, tool)
+    await hooks.on_tool_end(None, None, tool, "results")
+
+    assert handle.tracker.call_count == 1
+    assert handle.tracker.successes == 1
+    adapter.abort_run(handle)
+
+
+def test_openai_agents_inject_and_result_text():
+    lk = build_learnkit()
+    adapter = OpenAIAgentsAdapter(lk)
+
+    handle = adapter.start_run("debug this traceback")
+    instr = adapter.inject(handle, "Base instructions.")
+    assert "inspect traceback" in instr
+    assert "Base instructions." in instr
+    adapter.abort_run(handle)
+
+    class RunResult:
+        final_output = "the output"
+
+    assert adapter._result_text(RunResult()) == "the output"
+    assert adapter._result_text({"final_output": "o"}) == "o"

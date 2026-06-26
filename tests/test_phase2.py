@@ -1,6 +1,10 @@
 import dspy
 
-from learnkit.classifier import classify_task
+from learnkit.classifier import (
+    classify_task,
+    heuristic_classify,
+    is_offline,
+)
 from learnkit.distiller import MemoryDistiller
 from learnkit.evaluator import Evaluator
 from learnkit.trajectory import Trajectory
@@ -110,6 +114,67 @@ def test_task_classifier_retry_and_fallback():
     assert result.task_type == "general"
     assert result.domains == {"general": 1.0}
     assert result.complexity == "medium"
+
+
+def test_is_offline_forced_on_and_off(monkeypatch):
+    for key in (
+        "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY",
+        "GOOGLE_API_KEY", "LEARNKIT_CLASSIFIER_MODEL",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+    monkeypatch.setenv("LEARNKIT_OFFLINE", "1")
+    assert is_offline() is True
+
+    monkeypatch.setenv("LEARNKIT_OFFLINE", "0")
+    # Explicit off, but a provider key is still required to actually go online.
+    assert is_offline() is False
+
+
+def test_is_offline_autodetect(monkeypatch):
+    for key in (
+        "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY",
+        "GOOGLE_API_KEY", "LEARNKIT_CLASSIFIER_MODEL", "LEARNKIT_OFFLINE",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+    # No keys, no override → offline.
+    assert is_offline() is True
+    # A provider key flips it online.
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    assert is_offline() is False
+    monkeypatch.delenv("OPENAI_API_KEY")
+    # An explicit model override also counts as online.
+    monkeypatch.setenv("LEARNKIT_CLASSIFIER_MODEL", "openai/gpt-4o-mini")
+    assert is_offline() is False
+
+
+def test_heuristic_classify_matches_domains():
+    coding = heuristic_classify("Debug this Python traceback and fix the function")
+    assert "coding" in coding.domains
+    assert coding.task_type == "coding"
+
+    sql = heuristic_classify("Write a SQL query to join the orders table")
+    assert "sql" in sql.domains
+
+    # Nothing recognizable → general fallback, never an empty label set.
+    blank = heuristic_classify("xyzzy")
+    assert blank.domains == {"general": 1.0}
+
+
+def test_classify_task_offline_is_deterministic_and_keyless(monkeypatch):
+    for key in (
+        "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY",
+        "GOOGLE_API_KEY", "LEARNKIT_CLASSIFIER_MODEL",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv("LEARNKIT_OFFLINE", "1")
+
+    # No lm passed and offline → heuristic path, no network, fully repeatable.
+    a = classify_task("summarize this NDA contract clause")
+    b = classify_task("summarize this NDA contract clause")
+    assert a.domains == b.domains
+    assert "writing" in a.domains
 
 
 def test_evaluator_bounds_and_repair():

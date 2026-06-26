@@ -20,8 +20,11 @@ from .registry import (
     register_adapter,
 )
 from .autogen import AutoGenAdapter
-from .langchain import LangChainAdapter
+from .crewai import CrewAIAdapter
+from .langchain import LangChainAdapter, LearnKitCallbackHandler
 from .langgraph import LangGraphAdapter
+from .llamaindex import LlamaIndexAdapter, LearnKitLlamaHandler
+from .openai_agents import OpenAIAgentsAdapter, LearnKitRunHooks
 from .openai_raw import OpenAIRawAdapter
 
 __all__ = [
@@ -35,7 +38,13 @@ __all__ = [
     "available_adapters",
     # Built-in adapters
     "LangChainAdapter",
+    "LearnKitCallbackHandler",
     "LangGraphAdapter",
     "AutoGenAdapter",
+    "CrewAIAdapter",
+    "LlamaIndexAdapter",
+    "LearnKitLlamaHandler",
+    "OpenAIAgentsAdapter",
+    "LearnKitRunHooks",
     "OpenAIRawAdapter",
 ]

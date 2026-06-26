@@ -22,8 +22,10 @@ into any open-source agent framework.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Callable, Optional
+import asyncio
+from contextlib import asynccontextmanager, contextmanager
+from dataclasses import dataclass, field
+from typing import Any, AsyncIterator, Callable, Iterator, Optional
 
 from ..tool_tracker import ToolTracker
 
@@ -39,11 +41,17 @@ class RunHandle:
       learned procedures (``None`` when tool capture is disabled).
     * ``run`` — the internal LearnKit run dict; passed back to
       :meth:`BaseAdapter.complete_run`. Treat it as opaque.
+    * ``response`` — set the final answer here when using :meth:`BaseAdapter.session`
+      so the context manager can finalize it on exit.
+    * ``completed`` — set once the run has been finalized or discarded; guards
+      against double-finalizing the same run.
     """
 
     run: dict
     context: str
     tracker: Optional[ToolTracker] = None
+    response: Optional[str] = None
+    completed: bool = field(default=False)
 
     @property
     def has_plan(self) -> bool:
@@ -102,13 +110,100 @@ class BaseAdapter:
         """
         if handle is None:
             raise ValueError("complete_run requires the RunHandle from start_run")
+        if handle.completed:
+            return response
         run = handle.run
         if handle.tracker is not None:
             run["tool_calls"] = handle.tracker.call_count
             # Tool-success gate: when real tool calls happened, gate on their
             # outcome rather than the harm-blind LLM judge.
             run["outcome_score"] = handle.tracker.outcome_score()
-        return self.lk.finalize_run(run, response)
+        result = self.lk.finalize_run(run, response)
+        handle.completed = True
+        return result
+
+    def abort_run(self, handle: RunHandle) -> None:
+        """Discard a run without learning from it.
+
+        Releases the run's tracked trajectory/attribution state immediately
+        instead of finalizing it. Used when the wrapped framework raises before
+        producing a final answer, so a crashed run neither pollutes memory nor
+        leaks. Safe to call more than once.
+        """
+        if handle is None or handle.completed:
+            return
+        discard = getattr(self.lk, "discard_run", None)
+        if callable(discard):
+            discard(handle.run)
+        handle.completed = True
+
+    @contextmanager
+    def session(self, task: str, *, capture_tools: Optional[bool] = None) -> Iterator[RunHandle]:
+        """Exception-safe run lifecycle as a context manager.
+
+        Begins a run, yields the :class:`RunHandle`, and guarantees the run is
+        either finalized or discarded on exit — even if the wrapped framework
+        raises. Set ``handle.response`` (or call :meth:`complete_run` yourself)
+        inside the block to record the final answer::
+
+            with adapter.session(task) as h:
+                tools = adapter.wrap_tools(h, tools)
+                h.response = run_my_framework(h.context, tools)
+
+        On a normal exit with a response set, the run is finalized. On an
+        exception, or when no response was produced, the run is discarded so it
+        does not leak or store a bogus outcome.
+        """
+        handle = self.start_run(task, capture_tools=capture_tools)
+        try:
+            yield handle
+        except BaseException:
+            self.abort_run(handle)
+            raise
+        if not handle.completed:
+            if handle.response is None:
+                self.abort_run(handle)
+            else:
+                self.complete_run(handle, handle.response)
+
+    # ── Async lifecycle ──────────────────────────────────────────────
+    # Async-first frameworks (LangChain ``ainvoke``, LangGraph async nodes,
+    # AutoGen) must not block the event loop on the synchronous classify /
+    # retrieve / judge work, so the async surface offloads it to a worker
+    # thread. The semantics mirror the sync methods exactly.
+    async def astart_run(self, task: str, *, capture_tools: Optional[bool] = None) -> RunHandle:
+        """Async :meth:`start_run`. Offloads memory retrieval to a thread."""
+        return await asyncio.to_thread(self.start_run, task, capture_tools=capture_tools)
+
+    async def acomplete_run(self, handle: RunHandle, response: str) -> str:
+        """Async :meth:`complete_run`. Offloads judge/distill to a thread."""
+        return await asyncio.to_thread(self.complete_run, handle, response)
+
+    async def aabort_run(self, handle: RunHandle) -> None:
+        """Async :meth:`abort_run`."""
+        await asyncio.to_thread(self.abort_run, handle)
+
+    @asynccontextmanager
+    async def asession(
+        self, task: str, *, capture_tools: Optional[bool] = None
+    ) -> AsyncIterator[RunHandle]:
+        """Async, exception-safe run lifecycle (async :meth:`session`)::
+
+            async with adapter.asession(task) as h:
+                tools = adapter.wrap_tools(h, tools)
+                h.response = await run_my_framework(h.context, tools)
+        """
+        handle = await self.astart_run(task, capture_tools=capture_tools)
+        try:
+            yield handle
+        except BaseException:
+            await self.aabort_run(handle)
+            raise
+        if not handle.completed:
+            if handle.response is None:
+                await self.aabort_run(handle)
+            else:
+                await self.acomplete_run(handle, handle.response)
 
     # ── Tool helpers ─────────────────────────────────────────────────
     def wrap_tool(self, handle: RunHandle, fn: Callable, name: Optional[str] = None) -> Callable:

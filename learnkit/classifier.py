@@ -95,11 +95,92 @@ FALLBACK_CLASSIFICATION = ClassificationOutput(
 )
 
 
+# Provider keys litellm/dspy can use. If none is set (and no explicit model
+# override), there is no LLM to call, so the classifier runs fully offline.
+_PROVIDER_KEYS = (
+    "ANTHROPIC_API_KEY",
+    "ANTHROPIC_AUTH_TOKEN",
+    "OPENAI_API_KEY",
+    "GEMINI_API_KEY",
+    "GOOGLE_API_KEY",
+    "OPENROUTER_API_KEY",
+    "GROQ_API_KEY",
+    "MISTRAL_API_KEY",
+    "TOGETHERAI_API_KEY",
+    "COHERE_API_KEY",
+)
+
+
+def is_offline() -> bool:
+    """True when no LLM is reachable, so the classifier must stay deterministic.
+
+    Forced on by ``LEARNKIT_OFFLINE`` (any truthy value). Otherwise inferred:
+    offline when neither an explicit ``LEARNKIT_CLASSIFIER_MODEL`` override nor
+    any known provider key is configured. This keeps the agent path and the
+    deterministic benchmarks fast and keyless instead of burning retries on
+    network calls that can only fail.
+    """
+    flag = os.environ.get("LEARNKIT_OFFLINE", "").strip().lower()
+    if flag in {"1", "true", "yes", "on"}:
+        return True
+    if flag in {"0", "false", "no", "off"}:
+        return False
+    if os.environ.get("LEARNKIT_CLASSIFIER_MODEL"):
+        return False
+    return not any(os.environ.get(k) for k in _PROVIDER_KEYS)
+
+
+# Keyword → domain map for the offline heuristic. First match wins per group;
+# multiple groups can fire (multi-label). Deliberately small and transparent —
+# good enough to route memory by domain without an LLM.
+_HEURISTIC_DOMAINS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("coding", ("debug", "traceback", "exception", "stack trace", "bug", "fix the",
+                "refactor", "compile", "function", "class ", "import ", "syntax")),
+    ("sql", ("sql", "select ", "join", "query the", "database", "schema", "table")),
+    ("data_analysis", ("dataframe", "csv", "aggregate", "pivot", "plot", "chart",
+                        "statistics", "mean", "median", "correlation")),
+    ("writing", ("summarize", "summary", "rewrite", "draft", "email", "essay",
+                 "paragraph", "contract", "clause")),
+    ("math", ("calculate", "equation", "integral", "derivative", "probability",
+              "theorem", "prove ")),
+    ("research", ("search", "find information", "look up", "compare", "research",
+                  "investigate")),
+)
+
+
+def heuristic_classify(task: str) -> ClassificationOutput:
+    """Deterministic, LLM-free classification used in offline mode.
+
+    Lower-cases the task and scans the keyword map. Matched groups become
+    multi-label domains; complexity is a crude length heuristic. Falls back to
+    ``general`` when nothing matches, so it never returns an empty label set.
+    """
+    text = (task or "").lower()
+    domains: dict[str, float] = {}
+    for domain, keywords in _HEURISTIC_DOMAINS:
+        hits = sum(1 for kw in keywords if kw in text)
+        if hits:
+            # Confidence grows with the number of distinct signals, capped at 1.
+            domains[domain] = min(1.0, 0.5 + 0.15 * hits)
+    if not domains:
+        return FALLBACK_CLASSIFICATION
+
+    primary = max(domains, key=domains.get)
+    n_words = len(text.split())
+    complexity = "low" if n_words < 12 else "high" if n_words > 40 else "medium"
+    return ClassificationOutput(
+        task_type=primary, domains=domains, complexity=complexity
+    )
+
+
 def classify_task(
     task: str, lm=None, retries: int = 3, backoff_factor: float = 1.5
 ) -> ClassificationOutput:
     """Classify task with model config, exponential backoff retries, and fallback."""
     if lm is None:
+        # No LLM reachable → stay deterministic instead of retrying dead calls.
+        if is_offline():
+            return heuristic_classify(task)
         model_name = os.environ.get("LEARNKIT_CLASSIFIER_MODEL")
         if not model_name:
             if os.environ.get("ANTHROPIC_API_KEY"):

@@ -171,6 +171,49 @@ python examples/langchain_demo.py
 
 ---
 
+# Framework integrations
+
+LearnKit is framework-agnostic. Every integration subclasses one universal
+contract (`learnkit.adapters.BaseAdapter`), so they all expose the same
+two-path API — `start_run` → inject memory, `complete_run` → distill the
+outcome — and an exception-safe `session()` / `asession()` lifecycle.
+
+| Framework | Adapter | Install | Native hook |
+|---|---|---|---|
+| LangChain | `LangChainAdapter` | `learnkit-ai[langchain]` | `LearnKitCallbackHandler` (`BaseCallbackHandler`) |
+| LangGraph | `LangGraphAdapter` | `learnkit-ai[langgraph]` | `as_node()` graph node |
+| AutoGen / AG2 | `AutoGenAdapter` | `learnkit-ai[autogen]` | `inject()` system-message + `ChatResult` capture |
+| CrewAI | `CrewAIAdapter` | `learnkit-ai[crewai]` | `step_callback()` (`AgentAction`) |
+| LlamaIndex | `LlamaIndexAdapter` | `learnkit-ai[llamaindex]` | `LearnKitLlamaHandler` (`FUNCTION_CALL` events) |
+| OpenAI Agents SDK | `OpenAIAgentsAdapter` | `learnkit-ai[openai-agents]` | `LearnKitRunHooks` (`RunHooks`) |
+| Raw OpenAI / Anthropic | `OpenAIRawAdapter` | core | wraps the chat call |
+
+```python
+from learnkit import LearnKit
+from learnkit.adapters import get_adapter
+
+lk = LearnKit(memory_backend="sqlite")
+adapter = get_adapter("crewai")(lk)        # resolve any adapter by name
+
+with adapter.session(task) as run:          # exception-safe lifecycle
+    tools = adapter.wrap_tools(run, tools)  # agent path: capture tool calls
+    run.response = my_agent(run.context, tools)
+```
+
+Any third-party package can register its own adapter without a PR — declare a
+`learnkit.adapters` entry point and LearnKit discovers it lazily via
+`get_adapter(name)` / `available_adapters()`.
+
+### Offline mode (no API key)
+
+When no LLM provider key is set, LearnKit runs **keyless**: task classification
+falls back to a deterministic heuristic instead of a network call, so the agent
+path and the deterministic benchmarks run with zero credentials and zero
+latency. Force it explicitly with `LEARNKIT_OFFLINE=1`; it is auto-detected
+otherwise (no provider key and no `LEARNKIT_CLASSIFIER_MODEL` override).
+
+---
+
 # How it works — the 8-step loop
 
 The agent function never changes. The decorator orchestrates everything around it.

@@ -6,7 +6,85 @@ and what conclusions can be drawn.
 
 ---
 
-## Setup
+## 2026-06-27 Final Pre-Release Matrix (Self-Hosted, trials=3, k=3, seed=7)
+
+**Git commit:** `150889f` (branch `lia/agent_learn`)  
+**Infrastructure:** vLLM on local GPU, temperature=0, `LK_API_KEY=none`
+
+### Model Matrix — Agent Path (react_live + evolution_live + injection_ablation)
+
+| Model | Gate | playbook_effect | pass^k_full | react LLM cold→warm | evol LLM cold→warm | react success | evol success |
+|---|---|---|---|---|---|---|---|
+| Hermes-3-Llama-3.1-8B (:8000) | ❌ FAIL | 0.0 | 0.0 | 6→6 | 16→16 | 0/6 | 0/16 |
+| Qwen2.5-32B-Instruct (:8001) | ✅ PASS | **+1.75** | **1.0** | 12→8 (-33%) | 32→20 (-37%) | 6/6 | 16/16 |
+| Qwen2.5-14B-Instruct (:8002) | ✅ PASS | **+1.875** | **1.0** | 14→9 (-36%) | 39→21 (-46%) | 6/6 | 16/16 |
+
+**Key takeaways:**
+- Both Qwen models confirm the learning gate (playbook_effect ≥ 0.5) with statistical backing across 3 trials.
+- LLM call reduction of 33–46% when memory is warm — no cost regression (G3 passes).
+- Hermes-3-8B is the documented capability floor (G6): cannot apply injected playbooks.
+
+---
+
+## PBE / SLR Keyless Benchmarks
+
+> **Scope note — model-path non-regression checks, not proof-of-value.**
+> PBE-Lite and SLR-Bench are *single-shot* synthesis tasks (one LLM call → parse →
+> rule-grade). There is no tool trajectory, so the **agent/procedural path** (the
+> one that scored playbook_effect +1.75/+1.875) does not engage — only the weaker
+> model path (distill text record → inject as context) is tested. These exist to
+> confirm memory does not *break* single-shot tasks; they are not where LearnKit's
+> value is demonstrated. SLR sits at the model's ceiling (100% control, no
+> headroom); PBE on Instruct-32B sits below the model's floor (the model cannot do
+> the task, so there is no good trace to distill).
+
+### 2026-06-27 run — Model: `Qwen/Qwen2.5-32B-Instruct` @ :8001
+
+| Benchmark | Arm | Pass Rate | Mean Latency | Mean Tokens | Note |
+|---|---|---|---|---|---|
+| **SLR-Bench** | control | **100.0%** | 0.67s | 582.0 | |
+| **SLR-Bench** | cold_start | 90.0% | 0.43s | 825.2 | 2 overgeneralization failures; contrastive records distilled |
+| **SLR-Bench** | warmed_start | 90.0% | 0.40s | 824.4 | |
+| **PBE-Lite** | control | 10.0% | 2.55s | 2937.7 | ⚠️ model mismatch — see note |
+| **PBE-Lite** | cold_start | 10.0% | 2.47s | 3681.7 | |
+| **PBE-Lite** | warmed_start | 5.0% | 2.43s | 3643.6 | |
+
+> **PBE note:** The PBE-Lite runner defaults to `:8001`. The prior reference run (2026-06-03, 95%→100%) used `Qwen/Qwen2.5-Coder-32B-Instruct`. The Instruct model cannot reliably synthesize `str.replace()` programs. PBE pass rates are **only comparable within the same model family** (Coder vs Coder, Instruct vs Instruct).
+
+### Agentic PBE / SLR (2026-06-27) — procedural path engaged
+
+`synthesis_agentic.py` reframes PBE/SLR as a propose→execute→observe→refine tool loop so
+the strong agent path (`@lk.agent_learn`: procedure replay + playbook guidance) engages
+instead of the single-shot model path. Stream = exposure → exact-repeat → sibling per
+family; win = warmed ≤ cold LLM calls with success held. Two 32B models agree exactly:
+
+| Model | Kind | cold LLM | warmed LLM | Δ | Success | Replay/Guide |
+|---|---|---|---|---|---|---|
+| Qwen2.5-32B-Instruct | PBE | 18 | 12 | **−33%** | 9/9 → 9/9 | 3 / 1 |
+| Qwen2.5-32B-Instruct | SLR | 12 | 8 | **−33%** | 6/6 → 6/6 | 2 / 0 |
+| Qwen2.5-Coder-32B-Instruct | PBE | 18 | 12 | **−33%** | 9/9 → 9/9 | 3 / 1 |
+| Qwen2.5-Coder-32B-Instruct | SLR | 12 | 8 | **−33%** | 6/6 → 6/6 | 2 / 0 |
+
+This turns the single-shot null/regression result into a genuine procedural win: −33%
+planning cost at 100% success on both task shapes and both models. Reproduce:
+`python -m benchmarks.synthesis_agentic --kinds pbe slr`.
+
+### 2026-06-03 reference run — Model: `Qwen/Qwen2.5-Coder-32B-Instruct`
+
+| Benchmark | Arm | Pass Rate | Mean Latency | Mean Tokens |
+|---|---|---|---|---|
+| **PBE-Lite** | control | **95.0%** | 0.44s | 840.6 |
+| **PBE-Lite** | cold_start | **100.0%** | 0.31s | 841.8 |
+| **PBE-Lite** | warmed_start | **100.0%** | 0.30s | 843.5 |
+| **SLR-Bench** | control | **100.0%** | 0.38s | 581.0 |
+| **SLR-Bench** | cold_start | **100.0%** | 0.37s | 797.1 |
+| **SLR-Bench** | warmed_start | **100.0%** | 0.36s | 798.5 |
+
+---
+
+## Historical PBE / SLR detail (2026-06-03, Coder-32B)
+
+### Setup
 
 - **Hardware:** NVIDIA H100 (local, no cloud API cost)
 - **Agent model:** `Qwen/Qwen2.5-Coder-32B-Instruct` (served via local vLLM endpoint)

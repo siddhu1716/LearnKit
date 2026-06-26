@@ -5,8 +5,9 @@ import os
 import sys
 import threading
 import weakref
+from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
-from typing import Callable, Dict, Optional
+from typing import Callable, Optional
 
 from .attribution import build_attribution
 from .backends.registry import get_backend
@@ -79,6 +80,7 @@ class LearnKit:
         retrieval_fusion: str = "weighted",
         relevance_floor: Optional[float] = None,
         utility_floor: Optional[float] = None,
+        max_tracked_runs: int = 256,
         **backend_kwargs,
     ):
         self.backend = get_backend(memory_backend, **backend_kwargs)
@@ -112,9 +114,15 @@ class LearnKit:
         # author/accumulate a natural-language *playbook* (Hermes-style growing
         # skill body) alongside the captured procedure. Opt-in (LLM call).
         self.reflect_procedures = reflect_procedures
-        # Concurrency safety: trajectory registry and bounded worker pool
-        self._trajectories: Dict[str, Trajectory] = {}
-        self._attributions: Dict[str, dict] = {}
+        # Concurrency safety: bounded trajectory registry + worker pool.
+        # The registries are capped (LRU by insertion order) so a long-lived
+        # process that prepares runs but never reads old ones back cannot grow
+        # them without bound. The most recent runs stay available for
+        # last_trajectory / get_trajectory; a run can also be dropped eagerly
+        # via discard_run (e.g. when an adapter's framework crashes mid-run).
+        self._max_tracked_runs = max(1, max_tracked_runs)
+        self._trajectories: "OrderedDict[str, Trajectory]" = OrderedDict()
+        self._attributions: "OrderedDict[str, dict]" = OrderedDict()
         self._trajectory_lock = threading.Lock()
         self._last_run_id: Optional[str] = None
         self._last_records: list = []
@@ -159,6 +167,37 @@ class LearnKit:
         """Thread-safe access to a specific run's trajectory."""
         with self._trajectory_lock:
             return self._trajectories.get(run_id)
+
+    def _trim_registries_locked(self) -> None:
+        """Evict oldest tracked runs beyond ``_max_tracked_runs``.
+
+        Must be called while holding ``_trajectory_lock``. Bounds the
+        trajectory/attribution registries so a long-lived process cannot leak
+        them; the newest runs (including ``_last_run_id``) are always retained.
+        """
+        while len(self._trajectories) > self._max_tracked_runs:
+            old_id, _ = self._trajectories.popitem(last=False)
+            self._attributions.pop(old_id, None)
+        while len(self._attributions) > self._max_tracked_runs:
+            self._attributions.popitem(last=False)
+
+    def discard_run(self, run: dict) -> None:
+        """Drop a prepared run's tracked state without learning from it.
+
+        Use when a run is abandoned (e.g. the wrapped framework raised before a
+        final answer was produced) so its trajectory/attribution are released
+        immediately instead of lingering until evicted by the size cap. Safe to
+        call more than once.
+        """
+        traj = run.get("trajectory") if isinstance(run, dict) else None
+        run_id = getattr(traj, "id", None)
+        if run_id is None:
+            return
+        with self._trajectory_lock:
+            self._trajectories.pop(run_id, None)
+            self._attributions.pop(run_id, None)
+            if self._last_run_id == run_id:
+                self._last_run_id = None
 
     @property
     def last_attribution(self) -> Optional[dict]:
@@ -556,6 +595,7 @@ class LearnKit:
             self._attributions[traj.id] = attribution
             self._last_run_id = traj.id
             self._last_records = records
+            self._trim_registries_locked()
 
         return {
             "classification": classification,
