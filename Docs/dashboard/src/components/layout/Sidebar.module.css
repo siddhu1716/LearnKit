@@ -1,0 +1,142 @@
+.sidebar {
+  position: fixed;
+  top: var(--header-height);
+  bottom: 0;
+  left: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  z-index: 90;
+  overflow-y: auto;
+  transition: width 0.2s var(--ease);
+}
+
+.open {
+  width: var(--sidebar-width);
+}
+
+.collapsed {
+  width: var(--sidebar-collapsed);
+}
+
+.nav {
+  padding: var(--space-md) var(--space-xs);
+}
+
+.navList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 10px var(--space-md);
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-family: var(--font-main);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.navItem:hover {
+  background: var(--surface-accent);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+.active {
+  background: var(--accent-dim) !important;
+  color: var(--accent) !important;
+  border-color: rgba(0, 255, 136, 0.2) !important;
+  font-weight: 600;
+}
+
+.activeParent {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.icon {
+  margin-right: 12px;
+  font-size: 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+}
+
+.label {
+  white-space: nowrap;
+  opacity: 1;
+  transition: opacity 0.15s ease;
+}
+
+.collapsed .label {
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  display: none;
+}
+
+.dropdownToggle {
+  justify-content: space-between;
+}
+
+.toggleLeft {
+  display: flex;
+  align-items: center;
+}
+
+.arrow {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  transition: transform 0.2s var(--ease);
+}
+
+.arrowOpen {
+  transform: rotate(180deg);
+}
+
+.collapsed .arrow {
+  display: none;
+}
+
+.subMenu {
+  list-style: none;
+  padding: 4px 0 4px var(--space-md);
+  margin: 4px 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-left: 1px solid var(--border);
+  margin-left: 26px;
+}
+
+.collapsed .subMenu {
+  display: none;
+}
+
+.subNavItem {
+  padding: 6px var(--space-md);
+  font-size: 0.8125rem;
+}
+
+.subIcon {
+  margin-right: 10px;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+}

@@ -1,0 +1,111 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-main);
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+  white-space: nowrap;
+  text-decoration: none;
+  position: relative;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+/* Sizes */
+.sm {
+  font-size: 0.8125rem;
+  padding: 6px 12px;
+}
+
+.md {
+  font-size: 0.875rem;
+  padding: 8px 16px;
+}
+
+.lg {
+  font-size: 1rem;
+  padding: 12px 22px;
+}
+
+/* Variants */
+.primary {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.primary:not(:disabled):hover {
+  background: rgba(0, 255, 136, 0.85);
+  box-shadow: var(--shadow-accent-glow);
+}
+
+.secondary {
+  background: var(--surface-accent);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+.secondary:not(:disabled):hover {
+  background: var(--surface);
+  border-color: var(--border-hover);
+}
+
+.ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+
+.ghost:not(:disabled):hover {
+  background: var(--surface-accent);
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+.danger {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--error);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.danger:not(:disabled):hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: var(--error);
+}
+
+/* Loading */
+.loading {
+  pointer-events: none;
+}
+
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.icon, .iconRight {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}

@@ -15,7 +15,7 @@ Run:
     # then open http://localhost:8000/
 
 Endpoints:
-    GET  /                  -> Docs/index.html
+    GET  /                  -> Docs/dashboard/index.html (landing page)
     GET  /healthz           -> {"ok": true}
     GET  /api/domains       -> available playground domain stores
     POST /api/inspect       -> {classification, records, context, inference_mode}
@@ -269,11 +269,11 @@ def _snippet(record) -> str:
 # --- Static assets ---
 @app.get("/", include_in_schema=False)
 def root() -> FileResponse:
-    return FileResponse(ROOT / "docs" / "index.html")
+    return FileResponse(HERE / "dashboard" / "index.html")
 
 
-# Serve sibling files like favicon if present
-app.mount("/static", StaticFiles(directory=ROOT / "docs"), name="static")
+# Serve the dashboard's static frontend (landing page, app, docs) if present.
+app.mount("/static", StaticFiles(directory=HERE / "dashboard"), name="static")
 
 
 @app.exception_handler(Exception)
