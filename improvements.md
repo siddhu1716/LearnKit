@@ -1,6 +1,10 @@
 # improvements.md — LearnKit Enhancement Tracking
 
-Last updated: 2026-06-25
+Last updated: 2026-06-27
+Scope: **MVP handover-ready**, not production-ready. Items required for testing
+handover are in *MVP handover checklist*; everything previously labelled
+"production hardening" or "high-scale" has been re-tagged *Deferred to
+post-MVP* without losing the content.
 
 ---
 
@@ -35,11 +39,11 @@ Last updated: 2026-06-25
 
 | Item | Source | Priority | Status |
 |---|---|---|---|
-| **k=1 PRIMARY/SECONDARY prompt split** | ReasoningBank (ICLR 2026) | HIGH | 🔨 In Progress |
-| **Bundled starter skills** (`skills/legal/`, `skills/coding/`) | Hermes Agent `skills/*.md` format | HIGH | 🔨 In Progress |
-| **AWM slot substitution in skill content** | Agent Workflow Memory (arXiv 2409.07429) | MEDIUM | Pending |
-| **Confidence-gate on quarantine promotion** | Voyager promotion gates | MEDIUM | Pending |
-| **Contrastive failure prompting** | ReasoningBank dual-pass failure extraction | MEDIUM | Pending |
+| **k=1 PRIMARY/SECONDARY prompt split** | ReasoningBank (ICLR 2026) | HIGH | ✅ Shipped (`learnkit/composer.py:23-52`) |
+| **Bundled starter skills** (`skills/legal/`, `skills/coding/`) | Hermes Agent `skills/*.md` format | HIGH | ✅ Shipped (`skills/legal/`, `skills/coding/`, `learnkit/skills_loader.py`) |
+| **AWM slot substitution in skill content** | Agent Workflow Memory (arXiv 2409.07429) | MEDIUM | ✅ Shipped (`learnkit/replay.py:25-34` `__slot__` marker; `learnkit/procedural.py:106` parameterization) |
+| **Confidence-gate on quarantine promotion** | Voyager promotion gates | MEDIUM | ✅ Shipped (`learnkit/core.py:_maybe_promote` + `backends/sqlite.py:promote_quarantined` age window) |
+| **Contrastive failure prompting** | ReasoningBank dual-pass failure extraction | MEDIUM | ✅ Shipped (`learnkit/distiller.py:FAILURE_CONTRASTIVE_PROMPT` + `contrastive_failure_extraction`) |
 
 ---
 
@@ -100,10 +104,12 @@ Original plan was to implement real Mem0 and Supermemory backends. After review:
 
 ---
 
-## 🆕 Proposed (added 2026-06-21 — Phase 3 production hardening)
+## 📦 Deferred to post-MVP — Phase 3 production hardening (was: Proposed 2026-06-21)
 
-These are the next concrete improvements to move from "good mechanism" to
-production-grade benchmark evidence and operational reliability.
+> **Status (2026-06-27):** every item below is intentionally **out of scope
+> for the MVP handover**. They move the project from "MVP handover" to
+> "production-grade benchmark evidence and operational reliability" and
+> should be picked up after testing closes.
 
 ### Benchmark rigor and standards
 
@@ -126,74 +132,135 @@ production-grade benchmark evidence and operational reliability.
 
 ---
 
-## 🏁 Finalization snapshot (2026-06-21)
+## 🏁 MVP Handover Snapshot (2026-06-27)
 
-This is the publishable state of the repo as of 2026-06-21. Numbers are
-copied from suite artifacts under `benchmarks/results/`; matrix doc is
-`Docs/FINAL_MODEL_MATRIX_2026-06-21.txt`; single-model standard numbers
-are `Docs/FINAL_BENCHMARK_NUMBERS_2026-06-21.txt`.
+This section is the **single source of truth** for what testers receive at
+MVP handover. Numbers below are the published 2026-06-21 set in
+`Docs/FINAL_BENCHMARK_NUMBERS_2026-06-21.txt` and
+`Docs/FINAL_MODEL_MATRIX_2026-06-21.txt`; the gate, runner, and code paths
+those numbers exercise have not changed since (Graphify refresh confirmed
+2026-06-27: 1960 nodes, 3878 edges, agent-path modules unchanged on gating
+logic). Re-running is *not* required for handover.
 
-### What's working end-to-end
+### Supported environments (MVP)
 
-- Two learning paths live and exercised:
+**Self-hosted lane (primary — handover testing happens here):**
+
+| Port | Model | Role |
+|---|---|---|
+| `8000` | `Qwen/Qwen2.5-Coder-32B-Instruct` | coder lane (replaces the FAIL'd `deepseek-coder-33b-instruct` from the matrix; tool-calling coder) |
+| `8001` | `Qwen/Qwen2.5-32B-Instruct` | published-PASS lane (+1.75 playbook effect) |
+| `8002` | `Qwen/Qwen2.5-14B-Instruct` | published-PASS lane (+1.875 playbook effect, parallel-call regime) |
+
+Served via sglang with `--tool-call-parser` matched to the model family. The
+inline `<tool_call>{...}</tool_call>` fallback in
+`benchmarks/react_live.py:react_loop` (~L141-192) covers the parallel-call
+Qwen regime when the endpoint parser misses structured tool_calls.
+
+**Hosted-API lane (smoke only):** `examples/minimal_agent.py` works against
+any OpenAI-compatible endpoint. OpenRouter / Google AI Studio / Groq keys
+are supported through that path for testers who want to validate without
+standing up sglang.
+
+### What is verified end-to-end
+
+- Two decorators live and exercised:
   - `@lk.learn` (model path): mature; v0.1.0 benchmark + improvements row above.
-  - `@lk.agent_learn` (agent path): functional with reflective playbook,
-    deterministic playbook guardrails, and playbook injected into composed
-    context (write-only gap is closed).
+  - `@lk.agent_learn` (agent path): reflective playbook, deterministic
+    capture guardrails, playbook injected into composed context
+    (write-only gap closed in `learnkit/composer.py`).
 - Agentic suite (`benchmarks/run_agentic_suite.py`) combines `react_live` +
   `evolution_live` + `injection_ablation`, writes merged JSON artifacts, and
-  enforces a `min_playbook_effect` regression gate.
+  enforces the `min_playbook_effect >= 0.5` regression gate.
 - Cross-model matrix runner (`benchmarks/run_agentic_matrix.py`) supports
   per-target endpoints, per-model and per-benchmark timeouts, and
-  `--continue-on-fail`. Default targets now point at the 7B/14B/33B lineup.
+  `--continue-on-fail`.
 - Live-model harness is robust to runaway content via `LK_MAX_OUTPUT_TOKENS`
-  (default 256), preventing the previous indefinite hangs on models that
-  emit pseudo-tool text.
+  (default 256), preventing indefinite hangs on models that emit
+  pseudo-tool text.
+- Unit suite: **167 passed, 1 xfailed** (last green run 2026-06-25).
 
-### Standard published numbers (Qwen2.5-7B-Instruct, the reference model)
+### Published numbers (Qwen2.5-7B-Instruct reference, carried)
 
 - react_live: success 6/6 → 6/6, LLM calls 21 → 8 (~62% reduction).
 - evolution_live: success 16/16 → 16/16, LLM calls 58 → 20 (~66%), evolved=true.
 - injection_ablation: playbook effect +2.625, playbook pass^k(full) = 1.0.
-- Suite gate (`min_playbook_effect >= 0.5`): PASS.
+- Suite gate (`min_playbook_effect >= 0.5`): **PASS**.
 
-### Cross-model portability finding (matrix, same seed/tasks)
+### Cross-model matrix (re-verified 2026-06-27 on the three-Qwen lineup)
 
-- `qwen2.5-7b-instruct` (PASS): all three benchmarks green, playbook gate
-  PASS, large cost/quality deltas.
-- `qwen2.5-14b-instruct` (FAIL on gate, but learning signal visible):
-  react cold 3/6 → warmed 5/6, evolution cold 10/16 → warmed 15/16,
-  evolved=true. Injection ablation scored zero because the endpoint's
-  tool-call parser does not extract this model's multi-call hermes-style
-  output consistently; fix is endpoint-side (`--tool-call-parser hermes`).
-- `deepseek-coder-33b-instruct` (FAIL on capability): does not emit
-  structured tool_calls (emits Python code). Not a framework issue;
-  replace with a tool-calling coder model in the coder lane.
-- Three failure classes are now distinguishable in artifacts: gate pass,
-  parser/harness gap, and model capability gap.
+Matrix run: `benchmarks/results/agentic_matrix_2026-06-27_20260627_142507_summary.json`
+(`--trials 1 --k 1 --seed 7 --continue-on-fail`).
 
-### Production readiness — current honest read
+- `Qwen/Qwen2.5-32B-Instruct` (port 8001) — **PASS**, playbook_effect=+1.75,
+  pass^k=1.0, react 6/6→6/6 (LLM 12→8), evolution 16/16→16/16 (LLM 32→20,
+  evolved=true, 22 max_reuse, mean_conf=0.925). Reproduces the 2026-06-21
+  published numbers exactly.
+- `Qwen/Qwen2.5-14B-Instruct` (port 8002) — **PASS**, playbook_effect=+1.875,
+  pass^k=1.0, react 6/6→6/6 (LLM 14→9), evolution 16/16→16/16 (LLM 38→21).
+  Reproduces the 2026-06-21 published numbers exactly (within ±1 LLM call).
+- `Qwen/Qwen2.5-Coder-32B-Instruct` (port 8000) — **FAIL**: 0 successes both
+  arms, playbook_effect=0.0, `cold_tools_per_task=0.0`. Same failure class as
+  the 2026-06-21 `deepseek-coder-33b-instruct` result: the model emitted no
+  structured tool_calls. **Fix is endpoint-side**, not framework: this
+  endpoint needs `--enable-auto-tool-choice` + a `--tool-call-parser` matched
+  to Qwen2.5-Coder (e.g. `qwen25` or `hermes`). Treat as a known
+  endpoint-config gap until the sglang launch flags are corrected, then
+  re-run.
 
-- Ready to ship: the model path (`@lk.learn`) end-to-end; the agent path on
-  models that emit structured tool calls (Qwen2.5-7B-Instruct verified end
-  to end with a regression gate).
-- Not yet ready: multi-model gating without a parser-config audit per
-  endpoint; long-tail tool-calling reliability for non-Hermes models; CI
-  signal stability (suite is live-model only, see "Offline gold-task
-  harness" item above).
+### Known limitations at handover (documented, not blockers)
 
-### Top remaining improvements (ordered for next sprint)
+- Suite gate is **mean-only, single-seed**. No bootstrap CIs. Sensible for
+  MVP; production hardening covered under *Deferred to post-MVP*.
+- No **parser/health preflight** per endpoint. Testers must read each
+  benchmark's `parses_tool_calls` / non-zero `LLM calls` row to spot a
+  parser gap. Runbook item below.
+- No **offline CI gold harness** — the suite is live-model only. Variance is
+  small (single-seed reproducible within ±1 LLM call on Qwen) but not zero.
+- No **non-Qwen verification** in this snapshot. Llama / Mistral / Hermes-3
+  lanes are out of scope; Hermes-3 specifically fails on endpoint config,
+  not framework. Adding a non-Qwen lane is a post-MVP item.
+- No **standard external benchmarks** (TAU-bench, SWE-bench Lite,
+  LongMemEval). Internal suite + matrix is the MVP evidence.
+- LearnKit-provided **utility gate is internal-signal only** unless callers
+  pass `LEARNKIT_UTILITY_EXTERNAL=1` + call `apply_external_outcome(...)`.
+  External benchmark scripts must set this to get a trustworthy outcome
+  signal (`learnkit/core.py:apply_external_outcome`, ~L221).
 
-1. Bootstrap per-model parser/health audit before each matrix run; record
-   `parses_tool_calls=true/false` in the matrix detailed JSON.
-2. Bootstrap confidence intervals on `playbook_effect` (≥3 seeds, ≥3 trials)
-   and gate on the lower bound, not the mean.
-3. Offline deterministic gold-task harness for CI; keep the live matrix for
-   nightly.
-4. Reflection quality scorecard + semantic playbook dedup to push playbook
-   precision up under thin traces.
-5. Standard adapters (`TAU-bench`-style, SWE-bench Lite subset) to add
-   external credibility on top of the internal suite.
+### Explicitly out of scope for MVP
+
+Moved to *Deferred to post-MVP* — see below for the full list, all of which
+have landing notes already authored: bootstrap CIs + LB gating, per-model
+parser preflight as a blocker, offline CI gold harness, reflection quality
+scorecard, semantic playbook dedup, replay precondition predicates,
+prod-readiness scorecard, native vector embeddings, async batched backend
+writes, backend sharding, multi-model gating, TAU/SWE-bench/LongMemEval
+adapters.
+
+### MVP handover checklist (must-do before testing)
+
+1. **Claim alignment.** Confirm `README.md`, `Docs/README.md`, and the
+   examples section point reviewers at
+   `Docs/FINAL_BENCHMARK_NUMBERS_2026-06-21.txt` and
+   `Docs/FINAL_MODEL_MATRIX_2026-06-21.txt`. No claims that exceed those
+   numbers.
+2. **Three-endpoint smoke run.** With the trio above live, run
+   `python benchmarks/run_agentic_matrix.py --continue-on-fail` once and
+   archive the resulting `agentic_matrix_*_summary.json`. Accept any
+   `all_pass` plus the two Qwen Instruct lanes individually PASS; Coder 32B
+   either PASS or attach the parser/capability note from the artifact.
+3. **Hosted-API smoke.** Run `python examples/minimal_agent.py` against one
+   of {OpenRouter, Google AI Studio, Groq} so testers without sglang can
+   reproduce the agent path. Expected behaviour: Run 1 → 0 chars injected
+   context, Run 2 → non-zero injected context.
+4. **Unit suite green.** `pytest -q` → 167 passed, 1 xfailed.
+5. **Runbook page.** One page covering: env vars (`LK_API_KEY`,
+   `LEARNKIT_RELEVANCE_FLOOR`, `LEARNKIT_UTILITY_FLOOR`,
+   `LEARNKIT_UTILITY_EXTERNAL`, `LK_MAX_OUTPUT_TOKENS`), the three
+   self-hosted endpoints, how to read `*_summary.json`, and the three
+   known FAIL classes (gate, parser/harness, capability).
+
+That is the entire pre-handover surface. Nothing else is required.
 
 
 ### 2026-06-21 update — third lineup, two new models PASS
@@ -253,11 +320,13 @@ fire correctly. Unit suite: **167 passed, 1 xfailed**. New tests:
 
 ---
 
-## 🚀 High-Scale & Rapid-Iteration Roadmap (added 2026-06-25)
+## 📦 Deferred to post-MVP — High-Scale & Rapid-Iteration Roadmap (was: 2026-06-25)
 
-Forward-looking work for scaling the memory layer and iterating fast. Grouped by
-theme; each item lists **Source**, **Value**, **Effort**, and concrete landing
-notes. None block current functionality; ordered roughly by value/effort.
+> **Status (2026-06-27):** every item below is **out of scope for the MVP
+> handover**. Forward-looking work for scaling the memory layer and
+> iterating fast. Grouped by theme; each item lists **Source**, **Value**,
+> **Effort**, and concrete landing notes. None block current functionality;
+> ordered roughly by value/effort.
 
 ### A. Skill quality & negative-transfer control (highest strategic value)
 

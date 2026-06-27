@@ -1,15 +1,19 @@
 # LearnKit site
 
-A single-page marketing site for LearnKit + a live **Playground** that runs the SDK's `Classify → Retrieve → Compose` stages against pre-seeded memory stores.
+A single-page marketing site for LearnKit + a live **Playground** that runs the SDK's `Classify → Retrieve → Compose` stages against pre-seeded memory stores, **plus** the FastAPI backend that powers the observability dashboard under `Docs/dashboard`.
 
 ## What's here
 
 | File | Purpose |
 |---|---|
-| `index.html` | The page. Cream/serif/mono aesthetic, no build step. |
-| `server.py` | FastAPI app — serves the page and the `/api/inspect` endpoint. |
-| `data/playground_*.db` | SQLite memory stores pre-seeded with distilled records from the v0.1.0 benchmark run. One per domain. |
+| `index.html` | The marketing page. Cream/serif/mono aesthetic, no build step. |
+| `server.py` | FastAPI app — serves the page, the `/api/inspect` Playground endpoint, and the `/api/v1/*` dashboard API (records, runs, metrics, observability) against `LEARNKIT_DB_PATH` (default `~/.learnkit/memory.db`). |
+| `data/playground_*.db` | SQLite memory stores pre-seeded with distilled records from the v0.1.0 benchmark run. One per Playground domain. |
+| `dashboard/` | React/Vite/TypeScript observability dashboard (see [`dashboard/README.md`](dashboard/README.md)). Hits `/api/v1/*` from `server.py`; falls back to mock data if the backend is offline. |
+| `learnkit_architecture.md` | Full architecture document (mechanism, agent path, mermaid diagrams). |
 | `LEARNKIT_CONSOLIDATED_FLOW_PLAN.md` | Master execution flow document that consolidates roadmap, backlog, benchmark gates, and cross-repo production additions. |
+| `FINAL_BENCHMARK_NUMBERS_2026-06-21.txt` | Single-model (Qwen2.5-7B) reference numbers — cited by the root README's Status section. |
+| `FINAL_MODEL_MATRIX_2026-06-21.txt` | Cross-model matrix table. |
 | `.env.example` | Copy to `.env` to override defaults. Gitignored. |
 
 ## How the Playground works
@@ -30,12 +34,16 @@ The **agent execution + LLM-judge + distillation** steps from the full loop are 
 ```bash
 # from repo root
 pip install -e . fastapi 'uvicorn[standard]' python-dotenv
-export ANTHROPIC_API_KEY="sk-ant-..."     # optional but recommended
+export ANTHROPIC_API_KEY="sk-ant-..."     # optional but recommended for classifier
+export LEARNKIT_DB_PATH="$HOME/.learnkit/memory.db"  # default; override per-store
+# Windows PowerShell: $env:LEARNKIT_DB_PATH = "$HOME\.learnkit\memory.db"
 python Docs/server.py
-# open http://127.0.0.1:8000/
+# open http://127.0.0.1:8000/                  for the Playground page
+# dashboard dev server: cd Docs/dashboard && npm run dev
+#   -> http://localhost:5173/dashboard/        (proxies /api/* to :8000)
 ```
 
-The page works without the server too — the Playground will just show "backend offline" and tell the visitor how to start it. Everything else (benchmarks, mechanism diagram, code snippet, comparison table) is static and renders normally.
+The page works without the server too — the Playground will just show "backend offline" and tell the visitor how to start it. Everything else (benchmarks, mechanism diagram, code snippet, comparison table) is static and renders normally. The dashboard equivalently falls back to mock data when `server.py` is offline.
 
 ## Why this exists
 

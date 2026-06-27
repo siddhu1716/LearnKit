@@ -106,7 +106,10 @@ python -m benchmarks.run_agentic_suite --skip-react --skip-evolution --trials 1 
 # full suite with reflection enabled for evolution benchmark
 python -m benchmarks.run_agentic_suite --trials 3 --k 3 --reflect
 
-# run across hosted model matrix (defaults: :8000 hermes-3-llama-3.1-8b, :8001 qwen2.5-32b, :8002 qwen2.5-14b)
+# run across hosted model matrix (current self-hosted lineup)
+#   :8000 Qwen/Qwen2.5-Coder-32B-Instruct
+#   :8001 Qwen/Qwen2.5-32B-Instruct
+#   :8002 Qwen/Qwen2.5-14B-Instruct
 python -m benchmarks.run_agentic_matrix --trials 1 --k 1 --seed 7 --per-model-timeout 1800 --react-timeout 1500 --evolution-timeout 1500 --injection-timeout 1500 --continue-on-fail
 ```
 
@@ -118,9 +121,41 @@ Injection ablation artifacts are written to `benchmarks/results/`:
 For live-hosted runs (`react_live`, `evolution_live`, `injection_ablation`), set:
 
 ```bash
-export LK_BASE_URL=http://206.1.58.252:8000/v1
-export LK_MODEL=Qwen/Qwen2.5-7B-Instruct
+export LK_BASE_URL=http://127.0.0.1:8002/v1
+export LK_MODEL=Qwen/Qwen2.5-14B-Instruct
 export LK_API_KEY=none
 ```
 
 Run cost is dominated by 30 × 2 = 60 agent calls + 60 judge calls + LearnKit's internal classifier/distiller calls during the treatment arm (~30 extra). Gemini Flash + Haiku is cheap — well under $2 for a full run.
+
+## Trace capture for the observability dashboard
+
+The suite scripts above (`react_live.py`, `evolution_live.py`,
+`injection_ablation.py`) instantiate `LearnKit(db_path=":memory:")` and
+`db_path=tempfile.gettempdir()/learnkit_evolution.db` by design — each run is
+self-contained so the regression gate is reproducible. **Their traces do not
+flow to the React dashboard** at `Docs/dashboard`.
+
+To populate the dashboard with real agent runs (instead of mock data), use a
+short driver that writes to the dashboard's live store:
+
+```bash
+# point any agent run at the dashboard's live DB
+export LEARNKIT_DB_PATH="$HOME/.learnkit/memory.db"   # Windows: %USERPROFILE%\.learnkit\memory.db
+
+# any script that instantiates LearnKit(db_path=os.environ["LEARNKIT_DB_PATH"])
+# will land its runs/records in the same store the FastAPI backend reads from.
+python examples/minimal_agent.py
+```
+
+Then start the dashboard server and open the UI:
+
+```bash
+python Docs/server.py                            # serves /api/v1/* against $LEARNKIT_DB_PATH
+cd Docs/dashboard && npm run dev                 # opens http://localhost:5173/dashboard/
+```
+
+The dashboard's `client.ts` falls back to mock data when the FastAPI backend
+is unreachable; with `server.py` live, it surfaces the real `runs`,
+`records`, and per-run telemetry written by
+`learnkit/core.py:insert_run`.

@@ -3,10 +3,10 @@
 This wrapper executes benchmarks.run_agentic_suite once per model endpoint,
 collects each suite summary, and writes a merged matrix report.
 
-Default targets match the user's hosted setup:
-- qwen-instruct @ :8000
-- llama-3.1-8b @ :8001
-- qwen-coder @ :8002
+Default targets match the supported MVP lane (self-hosted Qwen via sglang):
+- Qwen/Qwen2.5-Coder-32B-Instruct @ :8000
+- Qwen/Qwen2.5-32B-Instruct       @ :8001
+- Qwen/Qwen2.5-14B-Instruct       @ :8002
 
 Usage:
     python -m benchmarks.run_agentic_matrix --trials 1 --k 1 --seed 7
@@ -33,9 +33,9 @@ RESULTS_DIR = ROOT / "results"
 
 DEFAULT_TARGETS = [
     {
-        "name": "hermes-3-llama-3.1-8b",
+        "name": "qwen2.5-coder-32b",
         "base_url": "http://127.0.0.1:8000/v1",
-        "model": "NousResearch/Hermes-3-Llama-3.1-8B",
+        "model": "Qwen/Qwen2.5-Coder-32B-Instruct",
     },
     {
         "name": "qwen2.5-32b",

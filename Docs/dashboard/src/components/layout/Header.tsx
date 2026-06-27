@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import styles from './Header.module.css';
 import { Home, LayoutDashboard, BookOpen, FileText, Settings, Circle } from '../icons';
@@ -10,6 +10,25 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarOpen }) => {
   const location = useLocation();
+  const [backendLive, setBackendLive] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const probe = async () => {
+      try {
+        const res = await fetch('/healthz', { cache: 'no-store' });
+        if (!cancelled) setBackendLive(res.ok);
+      } catch {
+        if (!cancelled) setBackendLive(false);
+      }
+    };
+    probe();
+    const id = setInterval(probe, 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
 
   const navLinks = [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -70,10 +89,15 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarOpen }) 
         <div className={styles.right}>
           <div
             className={styles.mockBadge}
-            title="Mock data mode — falls back to live API when the backend is running"
+            title={
+              backendLive
+                ? 'Live data — connected to the LearnKit FastAPI backend on /api/v1'
+                : 'Mock data mode — backend not reachable; falls back to local cache'
+            }
+            style={backendLive ? { color: '#3fb950', borderColor: '#3fb950' } : undefined}
           >
             <Circle size={8} className={styles.mockDot} fill="currentColor" />
-            <span>Mock data</span>
+            <span>{backendLive ? 'Live data' : 'Mock data'}</span>
           </div>
           <div className={styles.avatar} aria-label="User avatar" role="img">
             LK

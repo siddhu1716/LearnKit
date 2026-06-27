@@ -266,14 +266,14 @@ memory.maintain_memory(weeks=1, decay_rate=0.02, quarantine_hours=24)
 
 | File | Read when… |
 |---|---|
-| [`agents.md`](agents.md) | …you are writing or reviewing code. It is the strict architectural blueprint and rulebook. |
-| [`AGENTS_V2.md`](AGENTS_V2.md) | …you are on the production hardening branch (`lk_v0.0.1`) — lists hardening tasks, ship checklist, integration test plan. |
-| [`improvements.md`](improvements.md) | …you are picking up the next pending enhancement. |
+| [`Docs/learnkit_architecture.md`](Docs/learnkit_architecture.md) | …you need the full mechanism diagrams and the agent-path runtime flow. |
+| [`improvements.md`](improvements.md) | …you are picking up the next pending enhancement or want the MVP handover snapshot. |
+| [`Docs/LEARNKIT_CONSOLIDATED_FLOW_PLAN.md`](Docs/LEARNKIT_CONSOLIDATED_FLOW_PLAN.md) | …you want the consolidated execution-flow document (roadmap, backlog, benchmark gates). |
 
 Run the test suite:
 
 ```bash
-pytest tests/ -q       # 48 passing, ~1s
+pytest tests/ -q       # 167 passed, 1 xfailed
 ```
 
 Pre-commit hooks (black / ruff / isort / whitespace / yaml / debug-statements) are enforced on commit:
@@ -287,11 +287,36 @@ pre-commit install
 
 # Status
 
-**v0.0.2 — Live Pre-Release.** The full ingest / query / maintain loop runs end-to-end with SQLite + FTS5 + DSPy classifier + LLM-judge evaluator + structured distiller, and includes an agentic procedural-learning path (`@memory.agent_learn`) with replay and guided sibling reuse. Published and installable from PyPI as `learnkit-ai`.
+**v0.0.2 — MVP handover-ready (2026-06-27).** The full ingest / query / maintain
+loop runs end-to-end with SQLite + FTS5 + DSPy classifier + LLM-judge
+evaluator + structured distiller, and includes an agentic procedural-learning
+path (`@memory.agent_learn`) with replay and guided sibling reuse. Published
+and installable from PyPI as `learnkit-ai`.
 
-Latest benchmark highlights:
+Supported MVP lane (verified end-to-end): self-hosted Qwen via sglang —
+`Qwen/Qwen2.5-Coder-32B-Instruct`, `Qwen/Qwen2.5-32B-Instruct`,
+`Qwen/Qwen2.5-14B-Instruct`. See
+[`improvements.md` → MVP Handover Snapshot](improvements.md) for the
+supported environment table, known limitations, and the handover checklist.
 
-- Live ReAct (`benchmarks/react_live.py`): LLM planning calls reduced 21 -> 8 (about 62%) with success held.
-- Injection ablation (`benchmarks/injection_ablation.py`): on novel sibling tasks, procedure-only guidance was weak while playbook injection reached full compliance in the observed run.
+Latest published benchmark numbers (Qwen2.5-7B-Instruct reference,
+2026-06-21):
 
-See [`benchmarks/README.md`](benchmarks/README.md) for benchmark coverage and run commands.
+- Live ReAct ([`benchmarks/react_live.py`](benchmarks/react_live.py)): LLM
+  planning calls 21 → 8 (~62% reduction), success preserved 6/6 → 6/6.
+- Evolution ([`benchmarks/evolution_live.py`](benchmarks/evolution_live.py)):
+  LLM calls 58 → 20 (~66% reduction), success preserved 16/16 → 16/16,
+  evolved=true.
+- Injection ablation
+  ([`benchmarks/injection_ablation.py`](benchmarks/injection_ablation.py)):
+  `playbook_effect = +2.625`, `pass^k(full) = 1.0`; the agentic suite gate
+  (`min_playbook_effect >= 0.5`) PASSES.
+
+Cross-model matrix (same seed/tasks):
+[`Docs/FINAL_MODEL_MATRIX_2026-06-21.txt`](Docs/FINAL_MODEL_MATRIX_2026-06-21.txt).
+Single-model published numbers:
+[`Docs/FINAL_BENCHMARK_NUMBERS_2026-06-21.txt`](Docs/FINAL_BENCHMARK_NUMBERS_2026-06-21.txt).
+
+See [`benchmarks/README.md`](benchmarks/README.md) for benchmark coverage,
+run commands, and how to point benchmark runs at the live observability
+dashboard via `LEARNKIT_DB_PATH`.

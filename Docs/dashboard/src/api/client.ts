@@ -594,12 +594,13 @@ export const client = {
   },
 
   async getActivityFeed(): Promise<ActivityEvent[]> {
-    return apiRequest<ActivityEvent[]>(
+    const payload = await apiRequest<ActivityEvent[] | { events: ActivityEvent[] }>(
       `${BASE_URL}/activity`,
       undefined,
       STORAGE_KEYS.ACTIVITY,
       MOCK_ACTIVITY
     );
+    return parseEnvelopeArray<ActivityEvent>(payload, 'events');
   },
 
   async logActivity(message: string, icon = 'reinforce') {

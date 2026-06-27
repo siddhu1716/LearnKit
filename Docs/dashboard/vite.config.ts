@@ -12,12 +12,14 @@ export default defineConfig({
     port: 5173,
     open: '/index.html',
     proxy: {
+      // FastAPI dashboard backend (Docs/server.py) listens on 8090.
+      // Port 8000 is reserved for the self-hosted sglang Qwen endpoint.
       '/api': {
-        target: 'http://127.0.0.1:8000',
+        target: 'http://127.0.0.1:8090',
         changeOrigin: true,
       },
       '/healthz': {
-        target: 'http://127.0.0.1:8000',
+        target: 'http://127.0.0.1:8090',
         changeOrigin: true,
       },
     },

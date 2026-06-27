@@ -42,3 +42,41 @@ This is the Vite + React + TypeScript observability dashboard for LearnKit, buil
 ## API Proxy
 
 The Vite dev server is configured with a proxy to forward API requests starting with `/api` to the local FastAPI backend running at `http://127.0.0.1:8000`. If the FastAPI backend is offline or pending the implementation of the v1.1 endpoints, the dashboard automatically falls back to a mock simulation layer powered by `localStorage` so all screens remain fully functional and interactive.
+
+## See real data instead of mock
+
+The mock fallback is what you see on a fresh checkout. To wire the dashboard
+to **real agent runs** (real `records`, real `runs` with per-run telemetry):
+
+1. Start the FastAPI backend that serves `/api/v1/*` against the live store:
+
+   ```bash
+   # from repo root
+   export LEARNKIT_DB_PATH="$HOME/.learnkit/memory.db"      # default; override per-store
+   # Windows PowerShell: $env:LEARNKIT_DB_PATH = "$HOME\.learnkit\memory.db"
+   python Docs/server.py                                     # FastAPI on :8000
+   ```
+
+2. Generate some runs into the same DB (any `@lk.agent` or `@lk.agent_learn`
+   script that uses `LearnKit(db_path=os.environ["LEARNKIT_DB_PATH"])`):
+
+   ```bash
+   python examples/minimal_agent.py                          # writes runs + records
+   ```
+
+3. Run this dashboard against that backend:
+
+   ```bash
+   cd Docs/dashboard && npm run dev                          # http://localhost:5173/dashboard/
+   ```
+
+The API contract the client expects is implemented in
+[`Docs/server.py`](../server.py) (`/api/v1/metrics`, `/records`,
+`/records/{id}`, `/records/{id}/reinforce|demote`, `/tasks`,
+`/observability`). Anything the backend does not yet implement gracefully
+falls back to mock per-screen so the UI never breaks.
+
+> **Note (MVP):** the `agentic_*` benchmarks under `benchmarks/` use
+> `db_path=":memory:"` so their gate runs stay self-contained. They do **not**
+> populate the dashboard. Use the path above (or any agent script with
+> `db_path` pointed at `$LEARNKIT_DB_PATH`) to see real traces in the UI.
