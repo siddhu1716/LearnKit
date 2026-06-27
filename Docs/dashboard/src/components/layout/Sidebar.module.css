@@ -22,6 +22,34 @@
   padding: var(--space-md) var(--space-xs);
 }
 
+.section {
+  margin-bottom: var(--space-md);
+}
+
+.section + .section {
+  padding-top: var(--space-xs);
+  border-top: 1px solid var(--border);
+}
+
+.sectionHeading {
+  display: block;
+  padding: var(--space-xs) var(--space-md) 6px;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+  transition: opacity 0.15s ease;
+}
+
+.collapsed .sectionHeading {
+  opacity: 0;
+  height: 8px;
+  overflow: hidden;
+}
+
 .navList {
   list-style: none;
   padding: 0;
@@ -101,6 +129,8 @@
 .arrow {
   font-size: 0.65rem;
   color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
   transition: transform 0.2s var(--ease);
 }
 

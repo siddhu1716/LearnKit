@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { SkeletonLoader } from '../components/ui/SkeletonLoader';
 import { toast } from '../components/ui/Toast';
+import { AlertTriangle, CheckCircle2 } from '../components/icons';
 import type { DashboardMetrics, CrowdedOutRecord } from '../types';
 import styles from './RetrievalQuality.module.css';
 
@@ -134,7 +135,7 @@ export const RetrievalQuality: React.FC = () => {
           <div className={styles.cardValGroup}>
             <div className={styles.cardVal}>
               {metrics.retrieval.avgRedundancy.toFixed(2)}
-              <span className={`${styles.statusBadge} ${styles.lowRedundancy}`}>🟢 low</span>
+              <span className={`${styles.statusBadge} ${styles.lowRedundancy}`}>low</span>
             </div>
             <div className={styles.cardSubVal}>
               Lower redundancy = more diverse & complementary info injected.
@@ -199,11 +200,11 @@ export const RetrievalQuality: React.FC = () => {
           />
           <div className={styles.sliderDetails}>
             {lambda === 1.0 ? (
-              <span className={styles.warnText}>⚠️ Lambda=1.0: Near-duplicate guidelines will stack up and consume token space.</span>
+              <span className={styles.warnText}><AlertTriangle size={14} /> Lambda=1.0: Near-duplicate guidelines will stack up and consume token space.</span>
             ) : lambda < 0.3 ? (
-              <span className={styles.warnText}>⚠️ Low Lambda: Highly diverse records are injected, but they may be less relevant to the exact task query.</span>
+              <span className={styles.warnText}><AlertTriangle size={14} /> Low Lambda: Highly diverse records are injected, but they may be less relevant to the exact task query.</span>
             ) : (
-              <span className={styles.successText}>🟢 Recommended range (0.6 - 0.8): Perfect balance of relevance and coverage.</span>
+              <span className={styles.successText}><CheckCircle2 size={14} /> Recommended range (0.6 - 0.8): Perfect balance of relevance and coverage.</span>
             )}
           </div>
         </div>
@@ -249,7 +250,7 @@ export const RetrievalQuality: React.FC = () => {
           ))}
           {crowdedOut.length === 0 && (
             <div className={styles.noCrowded}>
-              🎉 No records are currently being crowded out. Diversity is perfectly configured.
+              <CheckCircle2 size={15} /> No records are currently being crowded out. Diversity is perfectly configured.
             </div>
           )}
         </div>

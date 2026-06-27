@@ -5,8 +5,13 @@ import { DataTable, Column } from '../components/ui/DataTable';
 import { Badge } from '../components/ui/Badge';
 import { SkeletonLoader } from '../components/ui/SkeletonLoader';
 import { toast } from '../components/ui/Toast';
+import { Search, RefreshCw } from '../components/icons';
 import type { Task } from '../types';
 import styles from './TaskHistory.module.css';
+
+const fmtTokens = (n?: number) => (n == null ? '—' : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : `${n}`);
+const fmtCost = (n?: number) => (n == null ? '—' : `$${n.toFixed(4)}`);
+const fmtMs = (n?: number | null) => (n == null ? '—' : `${Math.round(n)} ms`);
 
 export const TaskHistory: React.FC = () => {
   const navigate = useNavigate();
@@ -58,13 +63,13 @@ export const TaskHistory: React.FC = () => {
     {
       key: 'input',
       label: 'Query / Input Task',
-      width: '40%',
+      width: '26%',
       render: (v) => <span className={styles.inputVal} title={String(v)}>{String(v)}</span>,
     },
     {
       key: 'status',
       label: 'Status',
-      width: '13%',
+      width: '9%',
       render: (v) => (
         <Badge variant={v === 'success' ? 'success' : 'error'}>
           {String(v).toUpperCase()}
@@ -73,24 +78,42 @@ export const TaskHistory: React.FC = () => {
     },
     {
       key: 'score',
-      label: 'Quality Score',
-      width: '12%',
+      label: 'Score',
+      width: '9%',
       render: (v) => <span className={styles.monoId}>{Number(v).toFixed(1)} / 5.0</span>,
     },
     {
-      key: 'armName',
-      label: 'Evaluation Arm',
-      width: '13%',
-      render: (v) => (
-        <Badge variant={v === 'prescriptive' ? 'accent' : v === 'guided' ? 'info' : 'neutral'}>
-          {String(v)}
-        </Badge>
+      key: 'tokens',
+      label: 'Tokens',
+      width: '8%',
+      render: (_v, row) => <span className={styles.monoId}>{fmtTokens(row.telemetry?.totalTokens)}</span>,
+    },
+    {
+      key: 'cost',
+      label: 'Cost',
+      width: '8%',
+      render: (_v, row) => <span className={styles.monoId}>{fmtCost(row.telemetry?.costUsd)}</span>,
+    },
+    {
+      key: 'latency',
+      label: 'Latency',
+      width: '9%',
+      render: (_v, row) => <span className={styles.monoId}>{fmtMs(row.telemetry?.latencyMs)}</span>,
+    },
+    {
+      key: 'model',
+      label: 'Model',
+      width: '12%',
+      render: (_v, row) => (
+        <span className={styles.modelCell} title={row.telemetry?.model ?? ''}>
+          {row.telemetry?.model ? row.telemetry.model.split('/').pop() : '—'}
+        </span>
       ),
     },
     {
       key: 'timestamp',
-      label: 'Time executed',
-      width: '10%',
+      label: 'Time',
+      width: '9%',
       render: (v) => (
         <span className={styles.timeVal}>
           {new Date(String(v)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -109,14 +132,14 @@ export const TaskHistory: React.FC = () => {
           </p>
         </div>
         <button className={styles.refreshBtn} onClick={fetchTasks}>
-          Refresh ↻
+          <RefreshCw size={14} /> Refresh
         </button>
       </header>
 
       {/* Filter and Search controls */}
       <div className={styles.controls}>
         <div className={styles.searchWrap}>
-          <span className={styles.searchIcon}>🔍</span>
+          <span className={styles.searchIcon}><Search size={15} /></span>
           <input
             type="text"
             placeholder="Search tasks, query prompt, evaluation arm..."

@@ -66,6 +66,19 @@ export interface DashboardMetrics {
   retrieval: RetrievalMetrics;
 }
 
+export interface RunTelemetry {
+  latencyMs: number | null;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  contextTokens: number;
+  costUsd: number;
+  model: string | null;
+  models: Record<string, string>;
+  estimated: boolean;
+  labels: string[];
+}
+
 export interface Task {
   id: string;
   input: string;
@@ -76,6 +89,7 @@ export interface Task {
   agentId?: string;
   toolCalls?: number;
   callsReduced?: number;
+  telemetry?: RunTelemetry;
 }
 
 export interface Agent {
@@ -86,6 +100,9 @@ export interface Agent {
   callsReduced: number;
   skillsLearned: number;
   avgScore: number | null;
+  totalTokens?: number;
+  totalCost?: number;
+  avgLatencyMs?: number | null;
   createdAt: string | null;
   lastActive: string | null;
 }
@@ -112,7 +129,58 @@ export interface AgentStats {
   callsReduced: number;
   totalToolCalls: number;
   skillsLearned: number;
+  totalTokens?: number;
+  totalCost?: number;
+  avgLatencyMs?: number | null;
   curve: AgentCurvePoint[];
+}
+
+export interface ModelUsage {
+  model: string;
+  runs: number;
+  tokens: number;
+  costUsd: number;
+}
+
+export interface ObservabilityPoint {
+  date: string;
+  tokens: number;
+  costUsd: number;
+  runs: number;
+  avgLatencyMs: number | null;
+}
+
+export interface ObservabilitySummary {
+  lastUpdated: string;
+  estimated: boolean;
+  totals: {
+    runs: number;
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    costUsd: number;
+    avgTokensPerRun: number;
+    avgCostPerRun: number;
+  };
+  latency: {
+    avgMs: number | null;
+    p50Ms: number | null;
+    p95Ms: number | null;
+    p99Ms: number | null;
+  };
+  models: ModelUsage[];
+  timeseries: ObservabilityPoint[];
+}
+
+export interface BlogPost {
+  slug: string;
+  title: string;
+  description: string;
+  author: string;
+  date: string;
+  readingMinutes: number;
+  tags: string[];
+  body: string;
 }
 
 export interface TraceMatch {

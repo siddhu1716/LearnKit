@@ -184,10 +184,34 @@ class SQLiteBackend(BaseBackend):
                         record_ids TEXT,
                         signature_fp TEXT,
                         steps TEXT,
-                        created_at TEXT
+                        created_at TEXT,
+                        latency_ms REAL,
+                        prompt_tokens INTEGER DEFAULT 0,
+                        completion_tokens INTEGER DEFAULT 0,
+                        total_tokens INTEGER DEFAULT 0,
+                        context_tokens INTEGER DEFAULT 0,
+                        cost_usd REAL DEFAULT 0,
+                        models TEXT,
+                        estimated INTEGER DEFAULT 1
                     )
                 """
                 )
+                # Migrate older DBs that predate the telemetry columns.
+                existing_cols = {
+                    row[1] for row in conn.execute("PRAGMA table_info(runs)").fetchall()
+                }
+                for col, ddl in (
+                    ("latency_ms", "REAL"),
+                    ("prompt_tokens", "INTEGER DEFAULT 0"),
+                    ("completion_tokens", "INTEGER DEFAULT 0"),
+                    ("total_tokens", "INTEGER DEFAULT 0"),
+                    ("context_tokens", "INTEGER DEFAULT 0"),
+                    ("cost_usd", "REAL DEFAULT 0"),
+                    ("models", "TEXT"),
+                    ("estimated", "INTEGER DEFAULT 1"),
+                ):
+                    if col not in existing_cols:
+                        conn.execute(f"ALTER TABLE runs ADD COLUMN {col} {ddl}")
                 conn.execute(
                     "CREATE INDEX IF NOT EXISTS idx_runs_agent ON runs (agent_id)"
                 )
@@ -774,8 +798,9 @@ class SQLiteBackend(BaseBackend):
                         run_id, agent_id, agent_name, task, task_type, domains,
                         tool_calls, baseline_calls, calls_reduced, replayed,
                         outcome, quality_score, record_ids, signature_fp, steps,
-                        created_at
-                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                        created_at, latency_ms, prompt_tokens, completion_tokens,
+                        total_tokens, context_tokens, cost_usd, models, estimated
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """,
                     (
                         run["run_id"],
@@ -794,6 +819,14 @@ class SQLiteBackend(BaseBackend):
                         run.get("signature_fp"),
                         json.dumps(run.get("steps", [])),
                         run.get("created_at"),
+                        run.get("latency_ms"),
+                        int(run.get("prompt_tokens", 0) or 0),
+                        int(run.get("completion_tokens", 0) or 0),
+                        int(run.get("total_tokens", 0) or 0),
+                        int(run.get("context_tokens", 0) or 0),
+                        float(run.get("cost_usd", 0) or 0),
+                        json.dumps(run.get("models", {})),
+                        1 if run.get("estimated", True) else 0,
                     ),
                 )
             return run["run_id"]
@@ -802,6 +835,7 @@ class SQLiteBackend(BaseBackend):
 
     @staticmethod
     def _run_row_to_dict(row: sqlite3.Row) -> dict:
+        keys = row.keys()
         return {
             "run_id": row["run_id"],
             "agent_id": row["agent_id"],
@@ -819,6 +853,16 @@ class SQLiteBackend(BaseBackend):
             "signature_fp": row["signature_fp"],
             "steps": json.loads(row["steps"]) if row["steps"] else [],
             "created_at": row["created_at"],
+            "latency_ms": row["latency_ms"] if "latency_ms" in keys else None,
+            "prompt_tokens": row["prompt_tokens"] if "prompt_tokens" in keys else 0,
+            "completion_tokens": row["completion_tokens"] if "completion_tokens" in keys else 0,
+            "total_tokens": row["total_tokens"] if "total_tokens" in keys else 0,
+            "context_tokens": row["context_tokens"] if "context_tokens" in keys else 0,
+            "cost_usd": row["cost_usd"] if "cost_usd" in keys else 0.0,
+            "models": (
+                json.loads(row["models"]) if "models" in keys and row["models"] else {}
+            ),
+            "estimated": bool(row["estimated"]) if "estimated" in keys else True,
         }
 
     def list_runs(
@@ -873,6 +917,9 @@ class SQLiteBackend(BaseBackend):
                     SUM(CASE WHEN calls_reduced > 0 THEN calls_reduced ELSE 0 END) AS calls_reduced,
                     SUM(CASE WHEN replayed = 0 AND outcome = 'success' THEN 1 ELSE 0 END) AS skills_learned,
                     AVG(quality_score) AS avg_score,
+                    SUM(COALESCE(total_tokens, 0)) AS total_tokens,
+                    SUM(COALESCE(cost_usd, 0)) AS total_cost,
+                    AVG(latency_ms) AS avg_latency_ms,
                     MIN(created_at) AS created_at,
                     MAX(created_at) AS last_active
                 FROM runs
@@ -890,6 +937,9 @@ class SQLiteBackend(BaseBackend):
                     "calls_reduced": r["calls_reduced"] or 0.0,
                     "skills_learned": r["skills_learned"] or 0,
                     "avg_score": r["avg_score"],
+                    "total_tokens": r["total_tokens"] or 0,
+                    "total_cost": r["total_cost"] or 0.0,
+                    "avg_latency_ms": r["avg_latency_ms"],
                     "created_at": r["created_at"],
                     "last_active": r["last_active"],
                 }

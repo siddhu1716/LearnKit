@@ -17,6 +17,8 @@ import type {
   CrowdedOutRecord,
   Agent,
   AgentStats,
+  ObservabilitySummary,
+  RunTelemetry,
 } from '../types';
 
 export const MOCK_METRICS: DashboardMetrics = {
@@ -67,12 +69,12 @@ export const MOCK_PROBLEM_FAILURES: ProblematicFailure[] = [
 ];
 
 export const MOCK_ACTIVITY: ActivityEvent[] = [
-  { time: '14:32', icon: '📚', message: 'New skill distilled: "Handle Refunds"' },
-  { time: '14:15', icon: '❌', message: 'Failure pattern created: "Max Retries Exceeded"' },
-  { time: '13:48', icon: '✅', message: 'Task completed: Help rate +1 for "Order Flow"' },
-  { time: '13:22', icon: '🗑️', message: 'Low-quality record auto-purged (quality_score 0.2)' },
-  { time: '12:55', icon: '🔄', message: 'Skill sk-0012 confidence updated: 0.78 → 0.83' },
-  { time: '12:30', icon: '📊', message: 'Memory maintenance complete: 3 promoted, 1 staled' },
+  { time: '14:32', icon: 'distill', message: 'New skill distilled: "Handle Refunds"' },
+  { time: '14:15', icon: 'failure', message: 'Failure pattern created: "Max Retries Exceeded"' },
+  { time: '13:48', icon: 'success', message: 'Task completed: Help rate +1 for "Order Flow"' },
+  { time: '13:22', icon: 'purge', message: 'Low-quality record auto-purged (quality_score 0.2)' },
+  { time: '12:55', icon: 'reinforce', message: 'Skill sk-0012 confidence updated: 0.78 → 0.83' },
+  { time: '12:30', icon: 'maintain', message: 'Memory maintenance complete: 3 promoted, 1 staled' },
 ];
 
 export const MOCK_RECORDS: MemoryRecord[] = [
@@ -158,20 +160,39 @@ export const MOCK_RECORDS: MemoryRecord[] = [
   },
 ];
 
+const tel = (
+  latencyMs: number,
+  total: number,
+  cost: number,
+  model: string,
+  labels: string[],
+): RunTelemetry => ({
+  latencyMs,
+  promptTokens: Math.round(total * 0.82),
+  completionTokens: Math.round(total * 0.18),
+  totalTokens: total,
+  contextTokens: Math.round(total * 0.3),
+  costUsd: cost,
+  model,
+  models: { classifier: model, evaluator: model, distiller: model },
+  estimated: true,
+  labels,
+});
+
 export const MOCK_TASKS: Task[] = [
-  { id: 't-047', input: 'Refund Request Processing for ORD-12345', status: 'success', score: 5.0, armName: 'warmed', timestamp: '2026-06-13T14:32:00Z', agentId: 'agent-support', toolCalls: 3, callsReduced: 4 },
-  { id: 't-046', input: 'Apply discount code SUMMER20 to cart', status: 'success', score: 4.8, armName: 'warmed', timestamp: '2026-06-13T14:15:00Z', agentId: 'agent-support', toolCalls: 2, callsReduced: 3 },
-  { id: 't-045', input: 'Escalate complaint about delayed shipment', status: 'success', score: 4.2, armName: 'guided', timestamp: '2026-06-13T13:48:00Z', agentId: 'agent-support', toolCalls: 5, callsReduced: 1 },
-  { id: 't-044', input: 'Handle API max retries during checkout', status: 'failure', score: 1.5, armName: 'warmed', timestamp: '2026-06-13T13:22:00Z', agentId: 'agent-sql', toolCalls: 7, callsReduced: 0 },
-  { id: 't-043', input: 'Generate monthly sales report summary', status: 'success', score: 4.9, armName: 'warmed', timestamp: '2026-06-13T12:55:00Z', agentId: 'agent-sql', toolCalls: 2, callsReduced: 5 },
-  { id: 't-042', input: 'Answer customer question about return policy', status: 'success', score: 5.0, armName: 'prescriptive', timestamp: '2026-06-13T12:30:00Z', agentId: 'agent-support', toolCalls: 1, callsReduced: 4 },
-  { id: 't-041', input: 'Process bulk order for enterprise client', status: 'failure', score: 2.1, armName: 'exploratory', timestamp: '2026-06-13T11:45:00Z', agentId: 'agent-sql', toolCalls: 8, callsReduced: 0 },
-  { id: 't-040', input: 'Update customer preference for email frequency', status: 'success', score: 4.7, armName: 'warmed', timestamp: '2026-06-13T11:20:00Z', agentId: 'agent-support', toolCalls: 2, callsReduced: 3 },
+  { id: 't-047', input: 'Refund Request Processing for ORD-12345', status: 'success', score: 5.0, armName: 'warmed', timestamp: '2026-06-13T14:32:00Z', agentId: 'agent-support', toolCalls: 3, callsReduced: 4, telemetry: tel(1840, 1920, 0.0021, 'anthropic/claude-haiku-4-5', ['replayed', 'refund', 'calls-reduced']) },
+  { id: 't-046', input: 'Apply discount code SUMMER20 to cart', status: 'success', score: 4.8, armName: 'warmed', timestamp: '2026-06-13T14:15:00Z', agentId: 'agent-support', toolCalls: 2, callsReduced: 3, telemetry: tel(1520, 1610, 0.0017, 'anthropic/claude-haiku-4-5', ['replayed', 'discount', 'calls-reduced']) },
+  { id: 't-045', input: 'Escalate complaint about delayed shipment', status: 'success', score: 4.2, armName: 'guided', timestamp: '2026-06-13T13:48:00Z', agentId: 'agent-support', toolCalls: 5, callsReduced: 1, telemetry: tel(2630, 2840, 0.0036, 'anthropic/claude-haiku-4-5', ['escalation']) },
+  { id: 't-044', input: 'Handle API max retries during checkout', status: 'failure', score: 1.5, armName: 'warmed', timestamp: '2026-06-13T13:22:00Z', agentId: 'agent-sql', toolCalls: 7, callsReduced: 0, telemetry: tel(3920, 3450, 0.0044, 'anthropic/claude-haiku-4-5', ['replayed', 'api']) },
+  { id: 't-043', input: 'Generate monthly sales report summary', status: 'success', score: 4.9, armName: 'warmed', timestamp: '2026-06-13T12:55:00Z', agentId: 'agent-sql', toolCalls: 2, callsReduced: 5, telemetry: tel(2180, 2950, 0.0061, 'anthropic/claude-sonnet-4', ['sql', 'calls-reduced']) },
+  { id: 't-042', input: 'Answer customer question about return policy', status: 'success', score: 5.0, armName: 'prescriptive', timestamp: '2026-06-13T12:30:00Z', agentId: 'agent-support', toolCalls: 1, callsReduced: 4, telemetry: tel(1190, 980, 0.0011, 'anthropic/claude-haiku-4-5', ['replayed', 'policy', 'calls-reduced']) },
+  { id: 't-041', input: 'Process bulk order for enterprise client', status: 'failure', score: 2.1, armName: 'exploratory', timestamp: '2026-06-13T11:45:00Z', agentId: 'agent-sql', toolCalls: 8, callsReduced: 0, telemetry: tel(4510, 4120, 0.0078, 'anthropic/claude-sonnet-4', ['bulk']) },
+  { id: 't-040', input: 'Update customer preference for email frequency', status: 'success', score: 4.7, armName: 'warmed', timestamp: '2026-06-13T11:20:00Z', agentId: 'agent-support', toolCalls: 2, callsReduced: 3, telemetry: tel(1430, 1280, 0.0014, 'anthropic/claude-haiku-4-5', ['replayed', 'preference', 'calls-reduced']) },
 ];
 
 export const MOCK_AGENTS: Agent[] = [
-  { id: 'agent-support', name: 'Support Agent', taskCount: 5, successRate: 1.0, callsReduced: 17, skillsLearned: 4, avgScore: 4.84, createdAt: '2026-06-13T11:20:00Z', lastActive: '2026-06-13T14:32:00Z' },
-  { id: 'agent-sql', name: 'SQL Authoring Agent', taskCount: 3, successRate: 0.33, callsReduced: 5, skillsLearned: 1, avgScore: 2.83, createdAt: '2026-06-13T11:45:00Z', lastActive: '2026-06-13T13:22:00Z' },
+  { id: 'agent-support', name: 'Support Agent', taskCount: 5, successRate: 1.0, callsReduced: 17, skillsLearned: 4, avgScore: 4.84, totalTokens: 8770, totalCost: 0.0074, avgLatencyMs: 1474, createdAt: '2026-06-13T11:20:00Z', lastActive: '2026-06-13T14:32:00Z' },
+  { id: 'agent-sql', name: 'SQL Authoring Agent', taskCount: 3, successRate: 0.33, callsReduced: 5, skillsLearned: 1, avgScore: 2.83, totalTokens: 10520, totalCost: 0.0183, avgLatencyMs: 3650, createdAt: '2026-06-13T11:45:00Z', lastActive: '2026-06-13T13:22:00Z' },
 ];
 
 export const MOCK_AGENT_STATS: Record<string, AgentStats> = {
@@ -195,6 +216,32 @@ export const MOCK_AGENT_STATS: Record<string, AgentStats> = {
       { index: 3, task: 'Handle API max retries', toolCalls: 7, baselineCalls: 7, callsReduced: 0, replayed: true, outcome: 'failure', score: 1.5, cumulativeSkills: 1, successRate: 0.33, timestamp: '2026-06-13T13:22:00Z' },
     ],
   },
+};
+
+export const MOCK_OBSERVABILITY: ObservabilitySummary = {
+  lastUpdated: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
+  estimated: true,
+  totals: {
+    runs: 8,
+    promptTokens: 15820,
+    completionTokens: 3470,
+    totalTokens: 19290,
+    costUsd: 0.0282,
+    avgTokensPerRun: 2411,
+    avgCostPerRun: 0.0035,
+  },
+  latency: { avgMs: 2402, p50Ms: 2010, p95Ms: 4380, p99Ms: 4510 },
+  models: [
+    { model: 'anthropic/claude-haiku-4-5', runs: 6, tokens: 9670, costUsd: 0.0118 },
+    { model: 'anthropic/claude-sonnet-4', runs: 2, tokens: 9620, costUsd: 0.0164 },
+  ],
+  timeseries: [
+    { date: '2026-06-09', tokens: 4200, costUsd: 0.0061, runs: 2, avgLatencyMs: 2200 },
+    { date: '2026-06-10', tokens: 5100, costUsd: 0.0074, runs: 3, avgLatencyMs: 2480 },
+    { date: '2026-06-11', tokens: 3600, costUsd: 0.0052, runs: 1, avgLatencyMs: 1980 },
+    { date: '2026-06-12', tokens: 2900, costUsd: 0.0041, runs: 1, avgLatencyMs: 3650 },
+    { date: '2026-06-13', tokens: 3490, costUsd: 0.0054, runs: 1, avgLatencyMs: 1840 },
+  ],
 };
 
 export const MOCK_TRACE: TraceDetail = {

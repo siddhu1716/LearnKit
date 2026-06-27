@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import styles from './Header.module.css';
+import { Home, LayoutDashboard, BookOpen, FileText, Settings, Circle } from '../icons';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -11,9 +12,14 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarOpen }) 
   const location = useLocation();
 
   const navLinks = [
-    { to: '/', label: 'Dashboard' },
-    { to: '/settings', label: 'Settings' },
+    { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+    { to: '/blog', label: 'Blog', icon: BookOpen, end: false },
+    { to: '/docs', label: 'Docs', icon: FileText, end: false },
+    { to: '/settings', label: 'Settings', icon: Settings, end: false },
   ];
+
+  const isActive = (to: string, end: boolean) =>
+    end ? location.pathname === to : location.pathname.startsWith(to);
 
   return (
     <header className={styles.header} role="banner">
@@ -40,33 +46,33 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarOpen }) 
         {/* Desktop nav */}
         <nav className={styles.nav} aria-label="Main navigation">
           <a href="index.html" className={styles.navLink}>
-            Home
+            <Home size={15} />
+            <span>Home</span>
           </a>
-          {navLinks.map((link) => (
-            <Link
-              key={link.to}
-              to={link.to}
-              className={`${styles.navLink} ${
-                location.pathname === link.to ? styles.active : ''
-              }`}
-            >
-              {link.label}
-            </Link>
-          ))}
-          <a
-            href="docs.html"
-            target="_blank"
-            rel="noopener"
-            className={styles.navLink}
-          >
-            Docs
-          </a>
+          {navLinks.map((link) => {
+            const Icon = link.icon;
+            return (
+              <Link
+                key={link.to}
+                to={link.to}
+                className={`${styles.navLink} ${
+                  isActive(link.to, link.end) ? styles.active : ''
+                }`}
+              >
+                <Icon size={15} />
+                <span>{link.label}</span>
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Right side */}
         <div className={styles.right}>
-          <div className={styles.mockBadge} title="Mock data mode — production API endpoints pending">
-            <span className={styles.mockDot} />
+          <div
+            className={styles.mockBadge}
+            title="Mock data mode — falls back to live API when the backend is running"
+          >
+            <Circle size={8} className={styles.mockDot} fill="currentColor" />
             <span>Mock data</span>
           </div>
           <div className={styles.avatar} aria-label="User avatar" role="img">
@@ -77,3 +83,4 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarOpen }) 
     </header>
   );
 };
+

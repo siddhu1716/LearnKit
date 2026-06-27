@@ -91,6 +91,9 @@
 }
 
 .navLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: var(--text-secondary);
   text-decoration: none;
   font-family: var(--font-main);
@@ -98,6 +101,7 @@
   font-weight: 500;
   transition: color 0.15s ease;
   padding: 4px 8px;
+  border-radius: var(--radius-sm);
 }
 
 .navLink:hover {
@@ -129,9 +133,7 @@
 }
 
 .mockDot {
-  width: 6px;
-  height: 6px;
-  background-color: var(--warn);
+  color: var(--warn);
   border-radius: 50%;
   animation: pulse 2s infinite;
 }

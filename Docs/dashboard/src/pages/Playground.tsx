@@ -4,6 +4,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { SkeletonLoader } from '../components/ui/SkeletonLoader';
 import { toast } from '../components/ui/Toast';
+import { AlertTriangle, Inbox } from '../components/icons';
 import styles from './Playground.module.css';
 
 interface PlaygroundDomain {
@@ -187,7 +188,7 @@ export const Playground: React.FC = () => {
                   ))}
                   {result.records.length === 0 && (
                     <div className={styles.noRecords}>
-                      ⚠️ No memories retrieved for this query. System will fall back to cold reasoning.
+                      <AlertTriangle size={15} /> No memories retrieved for this query. System will fall back to cold reasoning.
                     </div>
                   )}
                 </div>
@@ -203,7 +204,7 @@ export const Playground: React.FC = () => {
             </div>
           ) : (
             <div className={styles.noResult}>
-              📥 Submit a task query to view the compiled LearnKit system prompt outputs.
+              <Inbox size={16} /> Submit a task query to view the compiled LearnKit system prompt outputs.
             </div>
           )}
         </section>

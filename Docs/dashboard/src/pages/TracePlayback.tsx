@@ -105,7 +105,7 @@ export const TracePlayback: React.FC = () => {
         </div>
         <div className={styles.headerRight}>
           <Badge variant={trace.score >= 4.0 ? 'success' : 'error'}>
-            {trace.score >= 4.0 ? '✅ Success' : '❌ Failure'}
+            {trace.score >= 4.0 ? 'Success' : 'Failure'}
           </Badge>
           <span className={styles.headerScore}>Score: {trace.score.toFixed(1)} / 5.0</span>
         </div>
@@ -312,7 +312,7 @@ export const TracePlayback: React.FC = () => {
                       onClick={() => handleReinforce(attr.recordId)}
                       disabled={reinforcedIds[attr.recordId] || demotedIds[attr.recordId]}
                     >
-                      {reinforcedIds[attr.recordId] ? 'Reinforced 👍' : '👍 Reinforce'}
+                      {reinforcedIds[attr.recordId] ? 'Reinforced' : 'Reinforce'}
                     </Button>
                     <Button
                       variant={demotedIds[attr.recordId] ? 'danger' : 'secondary'}
@@ -320,7 +320,7 @@ export const TracePlayback: React.FC = () => {
                       onClick={() => handleDemote(attr.recordId)}
                       disabled={reinforcedIds[attr.recordId] || demotedIds[attr.recordId]}
                     >
-                      {demotedIds[attr.recordId] ? 'Demoted 👎' : '👎 Demote'}
+                      {demotedIds[attr.recordId] ? 'Demoted' : 'Demote'}
                     </Button>
                   </div>
                 </div>

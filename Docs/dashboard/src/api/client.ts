@@ -17,6 +17,7 @@ import type {
   CrowdedOutRecord,
   Agent,
   AgentStats,
+  ObservabilitySummary,
 } from '../types';
 
 import {
@@ -32,6 +33,7 @@ import {
   MOCK_ACTIVITY,
   MOCK_AGENTS,
   MOCK_AGENT_STATS,
+  MOCK_OBSERVABILITY,
 } from '../data/mockData';
 
 const BASE_URL = '/api/v1';
@@ -281,7 +283,7 @@ export const client = {
     localStorage.setItem(STORAGE_KEYS.RECORDS, JSON.stringify(records));
 
     // Log activity
-    await this.logActivity(`📚 New ${newRecord.type} created: "${newRecord.content.slice(0, 30)}..."`, '📚');
+    await this.logActivity(`New ${newRecord.type} created: "${newRecord.content.slice(0, 30)}..."`, 'distill');
 
     return newRecord;
   },
@@ -322,7 +324,7 @@ export const client = {
     const filtered = records.filter((r) => r.id !== id);
     localStorage.setItem(STORAGE_KEYS.RECORDS, JSON.stringify(filtered));
 
-    await this.logActivity(`🗑️ Record ${id} deleted`, '🗑️');
+    await this.logActivity(`Record ${id} deleted`, 'purge');
 
     return { deleted: true };
   },
@@ -357,7 +359,7 @@ export const client = {
     metrics.retrieval.diversityLambda = diversityLambda;
     localStorage.setItem(STORAGE_KEYS.METRICS, JSON.stringify(metrics));
 
-    await this.logActivity(`🔄 Diversity lambda updated to ${diversityLambda}`, '⚙️');
+    await this.logActivity(`Diversity lambda updated to ${diversityLambda}`, 'maintain');
 
     return config;
   },
@@ -429,7 +431,7 @@ export const client = {
       helpCount: record.helpCount + 1,
     });
 
-    await this.logActivity(`👍 Reinforced memory ${recordId} via task ${taskId}`, '🔄');
+    await this.logActivity(`Reinforced memory ${recordId} via task ${taskId}`, 'reinforce');
 
     return { id: recordId, confidence: newConf };
   },
@@ -454,7 +456,7 @@ export const client = {
       harmCount: record.harmCount + 1,
     });
 
-    await this.logActivity(`👎 Demoted memory ${recordId} via task ${taskId}`, '❌');
+    await this.logActivity(`Demoted memory ${recordId} via task ${taskId}`, 'failure');
 
     return { id: recordId, confidence: newConf };
   },
@@ -546,8 +548,8 @@ export const client = {
     }
 
     await this.logActivity(
-      `📊 Maintenance completed: ${promotedCount} promoted, ${decayedCount} decayed, ${staledCount} staled, ${purgedCount} purged`,
-      '📊'
+      `Maintenance completed: ${promotedCount} promoted, ${decayedCount} decayed, ${staledCount} staled, ${purgedCount} purged`,
+      'maintain'
     );
 
     return {
@@ -600,7 +602,7 @@ export const client = {
     );
   },
 
-  async logActivity(message: string, icon = '🔄') {
+  async logActivity(message: string, icon = 'reinforce') {
     const feed = await this.getActivityFeed();
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     feed.unshift({ time, icon, message });
@@ -635,6 +637,25 @@ export const client = {
       skillsLearned: 0,
       curve: [],
     };
+  },
+
+  // 6c. Observability — LLM token/latency/cost telemetry
+  async getObservability(agentId?: string): Promise<ObservabilitySummary> {
+    const url = agentId
+      ? `${BASE_URL}/observability?agentId=${encodeURIComponent(agentId)}`
+      : `${BASE_URL}/observability`;
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = (await res.json()) as ObservabilitySummary;
+        // An empty live store should still show the illustrative mock so the
+        // page is never blank during local development.
+        if (data && data.totals && data.totals.runs > 0) return data;
+      }
+    } catch (e) {
+      console.warn('GET /observability failed, falling back to mock');
+    }
+    return MOCK_OBSERVABILITY;
   },
 
   // 7. Playground Integrations

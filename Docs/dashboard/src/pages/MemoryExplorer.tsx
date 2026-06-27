@@ -7,6 +7,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { SkeletonLoader } from '../components/ui/SkeletonLoader';
 import { toast } from '../components/ui/Toast';
+import { Search } from '../components/icons';
 import type { MemoryRecord, RecordType, RecordStatus } from '../types';
 import styles from './MemoryExplorer.module.css';
 
@@ -229,7 +230,7 @@ export const MemoryExplorer: React.FC = () => {
       {/* Filter and Search controls */}
       <div className={styles.controls}>
         <div className={styles.searchWrap}>
-          <span className={styles.searchIcon}>🔍</span>
+          <span className={styles.searchIcon}><Search size={15} /></span>
           <input
             type="text"
             placeholder="Search content, task type, domains..."
@@ -289,10 +290,10 @@ export const MemoryExplorer: React.FC = () => {
                 </div>
                 <div className={styles.detailActions}>
                   <Button variant="secondary" size="sm" onClick={handleOpenEdit}>
-                    Edit ✏️
+                    Edit
                   </Button>
                   <Button variant="danger" size="sm" onClick={() => handleDelete(selectedRecord.id)}>
-                    Delete 🗑️
+                    Delete
                   </Button>
                 </div>
               </div>

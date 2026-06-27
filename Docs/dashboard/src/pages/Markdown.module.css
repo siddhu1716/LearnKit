@@ -1,0 +1,136 @@
+/* Shared prose styling for in-app Markdown (blog posts + docs). */
+
+.markdown {
+  color: var(--text-secondary);
+  font-family: var(--font-main);
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+.markdown > *:first-child {
+  margin-top: 0;
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4 {
+  color: var(--text-primary);
+  font-weight: 700;
+  line-height: 1.3;
+  margin: var(--space-xl) 0 var(--space-sm);
+}
+
+.markdown h1 {
+  font-size: 1.6rem;
+}
+
+.markdown h2 {
+  font-size: 1.3rem;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.markdown h3 {
+  font-size: 1.1rem;
+}
+
+.markdown p {
+  margin: 0 0 var(--space-md);
+}
+
+.markdown a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(0, 255, 136, 0.3);
+}
+
+.markdown a:hover {
+  border-bottom-color: var(--accent);
+}
+
+.markdown ul,
+.markdown ol {
+  margin: 0 0 var(--space-md);
+  padding-left: var(--space-lg);
+}
+
+.markdown li {
+  margin-bottom: 6px;
+}
+
+.markdown li::marker {
+  color: var(--text-muted);
+}
+
+.markdown strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.markdown blockquote {
+  margin: 0 0 var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border-left: 3px solid var(--accent);
+  background: var(--accent-dim);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--text-secondary);
+}
+
+.markdown blockquote p {
+  margin: 0;
+}
+
+.markdown code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--surface-accent);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  color: var(--accent);
+}
+
+.markdown pre {
+  background: var(--surface-accent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-md);
+  overflow-x: auto;
+  margin: 0 0 var(--space-md);
+}
+
+.markdown pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 var(--space-md);
+  font-size: 0.88rem;
+}
+
+.markdown th,
+.markdown td {
+  text-align: left;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+}
+
+.markdown th {
+  background: var(--surface-accent);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.markdown hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: var(--space-xl) 0;
+}

@@ -6,6 +6,7 @@ import { SuccessRateTrend } from '../components/charts/SuccessRateTrend';
 import { InjectionPie } from '../components/charts/InjectionPie';
 import { Badge } from '../components/ui/Badge';
 import { SkeletonLoader } from '../components/ui/SkeletonLoader';
+import { ActivityIcon, ArrowUpRight } from '../components/icons';
 import type { DashboardMetrics, SuccessRatePoint, TopSkill, ProblematicFailure, ActivityEvent, Agent } from '../types';
 import styles from './Overview.module.css';
 
@@ -152,7 +153,7 @@ export const Overview: React.FC = () => {
         onKeyDown={(e) => e.key === 'Enter' && navigate('/agents')}>
         <div className={styles.agentBandHeader}>
           <h2 className={styles.cardTitle}>How Your Agents Are Learning</h2>
-          <span className={styles.agentBandLink}>View all agents →</span>
+          <span className={styles.agentBandLink}>View all agents <ArrowUpRight size={14} /></span>
         </div>
         <div className={styles.agentBandStats}>
           <div className={styles.agentStat}>
@@ -202,7 +203,7 @@ export const Overview: React.FC = () => {
                 <span className={styles.listItemIndex}>{idx + 1}.</span>
                 <span className={styles.listItemName} title={s.name}>{s.name}</span>
                 <span className={styles.listItemValGreen}>
-                  {Math.round(s.helpRate * 100)}% ✅
+                  {Math.round(s.helpRate * 100)}%
                 </span>
               </li>
             ))}
@@ -218,7 +219,7 @@ export const Overview: React.FC = () => {
                 <span className={styles.listItemIndex}>{idx + 1}.</span>
                 <span className={styles.listItemName} title={f.name}>{f.name}</span>
                 <span className={styles.listItemValRed}>
-                  {Math.round(f.hurtRate * 100)}% ❌
+                  {Math.round(f.hurtRate * 100)}%
                 </span>
               </li>
             ))}
@@ -231,7 +232,9 @@ export const Overview: React.FC = () => {
           <ul className={styles.activityList}>
             {activity.map((act, idx) => (
               <li key={idx} className={styles.activityItem}>
-                <span className={styles.activityIcon}>{act.icon}</span>
+                <span className={styles.activityIcon}>
+                  <ActivityIcon type={act.icon} />
+                </span>
                 <div className={styles.activityContent}>
                   <div className={styles.activityMsg}>{act.message}</div>
                   <div className={styles.activityTime}>{act.time}</div>

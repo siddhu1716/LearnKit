@@ -11,6 +11,9 @@ import { Settings } from './pages/Settings';
 import { Playground } from './pages/Playground';
 import { Agents } from './pages/Agents';
 import { AgentDetail } from './pages/AgentDetail';
+import { Observability } from './pages/Observability';
+import { Blog } from './pages/Blog';
+import { BlogPost } from './pages/BlogPost';
 import { DocsHub } from './pages/DocsHub';
 import { ToastContainer } from './components/ui/Toast';
 
@@ -22,8 +25,11 @@ export const App: React.FC = () => {
           <Route path="/" element={<Overview />} />
           <Route path="/memory" element={<MemoryExplorer />} />
           <Route path="/playground" element={<Playground />} />
+          <Route path="/observability" element={<Observability />} />
           <Route path="/agents" element={<Agents />} />
           <Route path="/agents/:agentId" element={<AgentDetail />} />
+          <Route path="/blog" element={<Blog />} />
+          <Route path="/blog/:slug" element={<BlogPost />} />
           
           {/* Legacy redirects */}
           <Route path="/skills" element={<Navigate to="/memory?type=skill" replace />} />

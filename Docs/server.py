@@ -343,6 +343,37 @@ def _run_to_task(run: dict) -> dict:
         "agentId": run.get("agent_id"),
         "toolCalls": run.get("tool_calls", 0),
         "callsReduced": run.get("calls_reduced", 0),
+        "telemetry": _run_telemetry(run),
+    }
+
+
+def _primary_model(run: dict) -> Optional[str]:
+    models = run.get("models") or {}
+    if isinstance(models, dict):
+        return models.get("evaluator") or models.get("classifier") or next(iter(models.values()), None)
+    return None
+
+
+def _run_telemetry(run: dict) -> dict:
+    """Per-run observability block (tokens, latency, cost, model, labels)."""
+    labels = []
+    if run.get("replayed"):
+        labels.append("replayed")
+    if run.get("task_type"):
+        labels.append(str(run.get("task_type")))
+    if (run.get("calls_reduced") or 0) > 0:
+        labels.append("calls-reduced")
+    return {
+        "latencyMs": run.get("latency_ms"),
+        "promptTokens": run.get("prompt_tokens", 0) or 0,
+        "completionTokens": run.get("completion_tokens", 0) or 0,
+        "totalTokens": run.get("total_tokens", 0) or 0,
+        "contextTokens": run.get("context_tokens", 0) or 0,
+        "costUsd": round(float(run.get("cost_usd") or 0.0), 6),
+        "model": _primary_model(run),
+        "models": run.get("models") or {},
+        "estimated": bool(run.get("estimated", True)),
+        "labels": labels,
     }
 
 
@@ -466,6 +497,94 @@ def api_tasks(status: Optional[str] = None, agentId: Optional[str] = None) -> di
     return {"tasks": tasks}
 
 
+@app.get("/api/v1/observability")
+def api_observability(agentId: Optional[str] = None) -> dict:
+    """LLM observability summary: token usage, latency, cost, and per-model
+    breakdown, in the style of agent-observability dashboards.
+
+    Token and cost figures are estimated (LearnKit calls LLMs through DSPy,
+    which does not surface per-call usage); ``estimated`` flags this to the UI.
+    """
+    mem = _live()
+    runs = mem.backend.list_runs(agent_id=agentId, limit=2000)
+
+    total_runs = len(runs)
+    total_prompt = sum(int(r.get("prompt_tokens") or 0) for r in runs)
+    total_completion = sum(int(r.get("completion_tokens") or 0) for r in runs)
+    total_tokens = sum(int(r.get("total_tokens") or 0) for r in runs)
+    total_cost = sum(float(r.get("cost_usd") or 0.0) for r in runs)
+    latencies = [float(r["latency_ms"]) for r in runs if r.get("latency_ms") is not None]
+
+    def _pct(values: list[float], p: float) -> Optional[float]:
+        if not values:
+            return None
+        s = sorted(values)
+        k = max(0, min(len(s) - 1, round((p / 100.0) * (len(s) - 1))))
+        return round(s[k], 1)
+
+    # Per-model aggregation (a run can touch multiple models across stages).
+    model_stats: dict[str, dict] = {}
+    for r in runs:
+        models = r.get("models") or {}
+        names = set(v for v in models.values() if v) if isinstance(models, dict) else set()
+        if not names:
+            continue
+        share_tokens = (int(r.get("total_tokens") or 0)) / max(1, len(names))
+        share_cost = (float(r.get("cost_usd") or 0.0)) / max(1, len(names))
+        for name in names:
+            st = model_stats.setdefault(name, {"model": name, "runs": 0, "tokens": 0, "costUsd": 0.0})
+            st["runs"] += 1
+            st["tokens"] += int(share_tokens)
+            st["costUsd"] += share_cost
+
+    models_out = sorted(
+        ({**v, "costUsd": round(v["costUsd"], 6)} for v in model_stats.values()),
+        key=lambda m: m["tokens"],
+        reverse=True,
+    )
+
+    # Time series bucketed by day for token/cost/latency trends.
+    series: dict[str, dict] = {}
+    for r in runs:
+        ts = r.get("created_at") or ""
+        day = ts[:10] if ts else "unknown"
+        b = series.setdefault(day, {"date": day, "tokens": 0, "costUsd": 0.0, "runs": 0, "_lat": []})
+        b["tokens"] += int(r.get("total_tokens") or 0)
+        b["costUsd"] += float(r.get("cost_usd") or 0.0)
+        b["runs"] += 1
+        if r.get("latency_ms") is not None:
+            b["_lat"].append(float(r["latency_ms"]))
+    timeseries = []
+    for day in sorted(series.keys()):
+        b = series[day]
+        lat = b.pop("_lat")
+        b["costUsd"] = round(b["costUsd"], 6)
+        b["avgLatencyMs"] = round(sum(lat) / len(lat), 1) if lat else None
+        timeseries.append(b)
+
+    return {
+        "lastUpdated": _now_iso(),
+        "estimated": True,
+        "totals": {
+            "runs": total_runs,
+            "promptTokens": total_prompt,
+            "completionTokens": total_completion,
+            "totalTokens": total_tokens,
+            "costUsd": round(total_cost, 6),
+            "avgTokensPerRun": int(total_tokens / total_runs) if total_runs else 0,
+            "avgCostPerRun": round(total_cost / total_runs, 6) if total_runs else 0.0,
+        },
+        "latency": {
+            "avgMs": round(sum(latencies) / len(latencies), 1) if latencies else None,
+            "p50Ms": _pct(latencies, 50),
+            "p95Ms": _pct(latencies, 95),
+            "p99Ms": _pct(latencies, 99),
+        },
+        "models": models_out,
+        "timeseries": timeseries,
+    }
+
+
 @app.get("/api/v1/tasks/{task_id}/trace")
 def api_trace(task_id: str) -> dict:
     mem = _live()
@@ -519,6 +638,7 @@ def api_trace(task_id: str) -> dict:
         "toolCalls": run.get("tool_calls", 0),
         "callsReduced": run.get("calls_reduced", 0),
         "baselineCalls": run.get("baseline_calls"),
+        "telemetry": _run_telemetry(run),
         "attribution": [
             {
                 "recordId": m["recordId"],
@@ -545,6 +665,9 @@ def api_agents() -> dict:
             "callsReduced": round(float(s["calls_reduced"] or 0.0), 1),
             "skillsLearned": int(s.get("skills_learned") or 0),
             "avgScore": round(float(s["avg_score"]), 2) if s.get("avg_score") is not None else None,
+            "totalTokens": int(s.get("total_tokens") or 0),
+            "totalCost": round(float(s.get("total_cost") or 0.0), 6),
+            "avgLatencyMs": round(float(s["avg_latency_ms"]), 1) if s.get("avg_latency_ms") is not None else None,
             "createdAt": s.get("created_at"),
             "lastActive": s.get("last_active"),
         }
@@ -586,6 +709,9 @@ def api_agent_stats(agent_id: str) -> dict:
     total_reduced = sum(max(0.0, float(r.get("calls_reduced") or 0.0)) for r in runs)
     total_calls = sum(int(r.get("tool_calls") or 0) for r in runs)
     success = [1.0 if r.get("outcome") == "success" else 0.0 for r in runs]
+    total_tokens = sum(int(r.get("total_tokens") or 0) for r in runs)
+    total_cost = sum(float(r.get("cost_usd") or 0.0) for r in runs)
+    latencies = [float(r["latency_ms"]) for r in runs if r.get("latency_ms") is not None]
     return {
         "agentId": agent_id,
         "agentName": runs[-1].get("agent_name") or agent_id,
@@ -594,6 +720,9 @@ def api_agent_stats(agent_id: str) -> dict:
         "callsReduced": round(total_reduced, 1),
         "totalToolCalls": total_calls,
         "skillsLearned": cumulative_skills,
+        "totalTokens": total_tokens,
+        "totalCost": round(total_cost, 6),
+        "avgLatencyMs": round(sum(latencies) / len(latencies), 1) if latencies else None,
         "curve": curve,
     }
 

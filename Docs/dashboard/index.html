@@ -1576,6 +1576,7 @@ lk = learnkit.LearnKit()
                 <button class="bench-tab active" onclick="switchBenchTab(0)">ReAct Tasks (6 per arm)</button>
                 <button class="bench-tab" onclick="switchBenchTab(1)">Multi-Round Durability (16 tasks)</button>
                 <button class="bench-tab" onclick="switchBenchTab(2)">Knowledge Injection Quality</button>
+                <button class="bench-tab" onclick="switchBenchTab(3)">Agentic PBE &amp; SLR</button>
             </div>
 
             <div class="bench-tab-content active" id="btab-0">
@@ -1658,6 +1659,31 @@ lk = learnkit.LearnKit()
                         <div class="table-cell good" style="text-align:right;font-weight:700;font-size:1.1rem;">+1.75</div>
                     </div>
                 </div>
+            </div>
+
+            <div class="bench-tab-content" id="btab-3">
+                <p class="bench-tab-desc">Agentic synthesis benchmark (PBE + SLR), where each task runs a deterministic <b>propose → execute → observe → refine</b> tool loop. This directly exercises <code>@lk.agent_learn</code>: exact repeats hard-replay the learned procedure (0 LLM calls) and siblings reuse it via guided context. Metric is planning-cost reduction while holding success.</p>
+                <div class="comparison-wrap" style="margin-top:0;border:none;border-radius:0;background:transparent;">
+                    <div class="table-row table-header" style="grid-template-columns:1.9fr 1.2fr 0.7fr 0.8fr;">
+                        <div class="table-cell">Task type</div>
+                        <div class="table-cell" style="text-align:right;">LLM Calls: Cold → Warmed</div>
+                        <div class="table-cell" style="text-align:right;">Savings</div>
+                        <div class="table-cell" style="text-align:right;">Success</div>
+                    </div>
+                    <div class="table-row" style="grid-template-columns:1.9fr 1.2fr 0.7fr 0.8fr;">
+                        <div class="table-cell"><span class="model-tag model-tag--green">PBE</span> Replace-program synthesis</div>
+                        <div class="table-cell" style="text-align:right;font-family:var(--font-mono);">18 → 12</div>
+                        <div class="table-cell good" style="text-align:right;font-weight:700;font-size:1.1rem;">33%</div>
+                        <div class="table-cell" style="text-align:right;color:var(--accent);font-weight:600;">9/9 ✓</div>
+                    </div>
+                    <div class="table-row" style="grid-template-columns:1.9fr 1.2fr 0.7fr 0.8fr;">
+                        <div class="table-cell"><span class="model-tag model-tag--violet">SLR</span> Rule induction</div>
+                        <div class="table-cell" style="text-align:right;font-family:var(--font-mono);">12 → 8</div>
+                        <div class="table-cell good" style="text-align:right;font-weight:700;font-size:1.1rem;">33%</div>
+                        <div class="table-cell" style="text-align:right;color:var(--accent);font-weight:600;">6/6 ✓</div>
+                    </div>
+                </div>
+                <p class="bench-tab-desc" style="margin-top:16px;">Observed identically on Qwen2.5-32B-Instruct and Qwen2.5-Coder-32B-Instruct. This is the procedural-path proof-of-value; single-shot PBE/SLR remains a non-regression guard.</p>
             </div>
 
             <div class="bench-callout">

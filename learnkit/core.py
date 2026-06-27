@@ -4,6 +4,7 @@ import hashlib
 import os
 import sys
 import threading
+import time
 import uuid
 import weakref
 from collections import OrderedDict
@@ -21,6 +22,7 @@ from .evaluator import Evaluator
 from .inference_mode import determine_inference_mode
 from .logging import get_logger
 from .memory_quality import apply_retrieval_feedback, decide_storage, reinforce_existing, update_utility
+from .observability import estimate_run_telemetry, resolve_models
 from .procedural import (
     extract_procedure,
     match_kind,
@@ -614,6 +616,7 @@ class LearnKit:
             "context": context_block,
             "attribution": attribution,
             "trajectory": traj,
+            "_t_start": time.perf_counter(),
         }
 
     def arm_tool_tracker(self, run: dict) -> ToolTracker:
@@ -646,12 +649,20 @@ class LearnKit:
         traj.add_step("assistant", response)
 
         classification = run.get("classification")
+        t_start = run.get("_t_start")
+        latency_ms = None
+        if t_start is not None:
+            latency_ms = round((time.perf_counter() - t_start) * 1000.0, 2)
         run_meta = {
             "tool_calls": int(run.get("tool_calls", 0) or 0),
             "record_ids": [
                 getattr(r, "id", None) for r in run.get("records", []) if getattr(r, "id", None)
             ],
             "task_type": getattr(classification, "task_type", None),
+            "latency_ms": latency_ms,
+            "task_chars": len(run.get("trajectory").task or ""),
+            "context_chars": len(run.get("context") or ""),
+            "response_chars": len(response or ""),
         }
 
         self._post_process(
@@ -950,6 +961,21 @@ class LearnKit:
             for s in traj.steps
         ]
 
+        # Telemetry: real latency + honest token/cost estimates (see
+        # learnkit/observability.py). LearnKit calls LLMs via DSPy, which does
+        # not expose per-call usage, so token/cost are flagged ``estimated``.
+        succeeded = traj.outcome == "success"
+        trajectory_chars = sum(len(s.content or "") for s in traj.steps)
+        telemetry = estimate_run_telemetry(
+            task_chars=int(meta.get("task_chars", 0) or 0),
+            context_chars=int(meta.get("context_chars", 0) or 0),
+            response_chars=int(meta.get("response_chars", 0) or 0),
+            trajectory_chars=trajectory_chars,
+            models=resolve_models(),
+            replayed=replayed,
+            succeeded=succeeded,
+        )
+
         self.backend.insert_run(
             {
                 "run_id": traj.id,
@@ -968,6 +994,14 @@ class LearnKit:
                 "signature_fp": signature_fp,
                 "steps": steps,
                 "created_at": traj.created_at,
+                "latency_ms": meta.get("latency_ms"),
+                "prompt_tokens": telemetry["prompt_tokens"],
+                "completion_tokens": telemetry["completion_tokens"],
+                "total_tokens": telemetry["total_tokens"],
+                "context_tokens": telemetry["context_tokens"],
+                "cost_usd": telemetry["cost_usd"],
+                "models": resolve_models(),
+                "estimated": telemetry["estimated"],
             }
         )
 

@@ -104,7 +104,7 @@ export const MemoryLifecycle: React.FC = () => {
               </div>
             ) : quarantineRecords.length === 0 ? (
               <div className={styles.emptyQueue}>
-                ✨ Quarantine queue is empty. All current memory records are promoted.
+                Quarantine queue is empty. All current memory records are promoted.
               </div>
             ) : (
               quarantineRecords.map((q) => (
