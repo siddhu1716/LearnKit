@@ -25,13 +25,18 @@ Run:
     python -m benchmarks.evolution_live
 """
 
+import json
 import os
 import tempfile
+from datetime import datetime, timezone
+from pathlib import Path
 
 import learnkit as lk
 from learnkit.replay import replay_plan
 from learnkit.tool_tracker import ToolTracker
 from learnkit.trajectory import Trajectory
+
+_RESULTS_DIR = Path(__file__).resolve().parent / "results"
 
 # Reuse the exact tool world + ReAct loop from the one-shot live benchmark so the
 # only new variable here is *time* (rounds), not the environment.
@@ -191,11 +196,29 @@ def main():
     totals = {"cold_tool": 0, "cold_llm": 0, "warm_tool": 0, "warm_llm": 0,
               "cold_ok": 0, "warm_ok": 0, "tasks": 0}
     curve = []
+    per_round: list[dict] = []
     for r in range(ROUNDS):
         cold = run_cold_round(r)
         warm = run_warmed_round(memory, r)
         kb = knowledge_snapshot(memory)
         curve.append((warm["llm_calls"], warm["tool_calls"]))
+        per_round.append({
+            "round": r,
+            "tasks": cold["tasks"],
+            "cold": {
+                "tool_calls": cold["tool_calls"],
+                "llm_calls": cold["llm_calls"],
+                "successes": cold["successes"],
+            },
+            "warmed": {
+                "tool_calls": warm["tool_calls"],
+                "llm_calls": warm["llm_calls"],
+                "successes": warm["successes"],
+                "replayed": warm["replayed"],
+                "guided": warm["guided"],
+            },
+            "knowledge": kb,
+        })
 
         print(f"{r:>5} | {'cold':>6} | {cold['tool_calls']:>4} | "
               f"{cold['llm_calls']:>4} | {cold['successes']:>3} | "
@@ -265,6 +288,34 @@ def main():
                 totals["warm_llm"] < totals["cold_llm"] and
                 totals["warm_ok"] >= totals["cold_ok"])
     print("\nEVOLVED" if improved else "\nNO IMPROVEMENT")
+
+    # ── Persist the learning curve as a JSON artifact ────────────────────────
+    if os.environ.get("LK_NO_SAVE_CURVE", "").lower() not in ("1", "true", "yes"):
+        _RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        curve_path = _RESULTS_DIR / f"evolution_live_{ts}_curve.json"
+        payload = {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "benchmark": "evolution_live",
+            "endpoint": BASE_URL,
+            "model": MODEL,
+            "reflect": reflect,
+            "rounds": ROUNDS,
+            "per_round": per_round,
+            "totals": {
+                "tasks": totals["tasks"],
+                "cold_tool_calls": totals["cold_tool"],
+                "cold_llm_calls": totals["cold_llm"],
+                "warmed_tool_calls": totals["warm_tool"],
+                "warmed_llm_calls": totals["warm_llm"],
+                "cold_success": totals["cold_ok"],
+                "warmed_success": totals["warm_ok"],
+            },
+            "final_knowledge": final_kb,
+            "improved": improved,
+        }
+        curve_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        print(f"Saved curve:    {curve_path}")
 
 
 if __name__ == "__main__":

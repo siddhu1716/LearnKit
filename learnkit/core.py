@@ -4,6 +4,7 @@ import hashlib
 import os
 import sys
 import threading
+import uuid
 import weakref
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
@@ -81,6 +82,8 @@ class LearnKit:
         relevance_floor: Optional[float] = None,
         utility_floor: Optional[float] = None,
         max_tracked_runs: int = 256,
+        agent_id: Optional[str] = None,
+        agent_name: Optional[str] = None,
         **backend_kwargs,
     ):
         self.backend = get_backend(memory_backend, **backend_kwargs)
@@ -102,6 +105,12 @@ class LearnKit:
         self.quality_threshold = quality_threshold
         self.evaluation_mode = evaluation
         self.background_postprocess = background_postprocess
+        # Stable agent identity for run telemetry / dashboard tracing. The id is
+        # what the UI traces; the name is an optional human-friendly label. When
+        # no id is given we generate a stable per-instance one so every run is
+        # still attributable to *some* agent.
+        self.agent_id = agent_id or f"agent-{uuid.uuid4().hex[:8]}"
+        self.agent_name = agent_name or self.agent_id
         # When True, distilled skill/fact/strategy/etc. records skip the 24h
         # quarantine window and are stored as `active` so they're retrievable
         # on the next task. Use for benchmark/online-learning scenarios.
@@ -636,12 +645,22 @@ class LearnKit:
         traj = run["trajectory"]
         traj.add_step("assistant", response)
 
+        classification = run.get("classification")
+        run_meta = {
+            "tool_calls": int(run.get("tool_calls", 0) or 0),
+            "record_ids": [
+                getattr(r, "id", None) for r in run.get("records", []) if getattr(r, "id", None)
+            ],
+            "task_type": getattr(classification, "task_type", None),
+        }
+
         self._post_process(
             traj,
             run["domain_vector"],
             run.get("records", []),
             override_score=run.get("outcome_score"),
             replayed_source_id=run.get("replayed_source_id"),
+            run_meta=run_meta,
         )
         return response
 
@@ -652,16 +671,17 @@ class LearnKit:
         retrieved_records=None,
         override_score: Optional[float] = None,
         replayed_source_id: Optional[str] = None,
+        run_meta: Optional[dict] = None,
     ):
         if not self.background_postprocess:
             self._post_process_now(
                 traj, domain_vector, retrieved_records or [], override_score,
-                replayed_source_id,
+                replayed_source_id, run_meta,
             )
             return
         self._post_process_async(
             traj, domain_vector, retrieved_records or [], override_score,
-            replayed_source_id,
+            replayed_source_id, run_meta,
         )
 
     def _post_process_async(
@@ -671,6 +691,7 @@ class LearnKit:
         retrieved_records: list,
         override_score: Optional[float] = None,
         replayed_source_id: Optional[str] = None,
+        run_meta: Optional[dict] = None,
     ) -> None:
         """
         Quality gate + distillation. Runs after response returned to user.
@@ -679,11 +700,11 @@ class LearnKit:
         """
         if self._is_shutdown:
             self._post_process_now(traj, domain_vector, retrieved_records, override_score,
-                                   replayed_source_id)
+                                   replayed_source_id, run_meta)
             return
         future = self._worker_pool.submit(
             self._post_process_now, traj, domain_vector, retrieved_records, override_score,
-            replayed_source_id,
+            replayed_source_id, run_meta,
         )
 
         # Add a done callback to catch and log silent failures in the thread
@@ -708,6 +729,7 @@ class LearnKit:
         retrieved_records: list | None = None,
         override_score: Optional[float] = None,
         replayed_source_id: Optional[str] = None,
+        run_meta: Optional[dict] = None,
     ) -> None:
         # Interpreter is shutting down — dspy/litellm's own thread pool may already
         # be torn down (their atexit runs first since they're imported lazily on
@@ -867,6 +889,87 @@ class LearnKit:
                 self._add_failure_deduped(failure)
         except Exception as e:
             raise PostProcessError(f"Post-processing failed: {e}") from e
+        finally:
+            # Persist run telemetry regardless of distillation outcome so the
+            # dashboard can trace the agent and chart its learning. Best-effort:
+            # a telemetry write must never break the learning loop.
+            try:
+                self._persist_run(traj, domain_vector, retrieved_records or [],
+                                   replayed_source_id, run_meta)
+            except Exception as e:  # pragma: no cover - telemetry is non-critical
+                logger.warning(
+                    "Run telemetry persist failed",
+                    extra={"event": "run_persist_fail", "error_type": type(e).__name__},
+                )
+
+    def _persist_run(
+        self,
+        traj: Trajectory,
+        domain_vector: dict,
+        retrieved_records: list,
+        replayed_source_id: Optional[str],
+        run_meta: Optional[dict],
+    ) -> None:
+        """Write a single finalized run to the backend's runs table.
+
+        Computes "calls reduced" against the cold (non-replayed) baseline for the
+        task family, so the dashboard can show how replay shrinks tool calls over
+        time. No-op on backends without a runs store (BaseBackend default).
+        """
+        meta = run_meta or {}
+        tool_calls = int(meta.get("tool_calls", 0) or 0)
+
+        # Family key: prefer the captured task-signature (agent path, same key as
+        # procedure consolidation), else fall back to the classified task type so
+        # model-path runs still group into a family.
+        captured = extract_procedure(traj)
+        if captured and captured.get("task_signature"):
+            signature_fp = signature_fingerprint(captured["task_signature"])
+        else:
+            base = (meta.get("task_type") or "general").strip().lower()
+            signature_fp = hashlib.sha256(base.encode()).hexdigest()
+
+        replayed = bool(replayed_source_id)
+        baseline = self.backend.family_baseline(signature_fp)
+        calls_reduced = 0.0
+        if baseline is not None and tool_calls > 0:
+            calls_reduced = max(0.0, baseline - tool_calls)
+
+        record_ids = meta.get("record_ids")
+        if record_ids is None:
+            record_ids = [getattr(r, "id", None) for r in retrieved_records]
+        record_ids = [rid for rid in record_ids if rid]
+
+        steps = [
+            {
+                "step": s.step,
+                "role": s.role,
+                "tool_name": s.tool_name,
+                "content": (s.content or "")[:200],
+            }
+            for s in traj.steps
+        ]
+
+        self.backend.insert_run(
+            {
+                "run_id": traj.id,
+                "agent_id": self.agent_id,
+                "agent_name": self.agent_name,
+                "task": traj.task,
+                "task_type": meta.get("task_type"),
+                "domains": domain_vector or {},
+                "tool_calls": tool_calls,
+                "baseline_calls": baseline,
+                "calls_reduced": calls_reduced,
+                "replayed": replayed,
+                "outcome": traj.outcome,
+                "quality_score": traj.quality_score,
+                "record_ids": record_ids,
+                "signature_fp": signature_fp,
+                "steps": steps,
+                "created_at": traj.created_at,
+            }
+        )
 
     def _reinforce_or_demote_retrieved(self, records: list, eval_score: float) -> None:
         """Update retrieved-memory confidence with graded outcome feedback."""

@@ -162,6 +162,38 @@ class SQLiteBackend(BaseBackend):
                         )
                     """
                     )
+
+                # Per-run telemetry so the dashboard can trace an agent by id and
+                # chart how its learning (calls reduced, skills learned) grows.
+                # Additive table; nothing in the memory loop depends on it.
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS runs (
+                        run_id TEXT PRIMARY KEY,
+                        agent_id TEXT,
+                        agent_name TEXT,
+                        task TEXT,
+                        task_type TEXT,
+                        domains TEXT,
+                        tool_calls INTEGER DEFAULT 0,
+                        baseline_calls REAL,
+                        calls_reduced REAL DEFAULT 0,
+                        replayed INTEGER DEFAULT 0,
+                        outcome TEXT,
+                        quality_score REAL,
+                        record_ids TEXT,
+                        signature_fp TEXT,
+                        steps TEXT,
+                        created_at TEXT
+                    )
+                """
+                )
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_runs_agent ON runs (agent_id)"
+                )
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_runs_sig ON runs (signature_fp)"
+                )
         except sqlite3.Error as e:
             logger.error(
                 "Database initialization failed", extra={"error_type": type(e).__name__}
@@ -700,3 +732,169 @@ class SQLiteBackend(BaseBackend):
             return [parse_record(r["full_record"]) for r in rows]
         finally:
             self._close(conn)
+
+    # ------------------------------------------------------------------
+    # Run telemetry (agent tracing / learning curves)
+    # ------------------------------------------------------------------
+
+    def family_baseline(self, signature_fp: Optional[str]) -> Optional[float]:
+        """Average tool-call count of prior *cold* (non-replayed) runs in the
+        same task family. Used as the baseline for "calls reduced".
+
+        Returns ``None`` when there is no cold history to compare against.
+        """
+        if not signature_fp:
+            return None
+        conn = self._conn()
+        try:
+            row = conn.execute(
+                """
+                SELECT AVG(tool_calls) AS avg_calls
+                FROM runs
+                WHERE signature_fp = ? AND replayed = 0 AND tool_calls > 0
+            """,
+                (signature_fp,),
+            ).fetchone()
+            if row is None or row["avg_calls"] is None:
+                return None
+            return float(row["avg_calls"])
+        finally:
+            self._close(conn)
+
+    def insert_run(self, run: dict) -> str:
+        """Persist a single finalized run. ``run`` is a plain dict; missing keys
+        default sensibly so callers can pass a partial record.
+        """
+        conn = self._conn()
+        try:
+            with conn:
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO runs (
+                        run_id, agent_id, agent_name, task, task_type, domains,
+                        tool_calls, baseline_calls, calls_reduced, replayed,
+                        outcome, quality_score, record_ids, signature_fp, steps,
+                        created_at
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                """,
+                    (
+                        run["run_id"],
+                        run.get("agent_id"),
+                        run.get("agent_name"),
+                        run.get("task"),
+                        run.get("task_type"),
+                        json.dumps(run.get("domains", {})),
+                        int(run.get("tool_calls", 0) or 0),
+                        run.get("baseline_calls"),
+                        float(run.get("calls_reduced", 0) or 0),
+                        1 if run.get("replayed") else 0,
+                        run.get("outcome"),
+                        run.get("quality_score"),
+                        json.dumps(run.get("record_ids", [])),
+                        run.get("signature_fp"),
+                        json.dumps(run.get("steps", [])),
+                        run.get("created_at"),
+                    ),
+                )
+            return run["run_id"]
+        finally:
+            self._close(conn)
+
+    @staticmethod
+    def _run_row_to_dict(row: sqlite3.Row) -> dict:
+        return {
+            "run_id": row["run_id"],
+            "agent_id": row["agent_id"],
+            "agent_name": row["agent_name"],
+            "task": row["task"],
+            "task_type": row["task_type"],
+            "domains": json.loads(row["domains"]) if row["domains"] else {},
+            "tool_calls": row["tool_calls"],
+            "baseline_calls": row["baseline_calls"],
+            "calls_reduced": row["calls_reduced"],
+            "replayed": bool(row["replayed"]),
+            "outcome": row["outcome"],
+            "quality_score": row["quality_score"],
+            "record_ids": json.loads(row["record_ids"]) if row["record_ids"] else [],
+            "signature_fp": row["signature_fp"],
+            "steps": json.loads(row["steps"]) if row["steps"] else [],
+            "created_at": row["created_at"],
+        }
+
+    def list_runs(
+        self,
+        agent_id: Optional[str] = None,
+        outcome: Optional[str] = None,
+        limit: Optional[int] = None,
+    ) -> list[dict]:
+        conn = self._conn()
+        try:
+            sql = "SELECT * FROM runs"
+            clauses = []
+            params: list = []
+            if agent_id:
+                clauses.append("agent_id = ?")
+                params.append(agent_id)
+            if outcome:
+                clauses.append("outcome = ?")
+                params.append(outcome)
+            if clauses:
+                sql += " WHERE " + " AND ".join(clauses)
+            sql += " ORDER BY created_at DESC"
+            if limit is not None:
+                sql += " LIMIT ?"
+                params.append(limit)
+            rows = conn.execute(sql, params).fetchall()
+            return [self._run_row_to_dict(r) for r in rows]
+        finally:
+            self._close(conn)
+
+    def get_run(self, run_id: str) -> Optional[dict]:
+        conn = self._conn()
+        try:
+            row = conn.execute(
+                "SELECT * FROM runs WHERE run_id = ?", (run_id,)
+            ).fetchone()
+            return self._run_row_to_dict(row) if row else None
+        finally:
+            self._close(conn)
+
+    def agent_summaries(self) -> list[dict]:
+        """Aggregate per-agent stats for the agents registry."""
+        conn = self._conn()
+        try:
+            rows = conn.execute(
+                """
+                SELECT
+                    agent_id,
+                    MAX(agent_name) AS agent_name,
+                    COUNT(*) AS task_count,
+                    AVG(CASE WHEN outcome = 'success' THEN 1.0 ELSE 0.0 END) AS success_rate,
+                    SUM(CASE WHEN calls_reduced > 0 THEN calls_reduced ELSE 0 END) AS calls_reduced,
+                    SUM(CASE WHEN replayed = 0 AND outcome = 'success' THEN 1 ELSE 0 END) AS skills_learned,
+                    AVG(quality_score) AS avg_score,
+                    MIN(created_at) AS created_at,
+                    MAX(created_at) AS last_active
+                FROM runs
+                WHERE agent_id IS NOT NULL
+                GROUP BY agent_id
+                ORDER BY last_active DESC
+            """
+            ).fetchall()
+            return [
+                {
+                    "agent_id": r["agent_id"],
+                    "agent_name": r["agent_name"],
+                    "task_count": r["task_count"],
+                    "success_rate": r["success_rate"] or 0.0,
+                    "calls_reduced": r["calls_reduced"] or 0.0,
+                    "skills_learned": r["skills_learned"] or 0,
+                    "avg_score": r["avg_score"],
+                    "created_at": r["created_at"],
+                    "last_active": r["last_active"],
+                }
+                for r in rows
+            ]
+        finally:
+            self._close(conn)
+

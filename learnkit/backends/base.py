@@ -82,3 +82,34 @@ class BaseBackend(ABC):
     def import_json(self, path: str | Path) -> int:
         """Import records from portable JSON. Returns count."""
         pass
+
+    # ------------------------------------------------------------------
+    # Run telemetry (optional; agent tracing / learning curves).
+    # Default no-ops so backends without a runs store keep working.
+    # ------------------------------------------------------------------
+
+    def insert_run(self, run: dict) -> Optional[str]:
+        """Persist a finalized run. No-op by default."""
+        return None
+
+    def list_runs(
+        self,
+        agent_id: Optional[str] = None,
+        outcome: Optional[str] = None,
+        limit: Optional[int] = None,
+    ) -> list[dict]:
+        """List persisted runs. Empty by default."""
+        return []
+
+    def get_run(self, run_id: str) -> Optional[dict]:
+        """Read a single persisted run. None by default."""
+        return None
+
+    def agent_summaries(self) -> list[dict]:
+        """Aggregate per-agent stats. Empty by default."""
+        return []
+
+    def family_baseline(self, signature_fp: Optional[str]) -> Optional[float]:
+        """Baseline tool-call count for a task family. None by default."""
+        return None
+

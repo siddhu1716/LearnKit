@@ -73,6 +73,46 @@ export interface Task {
   score: number;
   armName: string;
   timestamp: string;
+  agentId?: string;
+  toolCalls?: number;
+  callsReduced?: number;
+}
+
+export interface Agent {
+  id: string;
+  name: string;
+  taskCount: number;
+  successRate: number;
+  callsReduced: number;
+  skillsLearned: number;
+  avgScore: number | null;
+  createdAt: string | null;
+  lastActive: string | null;
+}
+
+export interface AgentCurvePoint {
+  index: number;
+  task: string;
+  toolCalls: number;
+  baselineCalls: number | null;
+  callsReduced: number;
+  replayed: boolean;
+  outcome: string | null;
+  score: number;
+  cumulativeSkills: number;
+  successRate: number;
+  timestamp: string | null;
+}
+
+export interface AgentStats {
+  agentId: string;
+  agentName: string;
+  taskCount: number;
+  successRate: number;
+  callsReduced: number;
+  totalToolCalls: number;
+  skillsLearned: number;
+  curve: AgentCurvePoint[];
 }
 
 export interface TraceMatch {

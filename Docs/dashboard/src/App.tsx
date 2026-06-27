@@ -9,6 +9,8 @@ import { TracePlayback } from './pages/TracePlayback';
 import { MemoryLifecycle } from './pages/MemoryLifecycle';
 import { Settings } from './pages/Settings';
 import { Playground } from './pages/Playground';
+import { Agents } from './pages/Agents';
+import { AgentDetail } from './pages/AgentDetail';
 import { DocsHub } from './pages/DocsHub';
 import { ToastContainer } from './components/ui/Toast';
 
@@ -20,6 +22,8 @@ export const App: React.FC = () => {
           <Route path="/" element={<Overview />} />
           <Route path="/memory" element={<MemoryExplorer />} />
           <Route path="/playground" element={<Playground />} />
+          <Route path="/agents" element={<Agents />} />
+          <Route path="/agents/:agentId" element={<AgentDetail />} />
           
           {/* Legacy redirects */}
           <Route path="/skills" element={<Navigate to="/memory?type=skill" replace />} />

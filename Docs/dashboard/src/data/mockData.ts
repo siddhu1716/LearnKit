@@ -15,6 +15,8 @@ import type {
   TopSkill,
   ProblematicFailure,
   CrowdedOutRecord,
+  Agent,
+  AgentStats,
 } from '../types';
 
 export const MOCK_METRICS: DashboardMetrics = {
@@ -157,15 +159,43 @@ export const MOCK_RECORDS: MemoryRecord[] = [
 ];
 
 export const MOCK_TASKS: Task[] = [
-  { id: 't-047', input: 'Refund Request Processing for ORD-12345', status: 'success', score: 5.0, armName: 'warmed', timestamp: '2026-06-13T14:32:00Z' },
-  { id: 't-046', input: 'Apply discount code SUMMER20 to cart', status: 'success', score: 4.8, armName: 'warmed', timestamp: '2026-06-13T14:15:00Z' },
-  { id: 't-045', input: 'Escalate complaint about delayed shipment', status: 'success', score: 4.2, armName: 'guided', timestamp: '2026-06-13T13:48:00Z' },
-  { id: 't-044', input: 'Handle API max retries during checkout', status: 'failure', score: 1.5, armName: 'warmed', timestamp: '2026-06-13T13:22:00Z' },
-  { id: 't-043', input: 'Generate monthly sales report summary', status: 'success', score: 4.9, armName: 'warmed', timestamp: '2026-06-13T12:55:00Z' },
-  { id: 't-042', input: 'Answer customer question about return policy', status: 'success', score: 5.0, armName: 'prescriptive', timestamp: '2026-06-13T12:30:00Z' },
-  { id: 't-041', input: 'Process bulk order for enterprise client', status: 'failure', score: 2.1, armName: 'exploratory', timestamp: '2026-06-13T11:45:00Z' },
-  { id: 't-040', input: 'Update customer preference for email frequency', status: 'success', score: 4.7, armName: 'warmed', timestamp: '2026-06-13T11:20:00Z' },
+  { id: 't-047', input: 'Refund Request Processing for ORD-12345', status: 'success', score: 5.0, armName: 'warmed', timestamp: '2026-06-13T14:32:00Z', agentId: 'agent-support', toolCalls: 3, callsReduced: 4 },
+  { id: 't-046', input: 'Apply discount code SUMMER20 to cart', status: 'success', score: 4.8, armName: 'warmed', timestamp: '2026-06-13T14:15:00Z', agentId: 'agent-support', toolCalls: 2, callsReduced: 3 },
+  { id: 't-045', input: 'Escalate complaint about delayed shipment', status: 'success', score: 4.2, armName: 'guided', timestamp: '2026-06-13T13:48:00Z', agentId: 'agent-support', toolCalls: 5, callsReduced: 1 },
+  { id: 't-044', input: 'Handle API max retries during checkout', status: 'failure', score: 1.5, armName: 'warmed', timestamp: '2026-06-13T13:22:00Z', agentId: 'agent-sql', toolCalls: 7, callsReduced: 0 },
+  { id: 't-043', input: 'Generate monthly sales report summary', status: 'success', score: 4.9, armName: 'warmed', timestamp: '2026-06-13T12:55:00Z', agentId: 'agent-sql', toolCalls: 2, callsReduced: 5 },
+  { id: 't-042', input: 'Answer customer question about return policy', status: 'success', score: 5.0, armName: 'prescriptive', timestamp: '2026-06-13T12:30:00Z', agentId: 'agent-support', toolCalls: 1, callsReduced: 4 },
+  { id: 't-041', input: 'Process bulk order for enterprise client', status: 'failure', score: 2.1, armName: 'exploratory', timestamp: '2026-06-13T11:45:00Z', agentId: 'agent-sql', toolCalls: 8, callsReduced: 0 },
+  { id: 't-040', input: 'Update customer preference for email frequency', status: 'success', score: 4.7, armName: 'warmed', timestamp: '2026-06-13T11:20:00Z', agentId: 'agent-support', toolCalls: 2, callsReduced: 3 },
 ];
+
+export const MOCK_AGENTS: Agent[] = [
+  { id: 'agent-support', name: 'Support Agent', taskCount: 5, successRate: 1.0, callsReduced: 17, skillsLearned: 4, avgScore: 4.84, createdAt: '2026-06-13T11:20:00Z', lastActive: '2026-06-13T14:32:00Z' },
+  { id: 'agent-sql', name: 'SQL Authoring Agent', taskCount: 3, successRate: 0.33, callsReduced: 5, skillsLearned: 1, avgScore: 2.83, createdAt: '2026-06-13T11:45:00Z', lastActive: '2026-06-13T13:22:00Z' },
+];
+
+export const MOCK_AGENT_STATS: Record<string, AgentStats> = {
+  'agent-support': {
+    agentId: 'agent-support', agentName: 'Support Agent', taskCount: 5,
+    successRate: 1.0, callsReduced: 17, totalToolCalls: 10, skillsLearned: 4,
+    curve: [
+      { index: 1, task: 'Update customer preference', toolCalls: 6, baselineCalls: 6, callsReduced: 0, replayed: false, outcome: 'success', score: 4.7, cumulativeSkills: 1, successRate: 1.0, timestamp: '2026-06-13T11:20:00Z' },
+      { index: 2, task: 'Answer return policy question', toolCalls: 3, baselineCalls: 6, callsReduced: 3, replayed: false, outcome: 'success', score: 5.0, cumulativeSkills: 2, successRate: 1.0, timestamp: '2026-06-13T12:30:00Z' },
+      { index: 3, task: 'Escalate complaint', toolCalls: 5, baselineCalls: 6, callsReduced: 1, replayed: true, outcome: 'success', score: 4.2, cumulativeSkills: 2, successRate: 1.0, timestamp: '2026-06-13T13:48:00Z' },
+      { index: 4, task: 'Apply discount code', toolCalls: 2, baselineCalls: 5, callsReduced: 3, replayed: true, outcome: 'success', score: 4.8, cumulativeSkills: 2, successRate: 1.0, timestamp: '2026-06-13T14:15:00Z' },
+      { index: 5, task: 'Refund request processing', toolCalls: 1, baselineCalls: 5, callsReduced: 4, replayed: true, outcome: 'success', score: 5.0, cumulativeSkills: 2, successRate: 1.0, timestamp: '2026-06-13T14:32:00Z' },
+    ],
+  },
+  'agent-sql': {
+    agentId: 'agent-sql', agentName: 'SQL Authoring Agent', taskCount: 3,
+    successRate: 0.33, callsReduced: 5, totalToolCalls: 17, skillsLearned: 1,
+    curve: [
+      { index: 1, task: 'Generate sales report summary', toolCalls: 2, baselineCalls: 7, callsReduced: 5, replayed: false, outcome: 'success', score: 4.9, cumulativeSkills: 1, successRate: 1.0, timestamp: '2026-06-13T12:55:00Z' },
+      { index: 2, task: 'Process bulk order', toolCalls: 8, baselineCalls: 7, callsReduced: 0, replayed: false, outcome: 'failure', score: 2.1, cumulativeSkills: 1, successRate: 0.5, timestamp: '2026-06-13T11:45:00Z' },
+      { index: 3, task: 'Handle API max retries', toolCalls: 7, baselineCalls: 7, callsReduced: 0, replayed: true, outcome: 'failure', score: 1.5, cumulativeSkills: 1, successRate: 0.33, timestamp: '2026-06-13T13:22:00Z' },
+    ],
+  },
+};
 
 export const MOCK_TRACE: TraceDetail = {
   taskId: 't-047',

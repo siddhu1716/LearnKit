@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { client } from '../api/client';
 import { MetricCard } from '../components/ui/MetricCard';
 import { SuccessRateTrend } from '../components/charts/SuccessRateTrend';
 import { InjectionPie } from '../components/charts/InjectionPie';
 import { Badge } from '../components/ui/Badge';
 import { SkeletonLoader } from '../components/ui/SkeletonLoader';
-import type { DashboardMetrics, SuccessRatePoint, TopSkill, ProblematicFailure, ActivityEvent } from '../types';
+import type { DashboardMetrics, SuccessRatePoint, TopSkill, ProblematicFailure, ActivityEvent, Agent } from '../types';
 import styles from './Overview.module.css';
 
 export const Overview: React.FC = () => {
@@ -14,23 +15,27 @@ export const Overview: React.FC = () => {
   const [topSkills, setTopSkills] = useState<TopSkill[]>([]);
   const [problemFailures, setProblemFailures] = useState<ProblematicFailure[]>([]);
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [m, t, s, f, a] = await Promise.all([
+      const [m, t, s, f, a, ag] = await Promise.all([
         client.getMetrics(),
         client.getSuccessRateTrend(),
         client.getTopSkills(),
         client.getProblematicFailures(),
         client.getActivityFeed(),
+        client.getAgents(),
       ]);
       setMetrics(m);
       setTrendData(t);
       setTopSkills(s);
       setProblemFailures(f);
       setActivity(a);
+      setAgents(ag);
     } catch (error) {
       console.error('Error fetching overview data:', error);
     } finally {
@@ -139,6 +144,39 @@ export const Overview: React.FC = () => {
         <div className={styles.statCard}>
           <h2 className={styles.cardTitle}>Injection Trends</h2>
           <InjectionPie data={metrics.primaryDistribution} />
+        </div>
+      </section>
+
+      {/* Agent learning band */}
+      <section className={styles.agentBand} onClick={() => navigate('/agents')} role="button" tabIndex={0}
+        onKeyDown={(e) => e.key === 'Enter' && navigate('/agents')}>
+        <div className={styles.agentBandHeader}>
+          <h2 className={styles.cardTitle}>How Your Agents Are Learning</h2>
+          <span className={styles.agentBandLink}>View all agents →</span>
+        </div>
+        <div className={styles.agentBandStats}>
+          <div className={styles.agentStat}>
+            <span className={styles.agentStatValue}>{agents.length}</span>
+            <span className={styles.agentStatLabel}>Active Agents</span>
+          </div>
+          <div className={styles.agentStat}>
+            <span className={`${styles.agentStatValue} ${styles.accentText}`}>
+              {Math.round(agents.reduce((acc, a) => acc + a.callsReduced, 0))}
+            </span>
+            <span className={styles.agentStatLabel}>Calls Reduced</span>
+          </div>
+          <div className={styles.agentStat}>
+            <span className={`${styles.agentStatValue} ${styles.greenText}`}>
+              {agents.reduce((acc, a) => acc + a.skillsLearned, 0)}
+            </span>
+            <span className={styles.agentStatLabel}>Skills Learned</span>
+          </div>
+          <div className={styles.agentStat}>
+            <span className={styles.agentStatValue}>
+              {agents.reduce((acc, a) => acc + a.taskCount, 0)}
+            </span>
+            <span className={styles.agentStatLabel}>Total Tasks</span>
+          </div>
         </div>
       </section>
 

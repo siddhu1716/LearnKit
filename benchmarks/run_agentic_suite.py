@@ -112,6 +112,14 @@ def _extract_saved_summary_path(stdout: str) -> Path | None:
     return p if p.exists() else None
 
 
+def _extract_saved_curve_path(stdout: str) -> Path | None:
+    m = re.search(r"Saved curve:\s+(.+_curve\.json)", stdout)
+    if not m:
+        return None
+    p = Path(m.group(1).strip())
+    return p if p.exists() else None
+
+
 def _safe_div(a: float, b: float) -> float:
     return a / b if b else 0.0
 
@@ -134,11 +142,18 @@ def _compute_suite_summary(detailed: dict[str, Any], min_playbook_effect: float)
 
     evo = detailed["benchmarks"].get("evolution_live")
     if evo and evo.get("parsed"):
-        summary["benchmarks"]["evolution_live"] = {
+        evo_summary: dict[str, Any] = {
             **evo["parsed"],
             "timed_out": bool(evo.get("run", {}).get("timed_out")),
             "returncode": evo.get("run", {}).get("returncode"),
         }
+        curve = evo.get("curve")
+        if curve:
+            evo_summary["per_round"] = curve.get("per_round")
+            evo_summary["final_knowledge"] = curve.get("final_knowledge")
+            evo_summary["improved"] = curve.get("improved")
+            evo_summary["curve_path"] = evo.get("curve_path")
+        summary["benchmarks"]["evolution_live"] = evo_summary
 
     inj = detailed["benchmarks"].get("injection_ablation")
     playbook_effect = None
@@ -236,9 +251,18 @@ def main() -> None:
             env["LK_REFLECT"] = "1"
         r = _run([py, "-m", "benchmarks.evolution_live"], env=env,
                  timeout_s=args.evolution_timeout)
+        curve_path = _extract_saved_curve_path(r["stdout"])
+        curve_payload = None
+        if curve_path:
+            try:
+                curve_payload = json.loads(curve_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                curve_payload = None
         detailed["benchmarks"]["evolution_live"] = {
             "run": r,
             "parsed": _parse_evolution(r["stdout"]),
+            "curve_path": str(curve_path) if curve_path else None,
+            "curve": curve_payload,
         }
 
     if not args.skip_injection:

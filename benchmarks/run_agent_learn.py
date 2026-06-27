@@ -16,7 +16,14 @@ Run:
     python -m benchmarks.run_agent_learn
 """
 
+import json
+import os
+from datetime import datetime, timezone
+from pathlib import Path
+
 import learnkit as lk
+
+_RESULTS_DIR = Path(__file__).resolve().parent / "results"
 
 # ── A tiny deterministic tool world ───────────────────────────────────────────
 # Each task's goal is a fixed correct tool sequence. The "dead-end" tools model
@@ -128,20 +135,49 @@ def main():
     print("-" * 78)
     first_cpt = None
     last_cpt = None
+    per_round: list[dict] = []
     for r in range(rounds):
         s = run_round(memory, r)
         cpt = s["tool_calls"] / s["tasks"]
         if first_cpt is None:
             first_cpt = cpt
         last_cpt = cpt
+        per_round.append({
+            "round": r,
+            "tasks": s["tasks"],
+            "tool_calls": s["tool_calls"],
+            "tool_calls_per_task": cpt,
+            "replayed": s["replayed"],
+            "explored": s["explored"],
+            "successes": s["successes"],
+        })
         print(f"{r:>6} | {s['tasks']:>5} | {s['tool_calls']:>10} | {cpt:>10.2f} | "
               f"{s['replayed']:>8} | {s['explored']:>8} | {s['successes']:>7}")
     print("-" * 78)
     reduction = (first_cpt - last_cpt) / first_cpt * 100 if first_cpt else 0.0
     print(f"\ntool-calls/task: round 0 = {first_cpt:.2f}  ->  round {rounds-1} = "
           f"{last_cpt:.2f}   ({reduction:+.0f}% )")
-    print("PASS" if last_cpt < first_cpt else "NO REDUCTION")
+    passed = last_cpt < first_cpt
+    print("PASS" if passed else "NO REDUCTION")
     memory.shutdown()
+
+    if os.environ.get("LK_NO_SAVE_CURVE", "").lower() not in ("1", "true", "yes"):
+        _RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        curve_path = _RESULTS_DIR / f"agent_learn_{ts}_curve.json"
+        payload = {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "benchmark": "run_agent_learn",
+            "rounds": rounds,
+            "tasks_per_round": len(TASKS),
+            "per_round": per_round,
+            "first_round_calls_per_task": first_cpt,
+            "last_round_calls_per_task": last_cpt,
+            "reduction_pct": reduction,
+            "passed": passed,
+        }
+        curve_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        print(f"Saved curve:    {curve_path}")
 
 
 if __name__ == "__main__":

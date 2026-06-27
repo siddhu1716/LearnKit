@@ -60,6 +60,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ open }) => {
             </NavLink>
           </li>
 
+          {/* Agents */}
+          <li>
+            <NavLink
+              to="/agents"
+              className={({ isActive: linkActive }) =>
+                `${styles.navItem} ${linkActive ? styles.active : ''}`
+              }
+            >
+              <span className={styles.icon}>🤖</span>
+              <span className={styles.label}>Agents</span>
+            </NavLink>
+          </li>
+
           {/* Memory Explorer Dropdown */}
           <li>
             <button

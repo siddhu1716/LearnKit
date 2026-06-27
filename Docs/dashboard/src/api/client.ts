@@ -15,6 +15,8 @@ import type {
   ProblematicFailure,
   ActivityEvent,
   CrowdedOutRecord,
+  Agent,
+  AgentStats,
 } from '../types';
 
 import {
@@ -28,6 +30,8 @@ import {
   MOCK_TOP_SKILLS,
   MOCK_PROBLEM_FAILURES,
   MOCK_ACTIVITY,
+  MOCK_AGENTS,
+  MOCK_AGENT_STATS,
 } from '../data/mockData';
 
 const BASE_URL = '/api/v1';
@@ -601,6 +605,36 @@ export const client = {
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     feed.unshift({ time, icon, message });
     localStorage.setItem(STORAGE_KEYS.ACTIVITY, JSON.stringify(feed.slice(0, 10)));
+  },
+
+  // 6b. Agents — live agent-learning registry & per-agent learning curves
+  async getAgents(): Promise<Agent[]> {
+    const payload = await apiRequest<Agent[] | { agents: Agent[] }>(
+      `${BASE_URL}/agents`,
+      undefined,
+      undefined,
+      MOCK_AGENTS
+    );
+    return parseEnvelopeArray<Agent>(payload, 'agents');
+  },
+
+  async getAgentStats(agentId: string): Promise<AgentStats> {
+    try {
+      const res = await fetch(`${BASE_URL}/agents/${agentId}/stats`);
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn(`GET /agents/${agentId}/stats failed, falling back to mock`);
+    }
+    return MOCK_AGENT_STATS[agentId] ?? {
+      agentId,
+      agentName: agentId,
+      taskCount: 0,
+      successRate: 0,
+      callsReduced: 0,
+      totalToolCalls: 0,
+      skillsLearned: 0,
+      curve: [],
+    };
   },
 
   // 7. Playground Integrations
