@@ -16,37 +16,49 @@ import { Blog } from './pages/Blog';
 import { BlogPost } from './pages/BlogPost';
 import { DocsHub } from './pages/DocsHub';
 import { ToastContainer } from './components/ui/Toast';
+import { DashboardModeProvider, useDashboardMode } from './context/DashboardModeContext';
+
+const AppRoutes: React.FC = () => {
+  const { mode } = useDashboardMode();
+  return (
+    <AppShell>
+      {/* Keying on mode remounts every page when the learn / agent_learn
+          toggle flips, so each view re-fetches its mode-scoped telemetry. */}
+      <Routes key={mode}>
+        <Route path="/" element={<Overview />} />
+        <Route path="/memory" element={<MemoryExplorer />} />
+        <Route path="/playground" element={<Playground />} />
+        <Route path="/observability" element={<Observability />} />
+        <Route path="/agents" element={<Agents />} />
+        <Route path="/agents/:agentId" element={<AgentDetail />} />
+        <Route path="/blog" element={<Blog />} />
+        <Route path="/blog/:slug" element={<BlogPost />} />
+
+        {/* Legacy redirects */}
+        <Route path="/skills" element={<Navigate to="/memory?type=skill" replace />} />
+        <Route path="/failures" element={<Navigate to="/memory?type=failure" replace />} />
+
+        <Route path="/retrieval-quality" element={<RetrievalQuality />} />
+        <Route path="/tasks" element={<TaskHistory />} />
+        <Route path="/tasks/:taskId" element={<TracePlayback />} />
+        <Route path="/lifecycle" element={<MemoryLifecycle />} />
+        <Route path="/docs" element={<DocsHub />} />
+        <Route path="/settings" element={<Settings />} />
+
+        {/* Fallback to Overview */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AppShell>
+  );
+};
 
 export const App: React.FC = () => {
   return (
     <HashRouter>
-      <AppShell>
-        <Routes>
-          <Route path="/" element={<Overview />} />
-          <Route path="/memory" element={<MemoryExplorer />} />
-          <Route path="/playground" element={<Playground />} />
-          <Route path="/observability" element={<Observability />} />
-          <Route path="/agents" element={<Agents />} />
-          <Route path="/agents/:agentId" element={<AgentDetail />} />
-          <Route path="/blog" element={<Blog />} />
-          <Route path="/blog/:slug" element={<BlogPost />} />
-          
-          {/* Legacy redirects */}
-          <Route path="/skills" element={<Navigate to="/memory?type=skill" replace />} />
-          <Route path="/failures" element={<Navigate to="/memory?type=failure" replace />} />
-          
-          <Route path="/retrieval-quality" element={<RetrievalQuality />} />
-          <Route path="/tasks" element={<TaskHistory />} />
-          <Route path="/tasks/:taskId" element={<TracePlayback />} />
-          <Route path="/lifecycle" element={<MemoryLifecycle />} />
-          <Route path="/docs" element={<DocsHub />} />
-          <Route path="/settings" element={<Settings />} />
-          
-          {/* Fallback to Overview */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AppShell>
-      <ToastContainer />
+      <DashboardModeProvider>
+        <AppRoutes />
+        <ToastContainer />
+      </DashboardModeProvider>
     </HashRouter>
   );
 };

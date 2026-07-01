@@ -1,0 +1,37 @@
+live store: C:\Users\mcw\.learnkit\memory.db
+
+
+=== qwen2.5-coder-32b :: Qwen/Qwen2.5-Coder-32B-Instruct @ http://127.0.0.1:8000/v1 ===
+  [task 1/cold] When does asyncio.gather() swallow exceptions vs propagate t...
+  [LearnKit] context injected:    0 chars
+    -> 10199 ms  | `asyncio.gather()` swallows exceptions if any of the awaitables it manages raise an exception, unles
+  [task 1/warm] When does asyncio.gather() swallow exceptions vs propagate t...
+  [LearnKit] context injected:    0 chars
+    -> 7432 ms  | `asyncio.gather()` swallows exceptions by default if multiple coroutines are provided, raising the f
+  [task 2/cold] Why does multiprocessing.Pool().map() hang on macOS Python 3...
+  [LearnKit] context injected:    0 chars
+    -> 7633 ms  | `multiprocessing.Pool().map()` can hang on macOS with Python 3.12 due to the default 'fork' start me
+  [task 2/warm] Why does multiprocessing.Pool().map() hang on macOS Python 3...
+  [LearnKit] context injected:    0 chars
+    -> 7550 ms  | `multiprocessing.Pool().map()` can hang on macOS with Python 3.12 due to the default 'spawn' start m
+
+=== qwen2.5-32b :: Qwen/Qwen2.5-32B-Instruct @ http://127.0.0.1:8001/v1 ===
+  [task 1/cold] When does asyncio.gather() swallow exceptions vs propagate t...
+  [LearnKit] context injected:    0 chars
+    -> 7884 ms  | In `asyncio.gather()`, exceptions raised by the awaitables are not swallowed; instead, the first exc
+  [task 1/warm] When does asyncio.gather() swallow exceptions vs propagate t...
+  [LearnKit] context injected:    0 chars
+    -> 7963 ms  | In `asyncio.gather()`, exceptions from the coroutines it waits for are propagated to the caller by d
+  [task 2/cold] Why does multiprocessing.Pool().map() hang on macOS Python 3...
+  [LearnKit] context injected:    0 chars
+    -> 7581 ms  | The `multiprocessing.Pool().map()` function may hang on macOS with Python 3.12 due to issues with th
+  [task 2/warm] Why does multiprocessing.Pool().map() hang on macOS Python 3...
+  [LearnKit] context injected:    0 chars
+    -> 7583 ms  | The `multiprocessing.Pool().map()` function may hang on macOS with Python 3.12 due to issues with th
+
+=== llama-3.3-70b :: meta-llama/Llama-3.3-70B-Instruct @ http://127.0.0.1:8002/v1 ===
+  [task 1/cold] When does asyncio.gather() swallow exceptions vs propagate t...
+  [LearnKit] context injected:    0 chars
+    -> 9605 ms  | In Python 3.7 and later, `asyncio.gather()` propagates the first exception it encounters by default,
+  [task 1/warm] When does asyncio.gather() swallow exceptions vs propagate t...
+  [LearnKit] context injected:    0 chars

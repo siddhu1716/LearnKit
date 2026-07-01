@@ -309,6 +309,8 @@ def _record_to_api(r) -> dict:
     """Map a backend MemoryRecord to the dashboard's record shape (snake_case;
     the client normalizes it)."""
     content = r.content or {}
+    steps = content.get("steps") if isinstance(content, dict) else None
+    is_procedural = bool(r.type == "skill" and isinstance(steps, list) and len(steps) > 0)
     return {
         "id": r.id,
         "type": r.type,
@@ -316,6 +318,8 @@ def _record_to_api(r) -> dict:
         "domains": list(r.domains.keys()),
         "confidence": round(float(r.confidence), 3),
         "content": content,
+        "is_procedural": is_procedural,
+        "step_count": len(steps) if isinstance(steps, list) else 0,
         "scope": r.scope,
         "status": r.status,
         "retrieval_count": r.reuse_count,
@@ -341,6 +345,7 @@ def _run_to_task(run: dict) -> dict:
         "armName": "warmed" if run.get("replayed") else "coldStart",
         "timestamp": run.get("created_at"),
         "agentId": run.get("agent_id"),
+        "mode": run.get("mode") or "learn",
         "toolCalls": run.get("tool_calls", 0),
         "callsReduced": run.get("calls_reduced", 0),
         "telemetry": _run_telemetry(run),
@@ -378,10 +383,10 @@ def _run_telemetry(run: dict) -> dict:
 
 
 @app.get("/api/v1/metrics")
-def api_metrics() -> dict:
+def api_metrics(mode: Optional[str] = None) -> dict:
     mem = _live()
     records = mem.backend.list_all(limit=5000)
-    runs = mem.backend.list_runs(limit=2000)
+    runs = mem.backend.list_runs(limit=2000, mode=mode)
 
     counts = {t: 0 for t in ("skill", "failure", "fact", "strategy", "preference", "heuristic", "trace")}
     for r in records:
@@ -488,9 +493,9 @@ def api_demote(record_id: str) -> dict:
 
 
 @app.get("/api/v1/tasks")
-def api_tasks(status: Optional[str] = None, agentId: Optional[str] = None) -> dict:
+def api_tasks(status: Optional[str] = None, agentId: Optional[str] = None, mode: Optional[str] = None) -> dict:
     mem = _live()
-    runs = mem.backend.list_runs(agent_id=agentId, limit=1000)
+    runs = mem.backend.list_runs(agent_id=agentId, limit=1000, mode=mode)
     tasks = [_run_to_task(r) for r in runs]
     if status and status != "all":
         tasks = [t for t in tasks if t["status"] == status]
@@ -498,7 +503,7 @@ def api_tasks(status: Optional[str] = None, agentId: Optional[str] = None) -> di
 
 
 @app.get("/api/v1/observability")
-def api_observability(agentId: Optional[str] = None) -> dict:
+def api_observability(agentId: Optional[str] = None, mode: Optional[str] = None) -> dict:
     """LLM observability summary: token usage, latency, cost, and per-model
     breakdown, in the style of agent-observability dashboards.
 
@@ -506,7 +511,7 @@ def api_observability(agentId: Optional[str] = None) -> dict:
     which does not surface per-call usage); ``estimated`` flags this to the UI.
     """
     mem = _live()
-    runs = mem.backend.list_runs(agent_id=agentId, limit=2000)
+    runs = mem.backend.list_runs(agent_id=agentId, limit=2000, mode=mode)
 
     total_runs = len(runs)
     total_prompt = sum(int(r.get("prompt_tokens") or 0) for r in runs)
@@ -653,9 +658,9 @@ def api_trace(task_id: str) -> dict:
 
 
 @app.get("/api/v1/agents")
-def api_agents() -> dict:
+def api_agents(mode: Optional[str] = None) -> dict:
     mem = _live()
-    summaries = mem.backend.agent_summaries()
+    summaries = mem.backend.agent_summaries(mode=mode)
     agents = [
         {
             "id": s["agent_id"],
@@ -677,9 +682,9 @@ def api_agents() -> dict:
 
 
 @app.get("/api/v1/agents/{agent_id}/stats")
-def api_agent_stats(agent_id: str) -> dict:
+def api_agent_stats(agent_id: str, mode: Optional[str] = None) -> dict:
     mem = _live()
-    runs = list(reversed(mem.backend.list_runs(agent_id=agent_id, limit=1000)))
+    runs = list(reversed(mem.backend.list_runs(agent_id=agent_id, limit=1000, mode=mode)))
     if not runs:
         raise HTTPException(status_code=404, detail=f"agent {agent_id} has no runs")
 
@@ -748,9 +753,16 @@ def api_quarantine() -> dict:
 def api_maintain(body: Optional[dict] = None) -> dict:
     mem = _live()
     body = body or {}
+    # Persist-until-deleted by default: only promote quarantined records. The
+    # decay / stale / consolidate (purge) passes that hide or archive records
+    # are opt-in via the request body so the dashboard store is never pruned
+    # behind the user's back.
+    aggressive = bool(body.get("aggressive", False))
     stats = mem.maintain_memory(
         quarantine_hours=float(body.get("quarantineHours", 0)),
-        decay_rate=float(body.get("decay", 0.02)),
+        decay_rate=float(body.get("decay", 0.02)) if aggressive else 0.0,
+        consolidate=bool(body.get("consolidate", False)),
+        stale_expired=aggressive,
     )
     return {
         "promoted": stats.get("promoted", 0),
@@ -761,9 +773,9 @@ def api_maintain(body: Optional[dict] = None) -> dict:
 
 
 @app.get("/api/v1/activity")
-def api_activity() -> dict:
+def api_activity(mode: Optional[str] = None) -> dict:
     mem = _live()
-    runs = mem.backend.list_runs(limit=20)
+    runs = mem.backend.list_runs(limit=20, mode=mode)
     events = []
     for r in runs:
         ok = r.get("outcome") == "success"
@@ -793,6 +805,56 @@ def api_set_diversity(body: dict) -> dict:
 @app.get("/api/v1/metrics/crowded-out")
 def api_crowded_out() -> dict:
     return {"records": []}
+
+
+@app.get("/api/v1/metrics/success-trend")
+def api_success_trend(mode: Optional[str] = None) -> dict:
+    """Daily Cold vs Warmed success rates for the Overview chart.
+
+    cold = non-replayed runs (LearnKit on, first attempt)
+    warmed = replayed runs (LearnKit on, replay from store)
+    control = flat reference equal to the overall non-replayed success rate
+    """
+    mem = _live()
+    runs = mem.backend.list_runs(limit=5000, mode=mode)
+    buckets: dict[str, dict] = {}
+    cold_all: list[float] = []
+    for r in runs:
+        ts = r.get("created_at") or ""
+        day = ts[:10] if ts else None
+        if not day:
+            continue
+        ok = 1.0 if r.get("outcome") == "success" else 0.0
+        b = buckets.setdefault(day, {"cold": [], "warmed": []})
+        if r.get("replayed"):
+            b["warmed"].append(ok)
+        else:
+            b["cold"].append(ok)
+            cold_all.append(ok)
+
+    if not buckets:
+        return {"points": []}
+
+    control_pct = round(100.0 * (sum(cold_all) / len(cold_all)) if cold_all else 0.0, 1)
+    days_sorted = sorted(buckets.keys())
+    last_cold = control_pct
+    last_warm = control_pct
+    points = []
+    for i, day in enumerate(days_sorted, start=1):
+        b = buckets[day]
+        if b["cold"]:
+            last_cold = round(100.0 * sum(b["cold"]) / len(b["cold"]), 1)
+        if b["warmed"]:
+            last_warm = round(100.0 * sum(b["warmed"]) / len(b["warmed"]), 1)
+        points.append({
+            "day": i,
+            "date": day,
+            "control": control_pct,
+            "coldStart": last_cold,
+            "warmedStart": last_warm,
+        })
+
+    return {"points": points, "control": control_pct, "totalRuns": len(runs)}
 
 
 # --- Static assets ---

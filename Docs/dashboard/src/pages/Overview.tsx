@@ -8,6 +8,7 @@ import { Badge } from '../components/ui/Badge';
 import { SkeletonLoader } from '../components/ui/SkeletonLoader';
 import { ActivityIcon, ArrowUpRight } from '../components/icons';
 import type { DashboardMetrics, SuccessRatePoint, TopSkill, ProblematicFailure, ActivityEvent, Agent } from '../types';
+import { useDashboardMode } from '../context/DashboardModeContext';
 import styles from './Overview.module.css';
 
 export const Overview: React.FC = () => {
@@ -19,6 +20,8 @@ export const Overview: React.FC = () => {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { mode } = useDashboardMode();
+  const isAgent = mode === 'agent_learn';
 
   const fetchData = async () => {
     try {
@@ -76,8 +79,12 @@ export const Overview: React.FC = () => {
     <div className={styles.overview}>
       <header className={styles.header}>
         <div>
-          <h1 className={styles.title}>Memory Overview</h1>
-          <p className={styles.subtitle}>Observability & retrieval metrics for local SDK stores</p>
+          <h1 className={styles.title}>{isAgent ? 'Agent-Learn Overview' : 'Learn Overview'}</h1>
+          <p className={styles.subtitle}>
+            {isAgent
+              ? 'Tool-use procedures, replays & calls-reduced for the agent path'
+              : 'Answer-quality memory & task outcomes for the model path'}
+          </p>
         </div>
         <button className={styles.refreshBtn} onClick={fetchData} aria-label="Refresh metrics">
           Refresh ↻
@@ -133,22 +140,27 @@ export const Overview: React.FC = () => {
                 <span className={styles.metricSubLabel}>Avg Cost</span>
                 <span className={styles.metricSubVal}>{metrics.avgTokens} tk</span>
               </div>
-              <div className={styles.metricSub}>
-                <span className={styles.metricSubLabel}>Retries Saved</span>
-                <span className={styles.metricSubVal}>-{Math.round(metrics.retryReduction * 100)}%</span>
-              </div>
+              {isAgent && (
+                <div className={styles.metricSub}>
+                  <span className={styles.metricSubLabel}>Retries Saved</span>
+                  <span className={styles.metricSubVal}>-{Math.round(metrics.retryReduction * 100)}%</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Injection Trends Card */}
-        <div className={styles.statCard}>
-          <h2 className={styles.cardTitle}>Injection Trends</h2>
-          <InjectionPie data={metrics.primaryDistribution} />
-        </div>
+        {/* Injection Trends Card — replay/injection mix is an agent-path concept */}
+        {isAgent && (
+          <div className={styles.statCard}>
+            <h2 className={styles.cardTitle}>Injection Trends</h2>
+            <InjectionPie data={metrics.primaryDistribution} />
+          </div>
+        )}
       </section>
 
-      {/* Agent learning band */}
+      {/* Agent learning band — only meaningful for the agent (tool) path */}
+      {isAgent && (
       <section className={styles.agentBand} onClick={() => navigate('/agents')} role="button" tabIndex={0}
         onKeyDown={(e) => e.key === 'Enter' && navigate('/agents')}>
         <div className={styles.agentBandHeader}>
@@ -180,12 +192,17 @@ export const Overview: React.FC = () => {
           </div>
         </div>
       </section>
+      )}
 
       {/* Mid row: Main Chart */}
       <section className={styles.chartSection}>
         <div className={styles.chartHeader}>
           <h2 className={styles.sectionTitle}>Success Rate Trend (30 Days)</h2>
-          <div className={styles.chartLegendHint}>Comparing agent starts: Control vs. Cold vs. Warmed</div>
+          <div className={styles.chartLegendHint}>
+            {isAgent
+              ? 'Comparing agent starts: Control vs. Cold vs. Warmed'
+              : 'Task success over time (model path)'}
+          </div>
         </div>
         <div className={styles.chartWrapper}>
           <SuccessRateTrend data={trendData} />

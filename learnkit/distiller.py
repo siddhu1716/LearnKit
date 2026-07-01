@@ -289,7 +289,7 @@ class MemoryDistiller:
     Converts successful execution traces into typed memory records.
     """
 
-    def __init__(self, lm=None):
+    def __init__(self, lm=None, quality_threshold: float = 3.5):
         import os
         if lm is None:
             model = os.environ.get("LEARNKIT_DISTILLER_MODEL")
@@ -303,6 +303,12 @@ class MemoryDistiller:
             self.lm = dspy.LM(model)
         else:
             self.lm = dspy.LM(lm) if isinstance(lm, str) else lm
+        # Threshold below which distill() abstains. LearnKit passes its own
+        # quality_threshold here so the success-gate and the distill-gate stay
+        # in sync (otherwise the LLM judge's typical short-answer score of 2.0
+        # passes the success gate but silently fails the distill gate, leaving
+        # the memory store permanently empty for short Q&A workloads).
+        self.quality_threshold = float(quality_threshold)
 
     def distill(
         self,
@@ -322,13 +328,13 @@ class MemoryDistiller:
         threshold. Callers should call distill_failure() separately for low-quality
         traces to extract a contrastive FailureRecord.
         """
-        if quality_score < 3.5:
+        if quality_score < self.quality_threshold:
             logger.warning(
                 "Distillation skipped — quality below threshold",
                 extra={
                     "event": "distill_quality_gate",
                     "quality_score": quality_score,
-                    "threshold": 3.5,
+                    "threshold": self.quality_threshold,
                 },
             )
             return None, [], [], None

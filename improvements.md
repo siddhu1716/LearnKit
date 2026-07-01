@@ -208,6 +208,38 @@ Matrix run: `benchmarks/results/agentic_matrix_2026-06-27_20260627_142507_summar
   endpoint-config gap until the sglang launch flags are corrected, then
   re-run.
 
+### Cross-model matrix — expanded lineup (2026-06-28: +Llama-3.3-70B, +gpt-oss-20b)
+
+Matrix run: `benchmarks/results/agentic_matrix_2026-06-28_20260627_185900_summary.json`
+(`--trials 1 --k 1 --seed 7 --continue-on-fail`, four self-hosted endpoints).
+
+- `Qwen/Qwen2.5-32B-Instruct` (port 8001) — **PASS**, playbook_effect=+1.75,
+  pass^k=1.0, LLM cold→warm 12→8. Reproduces the 2026-06-27 numbers exactly
+  (the 14B lane was dropped from this lineup; 32B remains the reference).
+- `meta-llama/Llama-3.3-70B-Instruct` (port 8002) — **PASS**,
+  playbook_effect=**+2.25** (best in lineup), pass^k=0.0, LLM cold→warm
+  24→16 (~33% reduction). Highest absolute lift recorded so far; pass^k=0.0
+  means the warmed arm wasn't deterministic across all-k samples even though
+  mean score improved. First non-Qwen lane to land a PASS — closes the
+  "Qwen-only verification" caveat in the prior snapshot.
+- `Qwen/Qwen2.5-Coder-32B-Instruct` (port 8000) — **FAIL** (unchanged):
+  playbook_effect=0.0, LLM 6→6. Still the sglang parser-flag gap: tool calls
+  are emitted as `<tools>{...}</tools>` text instead of structured
+  `tool_calls`. Fix is unchanged — relaunch sglang with
+  `--enable-auto-tool-choice --tool-call-parser qwen25` (fallback `hermes`).
+- `openai/gpt-oss-20b` (port 8004) — **FAIL**, playbook_effect=**−0.125**
+  (regression), pass^k=0.0, LLM cold→warm 26→16. The warm arm reduces calls
+  but the score drops slightly — model follows the injected playbook in
+  shape but mis-routes when the playbook step doesn't fit the task. Treat
+  as a behavioural mismatch, not an endpoint bug: 20B reasoning capacity
+  appears below the floor needed for procedural lift on this suite. Re-run
+  with a stricter `procedure_match_threshold` (e.g. 0.85) before drawing a
+  final conclusion.
+
+Suite gate (`min_playbook_effect >= 0.5`): **PASS** for 32B and Llama-70B;
+**FAIL** for Coder-32B (endpoint config) and gpt-oss-20b (model capacity).
+Overall `all_pass=false` because the matrix requires every target to pass.
+
 ### Known limitations at handover (documented, not blockers)
 
 - Suite gate is **mean-only, single-seed**. No bootstrap CIs. Sensible for

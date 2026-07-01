@@ -97,6 +97,7 @@ class BaseBackend(ABC):
         agent_id: Optional[str] = None,
         outcome: Optional[str] = None,
         limit: Optional[int] = None,
+        mode: Optional[str] = None,
     ) -> list[dict]:
         """List persisted runs. Empty by default."""
         return []
@@ -105,7 +106,7 @@ class BaseBackend(ABC):
         """Read a single persisted run. None by default."""
         return None
 
-    def agent_summaries(self) -> list[dict]:
+    def agent_summaries(self, mode: Optional[str] = None) -> list[dict]:
         """Aggregate per-agent stats. Empty by default."""
         return []
 

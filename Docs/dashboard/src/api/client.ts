@@ -38,6 +38,28 @@ import {
 
 const BASE_URL = '/api/v1';
 
+// Active dashboard mode toggle ('learn' | 'agent_learn' | null=all). Set by the
+// DashboardMode React context so every run-backed getter scopes its query to
+// the selected learning path. Records (memory) are shared across modes; only
+// run/task/agent telemetry is mode-partitioned server-side via ?mode=.
+export type DashboardMode = 'learn' | 'agent_learn';
+let currentMode: DashboardMode | null = null;
+
+export function setDashboardMode(mode: DashboardMode | null): void {
+  currentMode = mode;
+}
+
+export function getDashboardMode(): DashboardMode | null {
+  return currentMode;
+}
+
+// Append the active mode to a URL as a query param (handles existing ?params).
+function withMode(url: string): string {
+  if (!currentMode) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}mode=${encodeURIComponent(currentMode)}`;
+}
+
 // Key names for localStorage fallback
 const STORAGE_KEYS = {
   METRICS: 'learnkit_metrics',
@@ -50,8 +72,37 @@ const STORAGE_KEYS = {
   ACTIVITY: 'learnkit_activity',
 };
 
-// Initialize localStorage with mock data if not already present
-function initLocalStorage() {
+// Initialize localStorage with mock data ONLY when no backend is available.
+// We probe /healthz once on first load; if it succeeds we WIPE any stale mock
+// data so getTasks/getRecords/getQuarantine etc. fall through to the live API
+// instead of serving cached mocks. (Stale mock in localStorage was the
+// root cause of "task history shows mock data" / "agents tab shows mocked
+// Support Agent" after the backend came online.)
+async function initLocalStorage() {
+  let backendUp = false;
+  try {
+    const res = await fetch('/healthz', { cache: 'no-store' });
+    backendUp = res.ok;
+  } catch {
+    backendUp = false;
+  }
+
+  if (backendUp) {
+    // Backend is live: drop any mock-cached entries so live data wins.
+    for (const k of Object.values(STORAGE_KEYS)) {
+      const raw = localStorage.getItem(k);
+      if (!raw) continue;
+      // Heuristic: if the cached entry looks like one of our MOCK fixtures,
+      // remove it. Live data never carries the "agent-support"/"agent-sql"
+      // ids or the "Support Agent" name string.
+      if (raw.includes('agent-support') || raw.includes('Support Agent') || raw.includes('agent-sql')) {
+        localStorage.removeItem(k);
+      }
+    }
+    return;
+  }
+
+  // Backend down: seed mocks so the UI is never blank in pure-static mode.
   if (!localStorage.getItem(STORAGE_KEYS.METRICS)) {
     localStorage.setItem(STORAGE_KEYS.METRICS, JSON.stringify(MOCK_METRICS));
   }
@@ -137,6 +188,8 @@ function normalizeRecord(raw: any): MemoryRecord {
     tags: toArray<string>(raw?.tags),
     createdAt: String(raw?.createdAt ?? raw?.created_at ?? new Date().toISOString()),
     expiresAt: raw?.expiresAt ?? raw?.expires_at ?? null,
+    isProcedural: Boolean(raw?.isProcedural ?? raw?.is_procedural ?? false),
+    stepCount: Number(raw?.stepCount ?? raw?.step_count ?? 0),
   };
 }
 
@@ -175,7 +228,7 @@ async function apiRequest<T>(
 export const client = {
   // 1. Dashboard Metrics
   async getMetrics(): Promise<DashboardMetrics> {
-    const metrics = await apiRequest<DashboardMetrics>(`${BASE_URL}/metrics`, undefined, STORAGE_KEYS.METRICS, MOCK_METRICS);
+    const metrics = await apiRequest<DashboardMetrics>(withMode(`${BASE_URL}/metrics`), undefined, STORAGE_KEYS.METRICS, MOCK_METRICS);
     // Sync with record counts in storage
     const records = await this.getRecords();
     const counts = {
@@ -377,7 +430,7 @@ export const client = {
   // 4. Tasks & Trace Playbacks
   async getTasks(params?: { status?: string }): Promise<Task[]> {
     const payload = await apiRequest<Task[] | { tasks: Task[] }>(
-      `${BASE_URL}/tasks`,
+      withMode(`${BASE_URL}/tasks`),
       undefined,
       STORAGE_KEYS.TASKS,
       MOCK_TASKS
@@ -562,7 +615,14 @@ export const client = {
 
   // 6. Helpers / Utilities
   async getSuccessRateTrend(): Promise<SuccessRatePoint[]> {
-    return MOCK_SUCCESS_TREND;
+    const payload = await apiRequest<SuccessRatePoint[] | { points: SuccessRatePoint[] }>(
+      withMode(`${BASE_URL}/metrics/success-trend`),
+      undefined,
+      undefined,
+      MOCK_SUCCESS_TREND
+    );
+    const points = parseEnvelopeArray<SuccessRatePoint>(payload, 'points');
+    return points.length > 0 ? points : MOCK_SUCCESS_TREND;
   },
 
   async getTopSkills(): Promise<TopSkill[]> {
@@ -595,7 +655,7 @@ export const client = {
 
   async getActivityFeed(): Promise<ActivityEvent[]> {
     const payload = await apiRequest<ActivityEvent[] | { events: ActivityEvent[] }>(
-      `${BASE_URL}/activity`,
+      withMode(`${BASE_URL}/activity`),
       undefined,
       STORAGE_KEYS.ACTIVITY,
       MOCK_ACTIVITY
@@ -613,7 +673,7 @@ export const client = {
   // 6b. Agents — live agent-learning registry & per-agent learning curves
   async getAgents(): Promise<Agent[]> {
     const payload = await apiRequest<Agent[] | { agents: Agent[] }>(
-      `${BASE_URL}/agents`,
+      withMode(`${BASE_URL}/agents`),
       undefined,
       undefined,
       MOCK_AGENTS
@@ -623,7 +683,7 @@ export const client = {
 
   async getAgentStats(agentId: string): Promise<AgentStats> {
     try {
-      const res = await fetch(`${BASE_URL}/agents/${agentId}/stats`);
+      const res = await fetch(withMode(`${BASE_URL}/agents/${agentId}/stats`));
       if (res.ok) return await res.json();
     } catch (e) {
       console.warn(`GET /agents/${agentId}/stats failed, falling back to mock`);
@@ -643,8 +703,8 @@ export const client = {
   // 6c. Observability — LLM token/latency/cost telemetry
   async getObservability(agentId?: string): Promise<ObservabilitySummary> {
     const url = agentId
-      ? `${BASE_URL}/observability?agentId=${encodeURIComponent(agentId)}`
-      : `${BASE_URL}/observability`;
+      ? withMode(`${BASE_URL}/observability?agentId=${encodeURIComponent(agentId)}`)
+      : withMode(`${BASE_URL}/observability`);
     try {
       const res = await fetch(url);
       if (res.ok) {

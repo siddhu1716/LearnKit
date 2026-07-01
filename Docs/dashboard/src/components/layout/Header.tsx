@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import styles from './Header.module.css';
 import { Home, LayoutDashboard, BookOpen, FileText, Settings, Circle } from '../icons';
+import { useDashboardMode } from '../../context/DashboardModeContext';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -11,6 +12,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarOpen }) => {
   const location = useLocation();
   const [backendLive, setBackendLive] = useState<boolean | null>(null);
+  const { mode, setMode } = useDashboardMode();
 
   useEffect(() => {
     let cancelled = false;
@@ -87,6 +89,46 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarOpen }) 
 
         {/* Right side */}
         <div className={styles.right}>
+          {/* Learn / Agent-Learn mode toggle — scopes all run telemetry to one
+              learning path. Memory records are shared across both. */}
+          <div
+            role="group"
+            aria-label="Dashboard mode"
+            style={{
+              display: 'inline-flex',
+              borderRadius: 8,
+              border: '1px solid var(--border, #30363d)',
+              overflow: 'hidden',
+            }}
+          >
+            {([
+              { key: 'learn', label: 'Learn', title: 'Model / answer-quality path (@memory.learn). Records & tasks, no tool procedures.' },
+              { key: 'agent_learn', label: 'Agent-Learn', title: 'Agent / tool path (@memory.agent_learn). Full view: calls-reduced, procedures, replays.' },
+            ] as const).map((opt) => {
+              const active = mode === opt.key;
+              return (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => setMode(opt.key)}
+                  title={opt.title}
+                  aria-pressed={active}
+                  style={{
+                    padding: '5px 12px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    border: 'none',
+                    background: active ? 'var(--accent, #2f81f7)' : 'transparent',
+                    color: active ? '#fff' : 'var(--text-muted, #8b949e)',
+                    transition: 'background 0.15s, color 0.15s',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
           <div
             className={styles.mockBadge}
             title={

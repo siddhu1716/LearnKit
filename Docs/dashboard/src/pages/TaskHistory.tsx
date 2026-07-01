@@ -7,6 +7,7 @@ import { SkeletonLoader } from '../components/ui/SkeletonLoader';
 import { toast } from '../components/ui/Toast';
 import { Search, RefreshCw } from '../components/icons';
 import type { Task } from '../types';
+import { useDashboardMode } from '../context/DashboardModeContext';
 import styles from './TaskHistory.module.css';
 
 const fmtTokens = (n?: number) => (n == null ? '—' : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : `${n}`);
@@ -19,6 +20,8 @@ export const TaskHistory: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const { mode } = useDashboardMode();
+  const isAgent = mode === 'agent_learn';
 
   const fetchTasks = async () => {
     try {
@@ -57,14 +60,24 @@ export const TaskHistory: React.FC = () => {
     {
       key: 'id',
       label: 'ID',
-      width: '12%',
+      width: '11%',
       render: (v) => <span className={styles.monoId}>{String(v)}</span>,
     },
     {
       key: 'input',
       label: 'Query / Input Task',
-      width: '26%',
+      width: '24%',
       render: (v) => <span className={styles.inputVal} title={String(v)}>{String(v)}</span>,
+    },
+    {
+      key: 'mode',
+      label: 'Mode',
+      width: '9%',
+      render: (_v, row) => (
+        <Badge variant={row.mode === 'agent_learn' ? 'accent' : 'info'}>
+          {row.mode === 'agent_learn' ? 'Agent' : 'Learn'}
+        </Badge>
+      ),
     },
     {
       key: 'status',
@@ -79,9 +92,23 @@ export const TaskHistory: React.FC = () => {
     {
       key: 'score',
       label: 'Score',
-      width: '9%',
+      width: '8%',
       render: (v) => <span className={styles.monoId}>{Number(v).toFixed(1)} / 5.0</span>,
     },
+    ...(isAgent
+      ? ([
+          {
+            key: 'callsReduced',
+            label: 'Calls ↓',
+            width: '8%',
+            render: (_v, row) => (
+              <span className={styles.monoId}>
+                {row.callsReduced && row.callsReduced > 0 ? `-${Math.round(row.callsReduced)}` : '—'}
+              </span>
+            ),
+          },
+        ] as Column<Task>[])
+      : []),
     {
       key: 'tokens',
       label: 'Tokens',
@@ -128,7 +155,9 @@ export const TaskHistory: React.FC = () => {
         <div>
           <h1 className={styles.title}>Task History</h1>
           <p className={styles.subtitle}>
-            Historical trace logs of all evaluated execution runs, outputs, and scores
+            {isAgent
+              ? 'Agent-path runs (tool use, replays & calls reduced) — outputs and scores'
+              : 'Model-path runs (answer quality) — historical outputs and scores'}
           </p>
         </div>
         <button className={styles.refreshBtn} onClick={fetchTasks}>

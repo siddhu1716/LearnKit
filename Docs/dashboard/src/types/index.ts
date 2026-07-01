@@ -34,6 +34,8 @@ export interface MemoryRecord {
   tags: string[];
   createdAt: string;
   expiresAt: string | null;
+  isProcedural?: boolean;
+  stepCount?: number;
 }
 
 export interface RecordCounts {
@@ -87,6 +89,7 @@ export interface Task {
   armName: string;
   timestamp: string;
   agentId?: string;
+  mode?: 'learn' | 'agent_learn';
   toolCalls?: number;
   callsReduced?: number;
   telemetry?: RunTelemetry;

@@ -9,6 +9,7 @@ import { SkeletonLoader } from '../components/ui/SkeletonLoader';
 import { toast } from '../components/ui/Toast';
 import { Search } from '../components/icons';
 import type { MemoryRecord, RecordType, RecordStatus } from '../types';
+import { useDashboardMode } from '../context/DashboardModeContext';
 import styles from './MemoryExplorer.module.css';
 
 export const MemoryExplorer: React.FC = () => {
@@ -40,7 +41,10 @@ export const MemoryExplorer: React.FC = () => {
   });
 
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [procFilter, setProcFilter] = useState<'all' | 'procedural' | 'declarative'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const { mode } = useDashboardMode();
+  const isAgent = mode === 'agent_learn';
 
   const selectedRecord = useMemo(() => {
     return records.find((r) => r.id === selectedRecordId) || null;
@@ -75,15 +79,19 @@ export const MemoryExplorer: React.FC = () => {
   const filteredRecords = useMemo(() => {
     return records.filter((r) => {
       const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
+      const matchesProc =
+        procFilter === 'all' ||
+        (procFilter === 'procedural' && r.isProcedural) ||
+        (procFilter === 'declarative' && !r.isProcedural);
       const matchesSearch =
         searchQuery === '' ||
         r.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
         r.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         r.taskType.toLowerCase().includes(searchQuery.toLowerCase()) ||
         r.domains.some((d) => d.toLowerCase().includes(searchQuery.toLowerCase()));
-      return matchesStatus && matchesSearch;
+      return matchesStatus && matchesProc && matchesSearch;
     });
-  }, [records, statusFilter, searchQuery]);
+  }, [records, statusFilter, procFilter, searchQuery]);
 
   const handleRowClick = (row: MemoryRecord) => {
     setSelectedRecordId(row.id);
@@ -240,6 +248,19 @@ export const MemoryExplorer: React.FC = () => {
           />
         </div>
         <div className={styles.filters}>
+          {isAgent && (
+            <select
+              value={procFilter}
+              onChange={(e) => setProcFilter(e.target.value as 'all' | 'procedural' | 'declarative')}
+              className={styles.select}
+              aria-label="Procedural filter"
+              title="Procedural skills carry an ordered tool-call sequence; declarative records do not."
+            >
+              <option value="all">All Memory</option>
+              <option value="procedural">Procedural (tool steps)</option>
+              <option value="declarative">Declarative</option>
+            </select>
+          )}
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}

@@ -5,6 +5,7 @@ Task 1.3 — Base MemoryRecord schema.
 confidence decay + reinforcement cycle (extends Hermes — which had none).
 """
 
+import os
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Literal, Optional
@@ -29,6 +30,21 @@ TTL_DEFAULTS: dict[str, int] = {
 }
 
 
+def _persist_forever() -> bool:
+    """When LEARNKIT_PERSIST_FOREVER is truthy, new records get no expiry.
+
+    The dashboard/server and seeders set this so user-run memory is kept until
+    explicitly deleted (records with ``expires_at=None`` never expire and are
+    never excluded from retrieval/listing). SDK users keep the default TTL
+    behavior unless they opt in via ``LearnKit(record_ttl=False)``.
+    """
+    return os.environ.get("LEARNKIT_PERSIST_FOREVER", "").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
+
 class MemoryRecord(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     type: MemoryType
@@ -48,7 +64,7 @@ class MemoryRecord(BaseModel):
     evolution_gen: int = 0
 
     def model_post_init(self, __context) -> None:  # noqa: ANN001
-        if self.expires_at is None:
+        if self.expires_at is None and not _persist_forever():
             days = TTL_DEFAULTS.get(self.type, 90)
             exp = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=days)
             self.expires_at = exp.isoformat()

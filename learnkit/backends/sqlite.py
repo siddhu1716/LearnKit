@@ -175,6 +175,7 @@ class SQLiteBackend(BaseBackend):
                         task TEXT,
                         task_type TEXT,
                         domains TEXT,
+                        mode TEXT DEFAULT 'learn',
                         tool_calls INTEGER DEFAULT 0,
                         baseline_calls REAL,
                         calls_reduced REAL DEFAULT 0,
@@ -209,6 +210,7 @@ class SQLiteBackend(BaseBackend):
                     ("cost_usd", "REAL DEFAULT 0"),
                     ("models", "TEXT"),
                     ("estimated", "INTEGER DEFAULT 1"),
+                    ("mode", "TEXT DEFAULT 'learn'"),
                 ):
                     if col not in existing_cols:
                         conn.execute(f"ALTER TABLE runs ADD COLUMN {col} {ddl}")
@@ -217,6 +219,9 @@ class SQLiteBackend(BaseBackend):
                 )
                 conn.execute(
                     "CREATE INDEX IF NOT EXISTS idx_runs_sig ON runs (signature_fp)"
+                )
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_runs_mode ON runs (mode)"
                 )
         except sqlite3.Error as e:
             logger.error(
@@ -796,11 +801,11 @@ class SQLiteBackend(BaseBackend):
                     """
                     INSERT OR REPLACE INTO runs (
                         run_id, agent_id, agent_name, task, task_type, domains,
-                        tool_calls, baseline_calls, calls_reduced, replayed,
+                        mode, tool_calls, baseline_calls, calls_reduced, replayed,
                         outcome, quality_score, record_ids, signature_fp, steps,
                         created_at, latency_ms, prompt_tokens, completion_tokens,
                         total_tokens, context_tokens, cost_usd, models, estimated
-                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """,
                     (
                         run["run_id"],
@@ -809,6 +814,7 @@ class SQLiteBackend(BaseBackend):
                         run.get("task"),
                         run.get("task_type"),
                         json.dumps(run.get("domains", {})),
+                        run.get("mode") or "learn",
                         int(run.get("tool_calls", 0) or 0),
                         run.get("baseline_calls"),
                         float(run.get("calls_reduced", 0) or 0),
@@ -843,6 +849,7 @@ class SQLiteBackend(BaseBackend):
             "task": row["task"],
             "task_type": row["task_type"],
             "domains": json.loads(row["domains"]) if row["domains"] else {},
+            "mode": (row["mode"] if "mode" in keys and row["mode"] else "learn"),
             "tool_calls": row["tool_calls"],
             "baseline_calls": row["baseline_calls"],
             "calls_reduced": row["calls_reduced"],
@@ -870,6 +877,7 @@ class SQLiteBackend(BaseBackend):
         agent_id: Optional[str] = None,
         outcome: Optional[str] = None,
         limit: Optional[int] = None,
+        mode: Optional[str] = None,
     ) -> list[dict]:
         conn = self._conn()
         try:
@@ -882,6 +890,9 @@ class SQLiteBackend(BaseBackend):
             if outcome:
                 clauses.append("outcome = ?")
                 params.append(outcome)
+            if mode:
+                clauses.append("mode = ?")
+                params.append(mode)
             if clauses:
                 sql += " WHERE " + " AND ".join(clauses)
             sql += " ORDER BY created_at DESC"
@@ -903,12 +914,22 @@ class SQLiteBackend(BaseBackend):
         finally:
             self._close(conn)
 
-    def agent_summaries(self) -> list[dict]:
-        """Aggregate per-agent stats for the agents registry."""
+    def agent_summaries(self, mode: Optional[str] = None) -> list[dict]:
+        """Aggregate per-agent stats for the agents registry.
+
+        When ``mode`` is given ('learn' or 'agent_learn'), only runs of that
+        learning path are aggregated, so the dashboard can show a registry
+        scoped to the active mode toggle.
+        """
         conn = self._conn()
         try:
+            params: list = []
+            where = "WHERE agent_id IS NOT NULL"
+            if mode:
+                where += " AND mode = ?"
+                params.append(mode)
             rows = conn.execute(
-                """
+                f"""
                 SELECT
                     agent_id,
                     MAX(agent_name) AS agent_name,
@@ -923,10 +944,11 @@ class SQLiteBackend(BaseBackend):
                     MIN(created_at) AS created_at,
                     MAX(created_at) AS last_active
                 FROM runs
-                WHERE agent_id IS NOT NULL
+                {where}
                 GROUP BY agent_id
                 ORDER BY last_active DESC
-            """
+            """,
+                params,
             ).fetchall()
             return [
                 {

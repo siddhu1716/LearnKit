@@ -86,6 +86,7 @@ class LearnKit:
         max_tracked_runs: int = 256,
         agent_id: Optional[str] = None,
         agent_name: Optional[str] = None,
+        record_ttl: bool = True,
         **backend_kwargs,
     ):
         self.backend = get_backend(memory_backend, **backend_kwargs)
@@ -101,7 +102,14 @@ class LearnKit:
         )
         self.classifier = classifier or classify_task
         self.evaluator = evaluator or Evaluator()
-        self.distiller = distiller or MemoryDistiller()
+        self.distiller = distiller or MemoryDistiller(quality_threshold=quality_threshold)
+        # If a pre-built distiller was injected, keep its own threshold in sync
+        # with ours so the success-gate and distill-gate never diverge.
+        if not hasattr(self.distiller, "quality_threshold") or self.distiller.quality_threshold != quality_threshold:
+            try:
+                self.distiller.quality_threshold = float(quality_threshold)
+            except Exception:
+                pass
         self.scope = scope
         self.capture_reasoning = capture_reasoning
         self.quality_threshold = quality_threshold
@@ -113,6 +121,14 @@ class LearnKit:
         # still attributable to *some* agent.
         self.agent_id = agent_id or f"agent-{uuid.uuid4().hex[:8]}"
         self.agent_name = agent_name or self.agent_id
+        # When False, distilled records are stored with no TTL (expires_at=None)
+        # so user-run memory persists until explicitly deleted. Implemented as a
+        # process-level flag honored by MemoryRecord at creation time; default
+        # True preserves the published SDK TTL/decay behavior.
+        self.record_ttl = record_ttl
+        if not record_ttl:
+            os.environ["LEARNKIT_PERSIST_FOREVER"] = "1"
+
         # When True, distilled skill/fact/strategy/etc. records skip the 24h
         # quarantine window and are stored as `active` so they're retrievable
         # on the next task. Use for benchmark/online-learning scenarios.
@@ -494,6 +510,7 @@ class LearnKit:
             @functools.wraps(fn)
             def wrapper(task: str, *args, **kwargs) -> str:
                 run = self.prepare_run(task)
+                run["learning_mode"] = "learn"
 
                 # Inject context into kwargs or modify the call
                 enriched_kwargs = {**kwargs, "_learnkit_context": run["context"]}
@@ -538,6 +555,7 @@ class LearnKit:
             @functools.wraps(fn)
             def wrapper(task: str, *args, **kwargs) -> str:
                 run = self.prepare_run(task)
+                run["learning_mode"] = "agent_learn"
                 tracker = self.arm_tool_tracker(run)
 
                 enriched_kwargs = {
@@ -631,7 +649,9 @@ class LearnKit:
         """
         tracker = ToolTracker(run["trajectory"])
         task = run["trajectory"].task
-
+        # Adapters that arm a tracker directly are on the agent (tool-using)
+        # path; tag the run so its telemetry is attributed to agent_learn.
+        run.setdefault("learning_mode", "agent_learn")
         # Replay: if a previously-learned procedure matches this task, attach it
         # so the agent can follow the proven tool sequence instead of
         # re-deriving it (Hermes / AWM step-reduction).
@@ -655,6 +675,7 @@ class LearnKit:
             latency_ms = round((time.perf_counter() - t_start) * 1000.0, 2)
         run_meta = {
             "tool_calls": int(run.get("tool_calls", 0) or 0),
+            "learning_mode": run.get("learning_mode"),
             "record_ids": [
                 getattr(r, "id", None) for r in run.get("records", []) if getattr(r, "id", None)
             ],
@@ -946,6 +967,13 @@ class LearnKit:
         if baseline is not None and tool_calls > 0:
             calls_reduced = max(0.0, baseline - tool_calls)
 
+        # Learning path for this run: prefer the explicit tag set by the
+        # learn / agent_learn decorators; fall back to tool evidence so
+        # adapter-driven runs are still classified correctly.
+        learning_mode = meta.get("learning_mode")
+        if learning_mode not in ("learn", "agent_learn"):
+            learning_mode = "agent_learn" if (tool_calls > 0 or replayed) else "learn"
+
         record_ids = meta.get("record_ids")
         if record_ids is None:
             record_ids = [getattr(r, "id", None) for r in retrieved_records]
@@ -984,6 +1012,7 @@ class LearnKit:
                 "task": traj.task,
                 "task_type": meta.get("task_type"),
                 "domains": domain_vector or {},
+                "mode": learning_mode,
                 "tool_calls": tool_calls,
                 "baseline_calls": baseline,
                 "calls_reduced": calls_reduced,
@@ -1133,18 +1162,25 @@ class LearnKit:
         decay_rate: float = 0.02,
         quarantine_hours: float = 24.0,
         consolidate: bool = False,
+        stale_expired: bool = True,
     ) -> dict[str, int]:
         """Run the local maintenance loop: decay, stale marking, quarantine promotion.
 
         When ``consolidate`` is set, also run the umbrella-merge pass that folds
         overlapping active skills into a single canonical skill (archiving the
         rest as ``deprecated``) so the store doesn't bloat with near-duplicates.
+
+        When ``stale_expired`` is False, records past their TTL are left
+        ``active`` (not hidden from retrieval) — used by the dashboard's
+        persist-until-deleted policy.
         """
         stats = {
-            "decayed": self.backend.decay_confidence(
-                weeks=weeks, decay_rate=decay_rate
+            "decayed": (
+                self.backend.decay_confidence(weeks=weeks, decay_rate=decay_rate)
+                if decay_rate > 0
+                else 0
             ),
-            "stale": self.backend.mark_expired_stale(),
+            "stale": self.backend.mark_expired_stale() if stale_expired else 0,
             "promoted": self.backend.promote_quarantined(
                 min_age_hours=quarantine_hours
             ),
