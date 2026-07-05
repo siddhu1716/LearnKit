@@ -1,24 +1,33 @@
 flowchart TD
-    A[CLI python -m benchmarks.run_custom] -->|args seeds/tasks/splits/warm-splits| B[load_tasks from benchmarks/tasks]
-    B -->|domain task lists| C[Loop domains and seeds]
+    A["CLI: python -m benchmarks.run_agentic_matrix<br/>--trials --k --seed --target name|url|model"] --> B[matrix_manifest.json targets - your LLM endpoints]
+    B --> C[Loop over model targets]
+    C -->|LK_BASE_URL / LK_MODEL per target| D[run_agentic_suite - one model]
 
-    C --> D[Control Arm]
-    D -->|system prompt + task prompt| E[call_agent litellm]
-    E -->|response usage latency| F[score via graders]
-    F -->|record row| G[append control record]
+    subgraph SUITE[Agentic suite - deterministic tool verification, no LLM judge]
+        D --> E1["react_live - single-shot tool-call reduction<br/>emits PER_TASK_JSON"]
+        D --> E2["evolution_live - multi-round durability<br/>emits per_round curve"]
+        D --> E3[injection_ablation - playbook quality lift = the gate]
+        E1 --> F[_compute_suite_summary + gates]
+        E2 --> F
+        E3 --> F
+    end
 
-    C --> H[Treatment Arm]
-    H -->|initialize LearnKit sqlite db| I[warm phase optional]
-    I -->|warm task prompts| J[memory.agent ask]
-    J -->|distilled memory persisted| K[scored treatment loop]
-    K -->|response + attribution + context chars| F
-    F -->|record row| L[append treatment record]
+    F -->|per-model summary| G[(benchmarks/results/agentic_suite_*_summary.json)]
+    C --> H[(benchmarks/results/agentic_matrix_*_summary.json)]
 
-    G --> M[summarize]
-    L --> M
-    M -->|raw rows| N[results run_id raw.json]
-    M -->|aggregates| O[results run_id summary.json]
-    M -->|human report| P[results run_id summary.md]
-    M -->|time series| Q[results run_id compounding.csv]
-    N -->|post hoc| R[attribution_summary.py]
-    R -->|harmful_retrieval_rate wrong_primary_rate| S[contamination diagnostics]
+    G --> I["python -m benchmarks.make_results<br/>reads manifest-pinned raw runs"]
+    I --> J[(benchmarks/RESULTS.json - canonical, committed)]
+    I --> K[(benchmarks/MATRIX.md - rendered table)]
+    I -->|--check| L{artifact drift?}
+    L -->|stale| L1[CI fails - benchmark-artifact job]
+    L -->|clean| L2[ok]
+
+    J --> M[python -m benchmarks.seed_dashboard]
+    M -->|one agent_learn run per benchmark task + procedural skills| N[(SQLite runs + records)]
+
+    J --> O[FastAPI /api/v1/benchmarks]
+    N --> O
+    O --> P["React dashboard - Benchmarks page<br/>summary + per-task / per-round drill-down, no mock data"]
+
+    I -.->|--run: reproduce live, then re-pin| A
+

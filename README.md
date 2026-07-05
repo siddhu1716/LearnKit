@@ -1,5 +1,7 @@
 # LearnKit
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/siddhu1716/LearnKit)
+
 > **🚀 Live Pre-Release on PyPI!**
 > LearnKit is installable via PyPI as `learnkit-ai`. It provides the complete experience-distillation layer for Python AI agents. Let your agents compound knowledge dynamically!
 

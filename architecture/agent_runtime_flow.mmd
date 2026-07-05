@@ -1,5 +1,5 @@
 flowchart TD
-    A[User Task] -->|task string| B[LearnKit.agent_learn wrapper]
+    A[User Task] -->|task string| B["LearnKit.agent_learn wrapper<br/>learning_mode = 'agent_learn'"]
     B -->|prepare_run task| C[Classifier classify_task]
     C -->|ClassificationOutput domains/task_type| D[SemanticRetriever.retrieve]
     D -->|candidate MemoryRecords| E[MemoryRouter.route]
@@ -33,4 +33,9 @@ flowchart TD
     V -->|persisted procedural skills| W[(SQLite records + FTS + optional vec)]
     W -->|retrieved on next encounter| D
 
-    P -->|final response| X[Caller receives output]
+    P -->|_persist_run telemetry| X["Backend.insert_run<br/>mode='agent_learn' / tool_calls / baseline_calls<br/>calls_reduced / replayed / tokens / latency"]
+    X --> Y[(SQLite runs table)]
+    Y -.->|calls-reduced, replays, curves| DASH["FastAPI /api/v1/* -> React dashboard - Agent-Learn mode"]
+
+    P -->|final response| Z[Caller receives output]
+

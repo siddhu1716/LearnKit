@@ -1,6 +1,10 @@
 flowchart LR
     A[Distilled Record Candidate] -->|Pydantic schema validation| B[Typed MemoryRecord]
-    B -->|initial status by type| C{Record type}
+    B -->|TTL policy| TTL{record_ttl / LEARNKIT_PERSIST_FOREVER}
+    TTL -->|persist-forever| B0[expires_at = None - never expires]
+    TTL -->|default| B1[expires_at = now + TTL_DEFAULTS by type]
+    B0 --> C{Record type}
+    B1 --> C
 
     C -->|skill/fact/strategy/preference/heuristic| D[status quarantine]
     C -->|failure/trace| E[status active]
@@ -12,12 +16,20 @@ flowchart LR
     F -->|retrieval usage harmful| H[demote confidence]
     H -->|harmful hits threshold| I[status quarantine]
 
-    F -->|TTL expired| J[status stale]
+    F -->|TTL expired AND maintain aggressive| J[status stale]
     J -->|maintenance decay or revive by update| K[may return active]
 
-    F -->|consolidation merge losers| L[status deprecated]
+    F -->|consolidation merge losers - opt-in| L[status deprecated]
 
-    G --> M[(Backend persisted row)]
+    subgraph MAINT[maintain_memory - non-destructive by default]
+        M1[promote_quarantined - always]
+        M2[decay / mark_expired_stale - only when aggressive]
+        M3[consolidate - opt-in]
+    end
+
+    G --> M[(Backend records row)]
     I --> M
     J --> M
     L --> M
+    B0 --> M
+
