@@ -1,0 +1,52 @@
+{
+  "generated_at": "2026-06-21T10:31:20.446349+00:00",
+  "model": "Qwen/Qwen2.5-32B-Instruct",
+  "gates": {
+    "min_playbook_effect": {
+      "name": "min_playbook_effect",
+      "threshold": 0.5,
+      "observed": 1.75,
+      "pass": true
+    }
+  },
+  "benchmarks": {
+    "react_live": {
+      "cold_tools_per_task": 3.0,
+      "warmed_tools_per_task": 3.0,
+      "cold_llm_calls": 12,
+      "warmed_llm_calls": 8,
+      "cold_success": 6,
+      "cold_tasks": 6,
+      "warmed_success": 6,
+      "warmed_tasks": 6,
+      "pass": true,
+      "timed_out": false,
+      "returncode": 0
+    },
+    "evolution_live": {
+      "cold_llm_calls": 32,
+      "warmed_llm_calls": 20,
+      "cold_tool_calls": 48,
+      "warmed_tool_calls": 48,
+      "cold_success": 16,
+      "cold_tasks": 16,
+      "warmed_success": 16,
+      "warmed_tasks": 16,
+      "evolved": true,
+      "timed_out": false,
+      "returncode": 0
+    },
+    "injection_ablation": {
+      "playbook_effect": 1.75,
+      "playbook_pass_k_full": 1.0,
+      "procedure_avg_score": 1.25,
+      "playbook_avg_score": 3.0,
+      "k": 1,
+      "trials": 1,
+      "timed_out": false,
+      "returncode": 0
+    }
+  },
+  "overall_pass": true,
+  "playbook_pass_k_full": 1.0
+}

@@ -265,3 +265,77 @@ export interface CrowdedOutRecord {
   overlap: number;
   competitorId: string;
 }
+
+// --- Benchmark matrix (reproducible proof artifact) ---
+
+export interface BenchmarkReact {
+  cold_llm_calls: number;
+  warmed_llm_calls: number;
+  reduction_pct: number;
+  success: string;
+}
+
+export interface BenchmarkEvolution extends BenchmarkReact {
+  evolved: boolean;
+}
+
+export interface BenchmarkCombined {
+  cold: number;
+  warmed: number;
+  reduction_pct: number;
+}
+
+export interface BenchmarkInjection {
+  procedure_avg_score: number;
+  playbook_avg_score: number;
+  pass_k_full: number;
+}
+
+export interface BenchmarkGate {
+  metric: string;
+  threshold: number;
+  observed: number;
+  pass: boolean;
+}
+
+/** Raw per-task benchmark blocks captured in the pinned suite-summary. */
+export interface BenchmarkTasks {
+  react_live?: Record<string, number | boolean>;
+  evolution_live?: Record<string, number | boolean | unknown>;
+  injection_ablation?: Record<string, number | boolean>;
+}
+
+export interface BenchmarkModelRow {
+  name: string;
+  display: string;
+  model: string;
+  base_url: string;
+  gate: BenchmarkGate;
+  quality_lift: number;
+  react: BenchmarkReact;
+  evolution: BenchmarkEvolution;
+  combined_llm_calls: BenchmarkCombined;
+  injection: BenchmarkInjection;
+  provenance: { source: string; run_generated_at: string | null };
+  tasks?: BenchmarkTasks;
+  run_generated_at?: string | null;
+}
+
+export interface BenchmarkMatrix {
+  available: boolean;
+  reason?: string;
+  suite?: string;
+  generated_at?: string;
+  gate?: { metric: string; threshold: number; definition: string };
+  run_config?: { trials: number; k: number; seed: number; temperature: number; max_output_tokens: number };
+  reproduce_command?: string;
+  summary?: {
+    models_total: number;
+    models_passing: number;
+    best_quality_lift: number | null;
+    best_quality_lift_model: string | null;
+    pooled_llm_call_reduction_pct: number;
+  };
+  models: BenchmarkModelRow[];
+}
+

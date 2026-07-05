@@ -102,8 +102,8 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarOpen }) 
             }}
           >
             {([
-              { key: 'learn', label: 'Learn', title: 'Model / answer-quality path (@memory.learn). Records & tasks, no tool procedures.' },
-              { key: 'agent_learn', label: 'Agent-Learn', title: 'Agent / tool path (@memory.agent_learn). Full view: calls-reduced, procedures, replays.' },
+              { key: 'agent_learn', label: 'Agent-Learn', title: 'Agent / tool path (@memory.agent_learn). Full view: calls-reduced, procedures, replays. This is the primary path.' },
+              { key: 'learn', label: 'Learn · beta', title: 'Model / answer-quality path (@memory.learn) — under development. Records & tasks, no tool procedures.' },
             ] as const).map((opt) => {
               const active = mode === opt.key;
               return (

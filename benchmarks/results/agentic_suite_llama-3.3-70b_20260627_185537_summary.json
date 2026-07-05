@@ -1,0 +1,160 @@
+{
+  "generated_at": "2026-06-27T18:52:18.285076+00:00",
+  "model": "meta-llama/Llama-3.3-70B-Instruct",
+  "gates": {
+    "min_playbook_effect": {
+      "name": "min_playbook_effect",
+      "threshold": 0.5,
+      "observed": 2.25,
+      "pass": true
+    }
+  },
+  "benchmarks": {
+    "react_live": {
+      "cold_tools_per_task": 3.0,
+      "warmed_tools_per_task": 3.0,
+      "cold_llm_calls": 24,
+      "warmed_llm_calls": 16,
+      "cold_success": 6,
+      "cold_tasks": 6,
+      "warmed_success": 6,
+      "warmed_tasks": 6,
+      "pass": true,
+      "timed_out": false,
+      "returncode": 0
+    },
+    "evolution_live": {
+      "cold_llm_calls": 64,
+      "warmed_llm_calls": 40,
+      "cold_tool_calls": 48,
+      "warmed_tool_calls": 48,
+      "cold_success": 16,
+      "cold_tasks": 16,
+      "warmed_success": 16,
+      "warmed_tasks": 16,
+      "evolved": true,
+      "timed_out": false,
+      "returncode": 0,
+      "per_round": [
+        {
+          "round": 0,
+          "tasks": 4,
+          "cold": {
+            "tool_calls": 12,
+            "llm_calls": 16,
+            "successes": 4
+          },
+          "warmed": {
+            "tool_calls": 12,
+            "llm_calls": 16,
+            "successes": 4,
+            "replayed": 0,
+            "guided": 2
+          },
+          "knowledge": {
+            "procedures": 2,
+            "active": 2,
+            "quarantined": 0,
+            "max_reuse": 4,
+            "mean_conf": 0.5750000000000001,
+            "evolution_gen": 0
+          }
+        },
+        {
+          "round": 1,
+          "tasks": 4,
+          "cold": {
+            "tool_calls": 12,
+            "llm_calls": 16,
+            "successes": 4
+          },
+          "warmed": {
+            "tool_calls": 12,
+            "llm_calls": 8,
+            "successes": 4,
+            "replayed": 2,
+            "guided": 2
+          },
+          "knowledge": {
+            "procedures": 2,
+            "active": 2,
+            "quarantined": 0,
+            "max_reuse": 10,
+            "mean_conf": 0.7150000000000002,
+            "evolution_gen": 0
+          }
+        },
+        {
+          "round": 2,
+          "tasks": 4,
+          "cold": {
+            "tool_calls": 12,
+            "llm_calls": 16,
+            "successes": 4
+          },
+          "warmed": {
+            "tool_calls": 12,
+            "llm_calls": 8,
+            "successes": 4,
+            "replayed": 2,
+            "guided": 2
+          },
+          "knowledge": {
+            "procedures": 2,
+            "active": 2,
+            "quarantined": 0,
+            "max_reuse": 16,
+            "mean_conf": 0.8550000000000003,
+            "evolution_gen": 0
+          }
+        },
+        {
+          "round": 3,
+          "tasks": 4,
+          "cold": {
+            "tool_calls": 12,
+            "llm_calls": 16,
+            "successes": 4
+          },
+          "warmed": {
+            "tool_calls": 12,
+            "llm_calls": 8,
+            "successes": 4,
+            "replayed": 2,
+            "guided": 2
+          },
+          "knowledge": {
+            "procedures": 2,
+            "active": 2,
+            "quarantined": 0,
+            "max_reuse": 22,
+            "mean_conf": 0.9250000000000002,
+            "evolution_gen": 0
+          }
+        }
+      ],
+      "final_knowledge": {
+        "procedures": 2,
+        "active": 2,
+        "quarantined": 0,
+        "max_reuse": 22,
+        "mean_conf": 0.9250000000000002,
+        "evolution_gen": 0
+      },
+      "improved": true,
+      "curve_path": "C:\\Users\\mcw\\OneDrive - Microsoft\\Desktop\\personal\\LearnKit\\benchmarks\\results\\evolution_live_20260627_185421_curve.json"
+    },
+    "injection_ablation": {
+      "playbook_effect": 2.25,
+      "playbook_pass_k_full": 0.0,
+      "procedure_avg_score": 0.0,
+      "playbook_avg_score": 2.25,
+      "k": 1,
+      "trials": 1,
+      "timed_out": false,
+      "returncode": 0
+    }
+  },
+  "overall_pass": true,
+  "playbook_pass_k_full": 0.0
+}

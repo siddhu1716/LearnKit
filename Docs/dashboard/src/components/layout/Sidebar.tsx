@@ -12,6 +12,7 @@ import {
   Settings,
   BookOpen,
   FileText,
+  Gauge,
   ChevronDown,
   MEMORY_TYPE_ICONS,
   type LucideIcon,
@@ -32,6 +33,7 @@ const sections: { heading: string; items: NavItem[] }[] = [
     heading: 'Monitor',
     items: [
       { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+      { to: '/benchmarks', label: 'Benchmarks', icon: Gauge },
       { to: '/observability', label: 'Observability', icon: Activity },
       { to: '/agents', label: 'Agents', icon: Bot },
     ],

@@ -81,7 +81,22 @@ def _parse_react(stdout: str) -> dict[str, Any]:
         out["warmed_success"] = int(m.group(3))
         out["warmed_tasks"] = int(m.group(4))
     out["pass"] = "PASS" in stdout
+    pt = _parse_per_task(stdout)
+    if pt:
+        out["per_task"] = pt
     return out
+
+
+def _parse_per_task(stdout: str) -> list[dict[str, Any]] | None:
+    """Capture the machine-readable per-task detail a benchmark may emit as a
+    ``PER_TASK_JSON: {...}`` line, for dashboard drill-down."""
+    m = re.search(r"PER_TASK_JSON:\s*(\{.*\})\s*$", stdout, re.MULTILINE)
+    if not m:
+        return None
+    try:
+        return json.loads(m.group(1)).get("per_task")
+    except (json.JSONDecodeError, AttributeError):
+        return None
 
 
 def _parse_evolution(stdout: str) -> dict[str, Any]:

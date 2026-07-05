@@ -1502,11 +1502,11 @@ lk = learnkit.LearnKit()
         <div style="text-align:center;margin-bottom:56px;">
             <h2 class="text-gradient" style="font-size:3rem;margin-bottom:16px;">Verified Benchmarks</h2>
             <div class="bench-badges">
-                <span class="bench-badge">2026-06-21 + 2026-06-28 Matrix Runs</span>
-                <span class="bench-badge">Qwen + Llama tested</span>
-                <span class="bench-badge bench-badge--green">+2.25 best quality lift (Llama-3.3-70B)</span>
+                <span class="bench-badge bench-badge--green">3 / 3 models PASS</span>
+                <span class="bench-badge">+2.25 best quality lift · −38% LLM calls</span>
+                <span class="bench-badge">Reproducible: one command</span>
             </div>
-            <p style="color:var(--text-secondary);margin-top:16px;max-width:680px;margin-left:auto;margin-right:auto;">Live agentic benchmarks across self-hosted models. LearnKit's distilled playbook and procedural replay reduce LLM calls on every passing model — and the 2026-06-28 expansion adds the first non-Qwen winner (Llama-3.3-70B, +2.25) alongside a high-fidelity Qwen reference (Qwen2.5-32B-Instruct, +1.75).</p>
+            <p style="color:var(--text-secondary);margin-top:16px;max-width:680px;margin-left:auto;margin-right:auto;">Every number below is derived from committed raw runs, not hand-typed. Clone the repo and run <code>python -m benchmarks.make_results</code> to regenerate the table (<code>benchmarks/RESULTS.json</code>) offline — or <code>--run</code> it against your own model endpoints to reproduce from scratch. LearnKit's distilled playbook and procedural replay cut LLM calls on every passing model, with the first non-Qwen winner (Llama-3.3-70B, +2.25) alongside a high-fidelity Qwen reference (Qwen2.5-32B-Instruct, +1.75).</p>
         </div>
 
         <!-- Model overview cards -->
@@ -1714,6 +1714,14 @@ lk = learnkit.LearnKit()
 
             <div class="bench-callout">
                 <b>Production picks (post-2026-06-28):</b> Qwen/Qwen2.5-14B-Instruct remains the lowest-cost PASS on the 3-Qwen lineup (40–45% LLM-call reduction). <b>Llama-3.3-70B-Instruct</b> is the new non-Qwen reference — highest absolute quality lift recorded (+2.25) with a ~33% LLM-call reduction. Use Qwen2.5-32B-Instruct as a high-fidelity Qwen baseline when running stricter grading.
+            </div>
+
+            <div class="bench-callout">
+                <b>Reproduce this table yourself.</b> Every row is generated from committed raw benchmark output — no hand-edited numbers. Offline: <code>python -m benchmarks.make_results</code> re-derives <code>benchmarks/RESULTS.json</code> + <code>MATRIX.md</code> from the pinned runs in <code>benchmarks/matrix_manifest.json</code>. From scratch: <code>python -m benchmarks.run_agentic_matrix --trials 1 --k 1 --seed 7</code> against your endpoints, then <code>make_results --run</code>. A <code>--check</code> mode fails CI if the published artifact drifts from the raw runs.
+            </div>
+
+            <div style="text-align:center;margin-top:32px;">
+                <a href="app.html#/benchmarks" class="btn-submit" style="text-decoration:none;padding:12px 28px;display:inline-flex;align-items:center;justify-content:center;min-height:46px;">Inspect live results in the dashboard →</a>
             </div>
         </div>
     </section>

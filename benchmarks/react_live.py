@@ -239,14 +239,20 @@ class StubDistiller:
 
 
 def run_cold() -> dict:
-    stats = {"tool_calls": 0, "llm_calls": 0, "successes": 0, "tasks": 0}
-    for task, required in STREAM:
+    stats = {"tool_calls": 0, "llm_calls": 0, "successes": 0, "tasks": 0, "per_task": []}
+    for i, (task, required) in enumerate(STREAM):
         tracker = ToolTracker(Trajectory(task=task))
         _, llm = react_loop(task, BASE_SYSTEM, tracker)
+        ok = _verify(required, tracker)
         stats["tool_calls"] += tracker.call_count
         stats["llm_calls"] += llm
-        stats["successes"] += 1 if _verify(required, tracker) else 0
+        stats["successes"] += 1 if ok else 0
         stats["tasks"] += 1
+        stats["per_task"].append({
+            "index": i, "arm": "cold", "task": task,
+            "tool_calls": tracker.call_count, "llm_calls": llm,
+            "success": bool(ok), "replayed": False, "guided": False,
+        })
     return stats
 
 
@@ -257,9 +263,9 @@ def run_warmed() -> dict:
         distiller=StubDistiller(),
     )
     stats = {"tool_calls": 0, "llm_calls": 0, "successes": 0,
-             "replayed": 0, "guided": 0, "tasks": 0}
+             "replayed": 0, "guided": 0, "tasks": 0, "per_task": []}
 
-    for task, required in STREAM:
+    for i, (task, required) in enumerate(STREAM):
         llm_box = {"n": 0}
         req_box = {"r": required}
 
@@ -288,12 +294,20 @@ def run_warmed() -> dict:
 
         agent(task)
         traj = memory.last_trajectory
-        stats["tool_calls"] += sum(1 for s in traj.steps if s.role == "tool")
+        task_tools = sum(1 for s in traj.steps if s.role == "tool")
+        ok = traj.outcome == "success"
+        stats["tool_calls"] += task_tools
         stats["llm_calls"] += llm_box["n"]
-        stats["successes"] += 1 if traj.outcome == "success" else 0
+        stats["successes"] += 1 if ok else 0
         stats["replayed"] += 1 if kind == "exact" else 0
         stats["guided"] += 1 if kind == "sibling" else 0
         stats["tasks"] += 1
+        stats["per_task"].append({
+            "index": i, "arm": "warmed", "task": task,
+            "tool_calls": task_tools, "llm_calls": llm_box["n"],
+            "success": bool(ok),
+            "replayed": kind == "exact", "guided": kind == "sibling",
+        })
 
     memory.shutdown()
     return stats
@@ -327,6 +341,10 @@ def main():
           f"warmed {warm['successes']}/{warm['tasks']}")
     ok = w_cpt <= c_cpt and warm["successes"] >= cold["successes"]
     print("\nPASS" if ok else "\nNO IMPROVEMENT")
+
+    # Machine-readable per-task detail for the suite → dashboard drill-down.
+    per_task = cold.get("per_task", []) + warm.get("per_task", [])
+    print("PER_TASK_JSON: " + json.dumps({"benchmark": "react_live", "per_task": per_task}))
 
 
 if __name__ == "__main__":

@@ -87,3 +87,15 @@ node_modules/
 
 #graphify
 graphify-out/
+
+# LearnKit reproducible benchmark artifact — committed on purpose so
+# `python -m benchmarks.make_results` works on a fresh clone (offline).
+# Order matters: re-include the results dir, re-ignore its contents, then
+# whitelist ONLY the pinned raw runs that back the published matrix.
+!benchmarks/matrix_manifest.json
+!benchmarks/RESULTS.json
+!benchmarks/results/
+benchmarks/results/*
+!benchmarks/results/agentic_suite_qwen2.5-14b_20260621_104149_summary.json
+!benchmarks/results/agentic_suite_qwen2.5-32b_20260621_103650_summary.json
+!benchmarks/results/agentic_suite_llama-3.3-70b_20260627_185537_summary.json

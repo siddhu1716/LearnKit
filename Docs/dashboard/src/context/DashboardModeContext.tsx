@@ -26,8 +26,10 @@ function readInitialMode(): DashboardMode {
   } catch {
     /* ignore */
   }
-  // Default to the model/answer path since that's the primary "learn" surface.
-  return 'learn';
+  // Default to the agent (tool) path — that's where the published benchmark
+  // results live (calls-reduced + procedure replay), so a fresh visitor lands
+  // directly on the proof.
+  return 'agent_learn';
 }
 
 export const DashboardModeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

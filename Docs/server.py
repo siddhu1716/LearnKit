@@ -23,6 +23,7 @@ Endpoints:
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 from contextlib import asynccontextmanager
@@ -195,7 +196,9 @@ class InspectResponse(BaseModel):
 
 @app.get("/healthz")
 def healthz() -> dict:
-    return {"ok": True, "stores": list(MEMORIES.keys())}
+    from learnkit.evaluator import judge_status
+
+    return {"ok": True, "stores": list(MEMORIES.keys()), "judge": judge_status()}
 
 
 @app.get("/api/domains")
@@ -855,6 +858,77 @@ def api_success_trend(mode: Optional[str] = None) -> dict:
         })
 
     return {"points": points, "control": control_pct, "totalRuns": len(runs)}
+
+
+# ============================================================
+# Benchmark matrix (/api/v1/benchmarks) — the reproducible proof artifact
+# Served straight from benchmarks/RESULTS.json (derived by
+# `python -m benchmarks.make_results`) + the pinned raw runs, so the frontend
+# shows REAL benchmark numbers with full drill-down. No mock data.
+# ============================================================
+
+BENCH_DIR = ROOT / "benchmarks"
+
+
+def _load_benchmark_manifest() -> dict:
+    p = BENCH_DIR / "matrix_manifest.json"
+    if not p.exists():
+        return {}
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def _raw_summary_for(name: str) -> Optional[dict]:
+    """Load the pinned raw suite-summary for a model by manifest name."""
+    manifest = _load_benchmark_manifest()
+    for m in manifest.get("models", []):
+        if m.get("name") == name:
+            src = BENCH_DIR / m.get("source", "")
+            if src.exists():
+                try:
+                    return json.loads(src.read_text(encoding="utf-8"))
+                except (json.JSONDecodeError, OSError):
+                    return None
+    return None
+
+
+@app.get("/api/v1/benchmarks")
+def api_benchmarks() -> dict:
+    """The full benchmark matrix (RESULTS.json) enriched with the per-model
+    raw benchmark breakdown (react_live / evolution_live / injection_ablation)
+    so the dashboard can render a summary table AND drill into each task."""
+    results_path = BENCH_DIR / "RESULTS.json"
+    if not results_path.exists():
+        return {
+            "available": False,
+            "reason": "benchmarks/RESULTS.json not found — run `python -m benchmarks.make_results`.",
+            "models": [],
+        }
+    try:
+        data = json.loads(results_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        return {"available": False, "reason": f"failed to read RESULTS.json: {exc}", "models": []}
+
+    # Enrich each model row with its raw per-benchmark block for inspection.
+    for row in data.get("models", []):
+        raw = _raw_summary_for(row.get("name", ""))
+        if raw:
+            row["tasks"] = raw.get("benchmarks", {})
+            row["run_generated_at"] = raw.get("generated_at")
+
+    data["available"] = True
+    return data
+
+
+@app.get("/api/v1/benchmarks/{name}")
+def api_benchmark_model(name: str) -> dict:
+    """Full raw suite-summary for one model (every captured detail)."""
+    raw = _raw_summary_for(name)
+    if raw is None:
+        raise HTTPException(status_code=404, detail=f"no pinned benchmark run for '{name}'")
+    return {"available": True, "name": name, "raw": raw}
 
 
 # --- Static assets ---

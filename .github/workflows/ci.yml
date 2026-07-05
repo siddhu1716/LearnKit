@@ -50,6 +50,25 @@ jobs:
         continue-on-error: true
         run: mypy learnkit
 
+  # ── Benchmark artifact drift-check ───────────────────────────────────
+  # Cheap guard: the published RESULTS.json must stay derivable from the
+  # committed raw runs. Fails if someone edits the numbers by hand.
+  benchmark-artifact:
+    name: Benchmark artifact up-to-date
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Check RESULTS.json is derived from raw runs
+        run: python -m benchmarks.make_results --check
+
   # ── Test matrix ──────────────────────────────────────────────────────
   test:
     name: Test (py${{ matrix.python-version }})

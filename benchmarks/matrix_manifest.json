@@ -1,0 +1,40 @@
+{
+  "suite": "agentic",
+  "description": "Canonical LearnKit agentic benchmark matrix. Each model row is backed by exactly one committed raw suite-summary JSON under benchmarks/results/. RESULTS.json and RESULTS.md are DERIVED from this manifest by `python -m benchmarks.make_results` — never hand-edit them.",
+  "gate": {
+    "metric": "playbook_effect",
+    "threshold": 0.5,
+    "definition": "playbook_effect = avg_score(playbook_arm) - avg_score(procedure_arm) on the injection_ablation benchmark; a model PASSes when it clears the threshold."
+  },
+  "run_config": {
+    "trials": 1,
+    "k": 1,
+    "seed": 7,
+    "temperature": 0,
+    "max_output_tokens": 128
+  },
+  "reproduce_command": "LK_MAX_OUTPUT_TOKENS=128 python -m benchmarks.run_agentic_matrix --trials 1 --k 1 --seed 7 --per-model-timeout 1800 --react-timeout 1500 --evolution-timeout 1500 --injection-timeout 1500 --continue-on-fail",
+  "models": [
+    {
+      "name": "qwen2.5-14b",
+      "display": "Qwen2.5-14B-Instruct",
+      "model": "Qwen/Qwen2.5-14B-Instruct",
+      "base_url": "http://127.0.0.1:8002/v1",
+      "source": "results/agentic_suite_qwen2.5-14b_20260621_104149_summary.json"
+    },
+    {
+      "name": "qwen2.5-32b",
+      "display": "Qwen2.5-32B-Instruct",
+      "model": "Qwen/Qwen2.5-32B-Instruct",
+      "base_url": "http://127.0.0.1:8001/v1",
+      "source": "results/agentic_suite_qwen2.5-32b_20260621_103650_summary.json"
+    },
+    {
+      "name": "llama-3.3-70b",
+      "display": "Llama-3.3-70B-Instruct",
+      "model": "meta-llama/Llama-3.3-70B-Instruct",
+      "base_url": "http://127.0.0.1:8004/v1",
+      "source": "results/agentic_suite_llama-3.3-70b_20260627_185537_summary.json"
+    }
+  ]
+}

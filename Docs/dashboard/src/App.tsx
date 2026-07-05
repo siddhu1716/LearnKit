@@ -17,6 +17,7 @@ import { BlogPost } from './pages/BlogPost';
 import { DocsHub } from './pages/DocsHub';
 import { ToastContainer } from './components/ui/Toast';
 import { DashboardModeProvider, useDashboardMode } from './context/DashboardModeContext';
+import { Benchmarks } from './pages/Benchmarks';
 
 const AppRoutes: React.FC = () => {
   const { mode } = useDashboardMode();
@@ -26,6 +27,7 @@ const AppRoutes: React.FC = () => {
           toggle flips, so each view re-fetches its mode-scoped telemetry. */}
       <Routes key={mode}>
         <Route path="/" element={<Overview />} />
+        <Route path="/benchmarks" element={<Benchmarks />} />
         <Route path="/memory" element={<MemoryExplorer />} />
         <Route path="/playground" element={<Playground />} />
         <Route path="/observability" element={<Observability />} />

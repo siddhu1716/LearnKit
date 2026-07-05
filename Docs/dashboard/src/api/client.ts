@@ -19,6 +19,7 @@ import type {
   AgentStats,
   ObservabilitySummary,
 } from '../types';
+import type { BenchmarkMatrix } from '../types';
 
 import {
   MOCK_METRICS,
@@ -615,14 +616,19 @@ export const client = {
 
   // 6. Helpers / Utilities
   async getSuccessRateTrend(): Promise<SuccessRatePoint[]> {
-    const payload = await apiRequest<SuccessRatePoint[] | { points: SuccessRatePoint[] }>(
-      withMode(`${BASE_URL}/metrics/success-trend`),
-      undefined,
-      undefined,
-      MOCK_SUCCESS_TREND
-    );
-    const points = parseEnvelopeArray<SuccessRatePoint>(payload, 'points');
-    return points.length > 0 ? points : MOCK_SUCCESS_TREND;
+    // Prefer real backend points (even if empty) so we never show fabricated
+    // trend data while the backend is live. Mock only if the backend is
+    // unreachable (network error).
+    try {
+      const res = await fetch(withMode(`${BASE_URL}/metrics/success-trend`));
+      if (res.ok) {
+        const data = await res.json();
+        return parseEnvelopeArray<SuccessRatePoint>(data, 'points');
+      }
+    } catch (e) {
+      console.warn('GET /metrics/success-trend failed — backend unreachable');
+    }
+    return MOCK_SUCCESS_TREND;
   },
 
   async getTopSkills(): Promise<TopSkill[]> {
@@ -708,13 +714,12 @@ export const client = {
     try {
       const res = await fetch(url);
       if (res.ok) {
-        const data = (await res.json()) as ObservabilitySummary;
-        // An empty live store should still show the illustrative mock so the
-        // page is never blank during local development.
-        if (data && data.totals && data.totals.runs > 0) return data;
+        // Return the real payload as-is (even when empty) so we never show
+        // fabricated token/cost numbers while the backend is live.
+        return (await res.json()) as ObservabilitySummary;
       }
     } catch (e) {
-      console.warn('GET /observability failed, falling back to mock');
+      console.warn('GET /observability failed — backend unreachable');
     }
     return MOCK_OBSERVABILITY;
   },
@@ -776,6 +781,26 @@ export const client = {
       context: `The system has learned from similar tasks:\n` + matching.map(m => `• [${m.type.toUpperCase()}] ${m.snippet}`).join('\n'),
       context_chars: 400,
       notes: { classifier: 'stub_offline' }
+    };
+  },
+
+  // 8. Benchmark matrix — the reproducible proof artifact (RESULTS.json).
+  // NO mock fallback: benchmarks must reflect real committed runs. When the
+  // backend is unreachable or the artifact is missing, we return
+  // { available: false } so the page shows an honest empty state.
+  async getBenchmarks(): Promise<BenchmarkMatrix> {
+    try {
+      const res = await fetch(`${BASE_URL}/benchmarks`);
+      if (res.ok) {
+        return (await res.json()) as BenchmarkMatrix;
+      }
+    } catch (e) {
+      console.warn('GET /benchmarks failed — backend unreachable');
+    }
+    return {
+      available: false,
+      reason: 'Benchmark backend unreachable. Start the LearnKit server and run `python -m benchmarks.make_results`.',
+      models: [],
     };
   }
 };
