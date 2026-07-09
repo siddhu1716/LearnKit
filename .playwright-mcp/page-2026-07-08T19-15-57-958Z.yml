@@ -1,0 +1,165 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - button "Close sidebar" [expanded] [ref=e7] [cursor=pointer]
+          - link "LIA Labs Dashboard home" [ref=e11] [cursor=pointer]:
+            - /url: "#/"
+            - generic [ref=e12]: L
+            - generic [ref=e13]: LIA Labs
+            - generic [ref=e14]: dashboard
+        - navigation "Main navigation" [ref=e15]:
+          - link "Home" [ref=e16] [cursor=pointer]:
+            - /url: index.html
+            - img [ref=e17]
+            - generic [ref=e20]: Home
+          - link "Dashboard" [ref=e21] [cursor=pointer]:
+            - /url: "#/"
+            - img [ref=e22]
+            - generic [ref=e27]: Dashboard
+          - link "Blog" [ref=e28] [cursor=pointer]:
+            - /url: "#/blog"
+            - img [ref=e29]
+            - generic [ref=e31]: Blog
+          - link "Docs" [ref=e32] [cursor=pointer]:
+            - /url: "#/docs"
+            - img [ref=e33]
+            - generic [ref=e36]: Docs
+          - link "Settings" [ref=e37] [cursor=pointer]:
+            - /url: "#/settings"
+            - img [ref=e38]
+            - generic [ref=e41]: Settings
+        - generic [ref=e42]:
+          - group "Dashboard mode" [ref=e43]:
+            - button "Agent-Learn" [pressed] [ref=e44] [cursor=pointer]
+            - button "Learn · beta" [ref=e45] [cursor=pointer]
+          - generic "Mock data mode — backend not reachable; falls back to local cache" [ref=e46]:
+            - generic [ref=e48]: Mock
+          - img "User avatar" [ref=e49]: LK
+    - complementary "Sidebar navigation" [ref=e50]:
+      - navigation [ref=e51]:
+        - generic [ref=e52]:
+          - generic [ref=e53]: Monitor
+          - list [ref=e54]:
+            - listitem [ref=e55]:
+              - link "Dashboard" [ref=e56] [cursor=pointer]:
+                - /url: "#/"
+                - img [ref=e58]
+                - generic [ref=e63]: Dashboard
+            - listitem [ref=e64]:
+              - link "Benchmarks" [ref=e65] [cursor=pointer]:
+                - /url: "#/benchmarks"
+                - img [ref=e67]
+                - generic [ref=e70]: Benchmarks
+            - listitem [ref=e71]:
+              - link "Observability" [ref=e72] [cursor=pointer]:
+                - /url: "#/observability"
+                - img [ref=e74]
+                - generic [ref=e76]: Observability
+            - listitem [ref=e77]:
+              - link "Agents" [ref=e78] [cursor=pointer]:
+                - /url: "#/agents"
+                - img [ref=e80]
+                - generic [ref=e83]: Agents
+        - generic [ref=e84]:
+          - generic [ref=e85]: Analyze
+          - list [ref=e86]:
+            - listitem [ref=e87]:
+              - link "Retrieval Quality" [ref=e88] [cursor=pointer]:
+                - /url: "#/retrieval-quality"
+                - img [ref=e90]
+                - generic [ref=e94]: Retrieval Quality
+            - listitem [ref=e95]:
+              - link "Task History" [ref=e96] [cursor=pointer]:
+                - /url: "#/tasks"
+                - img [ref=e98]
+                - generic [ref=e102]: Task History
+            - listitem [ref=e103]:
+              - link "Memory Lifecycle" [ref=e104] [cursor=pointer]:
+                - /url: "#/lifecycle"
+                - img [ref=e106]
+                - generic [ref=e111]: Memory Lifecycle
+            - listitem [ref=e112]:
+              - button "Memory Explorer" [expanded] [ref=e113] [cursor=pointer]:
+                - generic [ref=e114]:
+                  - img [ref=e116]
+                  - generic [ref=e124]: Memory Explorer
+                - img [ref=e126]
+              - list [ref=e128]:
+                - listitem [ref=e129]:
+                  - link "Skills" [ref=e130] [cursor=pointer]:
+                    - /url: "#/memory?type=skill"
+                    - img [ref=e132]
+                    - generic [ref=e134]: Skills
+                - listitem [ref=e135]:
+                  - link "Failures" [ref=e136] [cursor=pointer]:
+                    - /url: "#/memory?type=failure"
+                    - img [ref=e138]
+                    - generic [ref=e142]: Failures
+                - listitem [ref=e143]:
+                  - link "Facts" [ref=e144] [cursor=pointer]:
+                    - /url: "#/memory?type=fact"
+                    - img [ref=e146]
+                    - generic [ref=e148]: Facts
+                - listitem [ref=e149]:
+                  - link "Strategies" [ref=e150] [cursor=pointer]:
+                    - /url: "#/memory?type=strategy"
+                    - img [ref=e152]
+                    - generic [ref=e154]: Strategies
+                - listitem [ref=e155]:
+                  - link "Preferences" [ref=e156] [cursor=pointer]:
+                    - /url: "#/memory?type=preference"
+                    - img [ref=e158]
+                    - generic [ref=e161]: Preferences
+                - listitem [ref=e162]:
+                  - link "Heuristics" [ref=e163] [cursor=pointer]:
+                    - /url: "#/memory?type=heuristic"
+                    - img [ref=e165]
+                    - generic [ref=e167]: Heuristics
+                - listitem [ref=e168]:
+                  - link "Traces" [ref=e169] [cursor=pointer]:
+                    - /url: "#/memory?type=trace"
+                    - img [ref=e171]
+                    - generic [ref=e174]: Traces
+        - generic [ref=e175]:
+          - generic [ref=e176]: Build
+          - list [ref=e177]:
+            - listitem [ref=e178]:
+              - link "Playground" [ref=e179] [cursor=pointer]:
+                - /url: "#/playground"
+                - img [ref=e181]
+                - generic [ref=e185]: Playground
+        - generic [ref=e186]:
+          - generic [ref=e187]: Learn
+          - list [ref=e188]:
+            - listitem [ref=e189]:
+              - link "Blog" [ref=e190] [cursor=pointer]:
+                - /url: "#/blog"
+                - img [ref=e192]
+                - generic [ref=e194]: Blog
+            - listitem [ref=e195]:
+              - link "Docs" [ref=e196] [cursor=pointer]:
+                - /url: "#/docs"
+                - img [ref=e198]
+                - generic [ref=e201]: Docs
+            - listitem [ref=e202]:
+              - link "Settings" [ref=e203] [cursor=pointer]:
+                - /url: "#/settings"
+                - img [ref=e205]
+                - generic [ref=e208]: Settings
+    - main [ref=e209]:
+      - generic [ref=e211]:
+        - generic [ref=e212]:
+          - progressbar [ref=e213]
+          - progressbar [ref=e214]
+        - generic [ref=e215]:
+          - progressbar [ref=e216]
+          - progressbar [ref=e217]
+          - progressbar [ref=e218]
+        - progressbar [ref=e220]
+        - generic [ref=e221]:
+          - progressbar [ref=e222]
+          - progressbar [ref=e223]
+          - progressbar [ref=e224]
+  - region "Notifications"

@@ -1,54 +1,58 @@
 .btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 6px;
   font-family: var(--font-main);
   font-weight: 500;
-  border-radius: var(--radius-sm);
+  letter-spacing: -0.005em;
+  border-radius: var(--radius-md);
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+  transition:
+    background var(--dur-fast) ease,
+    border-color var(--dur-fast) ease,
+    color var(--dur-fast) ease;
   white-space: nowrap;
   text-decoration: none;
   position: relative;
 }
 
 .btn:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
-.btn:not(:disabled):active {
-  transform: scale(0.98);
-}
-
-/* Sizes */
+/* Sizes — tighter, more refined */
 .sm {
-  font-size: 0.8125rem;
-  padding: 6px 12px;
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  height: 26px;
 }
 
 .md {
-  font-size: 0.875rem;
-  padding: 8px 16px;
+  font-size: 0.8125rem;
+  padding: 6px 14px;
+  height: 32px;
 }
 
 .lg {
-  font-size: 1rem;
-  padding: 12px 22px;
+  font-size: 0.875rem;
+  padding: 8px 18px;
+  height: 38px;
 }
 
-/* Variants */
+/* Variants — restrained */
 .primary {
-  background: var(--accent);
+  background: var(--text-primary);
   color: var(--bg);
-  border-color: var(--accent);
-  font-weight: 600;
+  border-color: var(--text-primary);
+  font-weight: 500;
 }
 
 .primary:not(:disabled):hover {
-  background: rgba(0, 255, 136, 0.85);
-  box-shadow: var(--shadow-accent-glow);
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(255, 255, 255, 0.9);
 }
 
 .secondary {
@@ -58,31 +62,30 @@
 }
 
 .secondary:not(:disabled):hover {
-  background: var(--surface);
+  background: var(--surface-hover);
   border-color: var(--border-hover);
 }
 
 .ghost {
   background: transparent;
   color: var(--text-secondary);
-  border-color: var(--border);
+  border-color: transparent;
 }
 
 .ghost:not(:disabled):hover {
   background: var(--surface-accent);
   color: var(--text-primary);
-  border-color: var(--border-hover);
 }
 
 .danger {
-  background: rgba(239, 68, 68, 0.1);
-  color: var(--error);
-  border-color: rgba(239, 68, 68, 0.2);
+  background: transparent;
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.25);
 }
 
 .danger:not(:disabled):hover {
-  background: rgba(239, 68, 68, 0.2);
-  border-color: var(--error);
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.4);
 }
 
 /* Loading */

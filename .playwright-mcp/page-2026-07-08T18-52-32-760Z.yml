@@ -1,0 +1,284 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "L LIA Labs" [ref=e6] [cursor=pointer]:
+        - /url: "#"
+        - generic [ref=e8]: L
+        - generic [ref=e9]: LIA Labs
+      - navigation [ref=e10]:
+        - link "Platform" [ref=e11] [cursor=pointer]:
+          - /url: "#platform"
+        - link "LearnKit" [ref=e12] [cursor=pointer]:
+          - /url: "#learnkit"
+        - link "Observability" [ref=e13] [cursor=pointer]:
+          - /url: "#dashboard"
+        - link "Docs" [ref=e14] [cursor=pointer]:
+          - /url: /docs.html
+      - generic [ref=e15]:
+        - link "Sign in" [ref=e16] [cursor=pointer]:
+          - /url: /app.html
+        - link "Get started" [ref=e17] [cursor=pointer]:
+          - /url: /app.html
+          - text: Get started
+          - img [ref=e18]
+  - generic [ref=e26]:
+    - generic [ref=e27]: Introducing LIA Labs
+    - heading "We make your agents learn, improve & adapt." [level=1] [ref=e29]:
+      - text: We make your agents
+      - text: learn, improve & adapt.
+    - paragraph [ref=e30]: Infrastructure for agents that compound knowledge over time. Distill experience, retain intelligence, ship faster.
+    - generic [ref=e31]:
+      - link "Explore the platform" [ref=e32] [cursor=pointer]:
+        - /url: "#learnkit"
+        - text: Explore the platform
+        - img [ref=e33]
+      - link "Open dashboard" [ref=e35] [cursor=pointer]:
+        - /url: /app.html
+        - text: Open dashboard
+        - img [ref=e36]
+  - generic [ref=e40]:
+    - paragraph [ref=e41]: Trusted by engineers building the next generation of AI
+    - generic [ref=e42]:
+      - generic [ref=e43]: ANTHROPIC
+      - generic [ref=e44]: OPENAI
+      - generic [ref=e45]: MISTRAL
+      - generic [ref=e46]: LANGCHAIN
+      - generic [ref=e47]: DSPY
+      - generic [ref=e48]: MODAL
+  - generic [ref=e50]:
+    - generic [ref=e51]: 01 — The problem
+    - heading "Your agents forget everything the moment the session ends." [level=2] [ref=e53]:
+      - text: Your agents forget everything
+      - text: the moment the session ends.
+    - generic [ref=e54]:
+      - paragraph [ref=e55]: Every day, agents in production solve novel problems, recover from failures, and learn what works. Then they throw all of it away. The next request starts from zero. Costs stay high. Reliability plateaus.
+      - paragraph [ref=e56]: LIA Labs builds the missing memory layer — infrastructure that captures agent experience, distills it into reusable knowledge, and compounds it across every deployment.
+  - generic [ref=e58]:
+    - generic [ref=e59]: 02 — What we build
+    - generic [ref=e61]:
+      - generic [ref=e62]:
+        - generic [ref=e63]: "01"
+        - heading "Distill" [level=3] [ref=e64]
+        - paragraph [ref=e65]: Convert raw agent trajectories into structured, retrievable knowledge with confidence scoring and provenance tracking.
+      - generic [ref=e66]:
+        - generic [ref=e67]: "02"
+        - heading "Retrieve" [level=3] [ref=e68]
+        - paragraph [ref=e69]: Sub-100ms semantic retrieval over your agent’s entire history. Composable, hybrid, and mode-aware.
+      - generic [ref=e70]:
+        - generic [ref=e71]: "03"
+        - heading "Improve" [level=3] [ref=e72]
+        - paragraph [ref=e73]: Continuous evaluation and evolution. Agents get measurably better each week — with dashboards that prove it.
+  - generic [ref=e75]:
+    - generic [ref=e76]: 03 — The open-source engine
+    - generic [ref=e78]:
+      - generic [ref=e79]:
+        - generic [ref=e80]:
+          - generic [ref=e81]: ●
+          - text: Open source · MIT
+        - heading "LearnKit" [level=2] [ref=e82]
+        - paragraph [ref=e83]: The experience distillation SDK powering LIA Labs. A thin, framework-agnostic layer that gives any agent a memory that improves with use.
+        - list [ref=e84]:
+          - listitem [ref=e85]:
+            - generic [ref=e87]:
+              - generic [ref=e88]: Framework agnostic
+              - generic [ref=e89]: Works with DSPy, LangChain, LlamaIndex, or plain Python.
+          - listitem [ref=e90]:
+            - generic [ref=e92]:
+              - generic [ref=e93]: Zero infrastructure
+              - generic [ref=e94]: Runs against SQLite locally; scales to Postgres in production.
+          - listitem [ref=e95]:
+            - generic [ref=e97]:
+              - generic [ref=e98]: Auditable memory
+              - generic [ref=e99]: Every retrieved record includes provenance, confidence, and evolution history.
+        - generic [ref=e100]:
+          - link "View on GitHub" [ref=e101] [cursor=pointer]:
+            - /url: https://github.com/learnkit-ai/learnkit
+            - text: View on GitHub
+            - img [ref=e102]
+          - link "Read the docs" [ref=e105] [cursor=pointer]:
+            - /url: /docs.html
+      - generic [ref=e108]:
+        - generic [ref=e114]: agent.py
+        - generic [ref=e115]: "import learnkit as lk # 1. Classify the incoming task task = lk.classify(user_query) # 2. Retrieve relevant past experience memories = lk.retrieve(task, k=5) # 3. Compose context & run the agent context = lk.compose(task, memories) result = agent.run(context) # 4. Distill the trajectory back lk.distill(task, trajectory=result.trace)"
+  - generic [ref=e117]:
+    - generic [ref=e118]: 04 — Observability
+    - generic [ref=e120]:
+      - heading "See exactly how your agent thinks." [level=2] [ref=e121]:
+        - text: See exactly how
+        - text: your agent thinks.
+      - paragraph [ref=e122]: Every retrieval, every distillation, every decision — traced, ranked, and replayable.
+    - generic [ref=e125]:
+      - generic [ref=e132]:
+        - img [ref=e133]
+        - generic [ref=e136]: app.lialabs.ai/dashboard
+      - generic [ref=e137]:
+        - complementary [ref=e138]:
+          - generic [ref=e139]:
+            - generic [ref=e141]: L
+            - generic [ref=e142]: LIA Labs
+          - generic [ref=e143]: Workspace
+          - navigation [ref=e144]:
+            - button "Overview" [ref=e145]:
+              - img [ref=e146]
+              - text: Overview
+            - button "Memory" [ref=e149]:
+              - img [ref=e150]
+              - text: Memory
+            - button "Traces" [ref=e154]:
+              - img [ref=e155]
+              - text: Traces
+          - generic [ref=e157]: Insights
+          - navigation [ref=e158]:
+            - button "Benchmarks" [ref=e159]:
+              - img [ref=e160]
+              - text: Benchmarks
+            - button "Evolution" [ref=e163]:
+              - img [ref=e164]
+              - text: Evolution
+            - button "Skills" [ref=e168]:
+              - img [ref=e169]
+              - text: Skills
+            - button "Playground" [ref=e173]:
+              - img [ref=e174]
+              - text: Playground
+            - button "Settings" [ref=e177]:
+              - img [ref=e178]
+              - text: Settings
+        - generic [ref=e182]:
+          - generic [ref=e183]:
+            - generic [ref=e184]:
+              - generic [ref=e185]: Production · last 7 days
+              - heading "Agent overview" [level=3] [ref=e186]
+            - generic [ref=e187]: Live
+          - generic [ref=e189]:
+            - generic [ref=e190]:
+              - generic [ref=e191]: Success rate
+              - generic [ref=e192]:
+                - generic [ref=e193]: 98.7%
+                - generic [ref=e194]: +1.2%
+            - generic [ref=e195]:
+              - generic [ref=e196]: p95 latency
+              - generic [ref=e197]:
+                - generic [ref=e198]: 245ms
+                - generic [ref=e199]: −12ms
+            - generic [ref=e200]:
+              - generic [ref=e201]: Memories
+              - generic [ref=e202]:
+                - generic [ref=e203]: 2,453
+                - generic [ref=e204]: "+184"
+            - generic [ref=e205]:
+              - generic [ref=e206]: Cost / task
+              - generic [ref=e207]:
+                - generic [ref=e208]: $0.021
+                - generic [ref=e209]: −34%
+          - generic [ref=e210]:
+            - generic [ref=e211]:
+              - generic [ref=e212]:
+                - generic [ref=e213]: Task success rate
+                - generic [ref=e214]: Rolling 24h window
+              - generic [ref=e215]:
+                - button "24h" [ref=e216]
+                - button "7d" [ref=e217]
+                - button "30d" [ref=e218]
+            - generic [ref=e219]:
+              - generic [ref=e220]:
+                - generic [ref=e221]: With LearnKit
+                - generic [ref=e223]: Baseline
+              - img [ref=e225]
+  - generic [ref=e230]:
+    - generic [ref=e231]: 05 — Capabilities
+    - generic [ref=e233]:
+      - generic [ref=e234]:
+        - generic [ref=e235]: "01"
+        - heading "Memory Evolution" [level=3] [ref=e236]
+        - paragraph [ref=e237]: Track how your agent's knowledge changes over time — measure decay, growth, and drift.
+      - generic [ref=e250]:
+        - generic [ref=e251]: "02"
+        - heading "Multi-agent orchestration" [level=3] [ref=e252]
+        - paragraph [ref=e253]: Route tasks across specialized agents with shared memory.
+      - generic [ref=e254]:
+        - generic [ref=e255]: "03"
+        - heading "Real-time tracing" [level=3] [ref=e256]
+        - paragraph [ref=e257]: Inspect every reasoning step, retrieval, and tool call.
+      - generic [ref=e258]:
+        - generic [ref=e259]: "04"
+        - heading "Benchmarks & evaluation" [level=3] [ref=e260]
+        - paragraph [ref=e261]: Prove improvement with SLR, SWE-Bench, and custom suites.
+      - generic [ref=e262]:
+        - generic [ref=e263]: "05"
+        - heading "Failure analysis" [level=3] [ref=e264]
+        - paragraph [ref=e265]: Turn every failed run into a first-class learning signal.
+  - generic [ref=e267]:
+    - heading "Ship agents that get better every week." [level=2] [ref=e268]:
+      - text: Ship agents that get
+      - text: better every week.
+    - paragraph [ref=e269]: Start with LearnKit in fifteen minutes. No infrastructure, no vendor lock-in.
+    - generic [ref=e270]:
+      - link "Open dashboard" [ref=e271] [cursor=pointer]:
+        - /url: /app.html
+        - text: Open dashboard
+        - img [ref=e272]
+      - link "Star on GitHub" [ref=e274] [cursor=pointer]:
+        - /url: https://github.com/learnkit-ai/learnkit
+  - contentinfo [ref=e275]:
+    - generic [ref=e276]:
+      - generic [ref=e277]:
+        - generic [ref=e278]:
+          - generic [ref=e279]:
+            - generic [ref=e281]: L
+            - generic [ref=e282]: LIA Labs
+          - paragraph [ref=e283]: Infrastructure for AI agents that compound knowledge over time.
+        - generic [ref=e284]:
+          - heading "Product" [level=4] [ref=e285]
+          - list [ref=e286]:
+            - listitem [ref=e287]:
+              - link "LearnKit" [ref=e288] [cursor=pointer]:
+                - /url: "#learnkit"
+            - listitem [ref=e289]:
+              - link "Dashboard" [ref=e290] [cursor=pointer]:
+                - /url: /app.html
+            - listitem [ref=e291]:
+              - link "Benchmarks" [ref=e292] [cursor=pointer]:
+                - /url: /app.html#/benchmarks
+            - listitem [ref=e293]:
+              - link "Docs" [ref=e294] [cursor=pointer]:
+                - /url: /docs.html
+        - generic [ref=e295]:
+          - heading "Company" [level=4] [ref=e296]
+          - list [ref=e297]:
+            - listitem [ref=e298]:
+              - link "About" [ref=e299] [cursor=pointer]:
+                - /url: "#manifesto"
+            - listitem [ref=e300]:
+              - link "Blog" [ref=e301] [cursor=pointer]:
+                - /url: /app.html#/blog
+            - listitem [ref=e302]:
+              - link "Careers" [ref=e303] [cursor=pointer]:
+                - /url: "#"
+            - listitem [ref=e304]:
+              - link "Contact" [ref=e305] [cursor=pointer]:
+                - /url: mailto:hello@lialabs.ai
+        - generic [ref=e306]:
+          - heading "Developers" [level=4] [ref=e307]
+          - list [ref=e308]:
+            - listitem [ref=e309]:
+              - link "GitHub" [ref=e310] [cursor=pointer]:
+                - /url: https://github.com/learnkit-ai/learnkit
+            - listitem [ref=e311]:
+              - link "Examples" [ref=e312] [cursor=pointer]:
+                - /url: /docs.html
+            - listitem [ref=e313]:
+              - link "API" [ref=e314] [cursor=pointer]:
+                - /url: /docs.html
+            - listitem [ref=e315]:
+              - link "Changelog" [ref=e316] [cursor=pointer]:
+                - /url: "#"
+      - generic [ref=e317]:
+        - paragraph [ref=e318]: © 2026 LIA Labs. All rights reserved.
+        - generic [ref=e319]:
+          - link "Privacy" [ref=e320] [cursor=pointer]:
+            - /url: "#"
+          - link "Terms" [ref=e321] [cursor=pointer]:
+            - /url: "#"
+          - link "Security" [ref=e322] [cursor=pointer]:
+            - /url: "#"

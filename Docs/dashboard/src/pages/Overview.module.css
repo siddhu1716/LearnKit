@@ -1,14 +1,14 @@
 .overview {
   display: flex;
   flex-direction: column;
-  gap: var(--space-lg);
-  animation: fadeIn 0.2s var(--ease);
+  gap: var(--space-2xl);
+  animation: fadeIn 200ms var(--ease);
 }
 
 .loadingContainer {
   display: flex;
   flex-direction: column;
-  gap: var(--space-lg);
+  gap: var(--space-xl);
 }
 
 @keyframes fadeIn {
@@ -25,49 +25,56 @@
 .header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: var(--space-md);
+  align-items: flex-end;
+  padding-bottom: 0;
+  border-bottom: none;
 }
 
 .title {
   font-family: var(--font-main);
-  font-size: 2.25rem;
-  font-weight: 700;
+  font-size: 1.75rem;
+  font-weight: 500;
   letter-spacing: -0.03em;
   margin: 0;
   color: var(--text-primary);
+  line-height: 1.1;
 }
 
 .subtitle {
   font-family: var(--font-main);
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  margin: var(--space-xs) 0 0 0;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin: 6px 0 0 0;
+  letter-spacing: -0.005em;
 }
 
 .refreshBtn {
   background: var(--surface-accent);
   border: 1px solid var(--border);
-  color: var(--text-primary);
-  padding: 8px 16px;
-  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
   font-family: var(--font-main);
   font-weight: 500;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
+  height: 32px;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .refreshBtn:hover {
-  background: var(--surface);
+  background: var(--surface-hover);
   border-color: var(--border-hover);
+  color: var(--text-primary);
 }
 
 .topCardsGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-md);
+  gap: var(--space-lg);
 }
 
 @media (max-width: 1024px) {
@@ -79,14 +86,15 @@
 .statCard {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: var(--space-lg);
-  min-height: 180px;
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  min-height: 168px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   position: relative;
   overflow: hidden;
+  transition: border-color var(--dur-fast) ease;
 }
 
 .statCard:hover {
@@ -96,62 +104,70 @@
 .agentBand {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition: border-color var(--dur-fast) ease, background var(--dur-fast) ease;
 }
 
 .agentBand:hover {
-  border-color: var(--accent);
+  border-color: var(--border-hover);
+  background: var(--surface-accent);
 }
 
 .agentBandHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--space-md);
+  margin-bottom: var(--space-xl);
 }
 
 .agentBandLink {
-  font-size: 0.8125rem;
-  color: var(--accent);
+  font-size: 0.75rem;
+  color: var(--text-muted);
   font-weight: 500;
+  transition: color var(--dur-fast) ease;
+}
+
+.agentBand:hover .agentBandLink {
+  color: var(--text-primary);
 }
 
 .agentBandStats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-md);
+  gap: var(--space-xl);
 }
 
 .agentStat {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .agentStatValue {
-  font-family: var(--font-mono);
-  font-size: 2rem;
-  font-weight: 700;
+  font-family: var(--font-main);
+  font-size: 1.75rem;
+  font-weight: 500;
   color: var(--text-primary);
-  line-height: 1.1;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
 }
 
 .accentText {
-  color: var(--accent);
+  color: var(--text-primary);
 }
 
 .greenText {
-  color: #00ff88;
+  color: #34d399;
 }
 
 .agentStatLabel {
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   color: var(--text-muted);
+  font-weight: 500;
 }
 
 @media (max-width: 768px) {
@@ -163,18 +179,18 @@
 
 .cardTitle {
   font-family: var(--font-main);
-  font-size: 0.875rem;
-  font-weight: 600;
+  font-size: 0.75rem;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-secondary);
-  margin: 0 0 var(--space-md) 0;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin: 0 0 var(--space-lg) 0;
 }
 
 .countsList {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-sm);
   width: 100%;
 }
 
@@ -182,21 +198,22 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   color: var(--text-secondary);
 }
 
 .cardFooter {
-  font-size: 0.75rem;
-  color: var(--text-muted);
+  font-size: 0.6875rem;
+  color: var(--text-faint);
   font-family: var(--font-mono);
-  margin-top: var(--space-sm);
+  margin-top: var(--space-md);
+  letter-spacing: 0.02em;
 }
 
 .metricsContainer {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: var(--space-md);
   height: 100%;
   justify-content: center;
 }
@@ -208,33 +225,37 @@
 }
 
 .metricValLabel {
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   color: var(--text-muted);
   font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .metricVal {
-  font-family: var(--font-mono);
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--accent);
+  font-family: var(--font-main);
+  font-size: 1.75rem;
+  font-weight: 500;
+  color: var(--text-primary);
   display: flex;
   align-items: baseline;
-  gap: var(--space-xs);
+  gap: var(--space-sm);
+  letter-spacing: -0.03em;
+  line-height: 1.05;
 }
 
 .trendUp {
-  font-size: 0.875rem;
-  color: var(--success);
-  font-weight: 600;
+  font-size: 0.75rem;
+  color: #34d399;
+  font-weight: 500;
 }
 
 .metricsDetailsRow {
   display: grid;
   grid-template-columns: 1fr 1fr;
   border-top: 1px solid var(--border);
-  padding-top: var(--space-xs);
-  gap: var(--space-md);
+  padding-top: var(--space-md);
+  gap: var(--space-lg);
 }
 
 .metricSub {
@@ -244,45 +265,49 @@
 }
 
 .metricSubLabel {
-  font-size: 0.7rem;
+  font-size: 0.6875rem;
   color: var(--text-muted);
   text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 500;
 }
 
 .metricSubVal {
-  font-family: var(--font-mono);
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-family: var(--font-main);
+  font-size: 0.9375rem;
+  font-weight: 500;
   color: var(--text-primary);
+  letter-spacing: -0.01em;
 }
 
 .chartSection {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2xl);
 }
 
 .chartHeader {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin-bottom: var(--space-lg);
+  margin-bottom: var(--space-xl);
   flex-wrap: wrap;
-  gap: var(--space-xs);
+  gap: var(--space-sm);
 }
 
 .sectionTitle {
   font-family: var(--font-main);
-  font-size: 1.125rem;
-  font-weight: 700;
+  font-size: 0.9375rem;
+  font-weight: 500;
   color: var(--text-primary);
   margin: 0;
+  letter-spacing: -0.01em;
 }
 
 .chartLegendHint {
-  font-size: 0.8125rem;
-  color: var(--text-secondary);
+  font-size: 0.75rem;
+  color: var(--text-muted);
 }
 
 .chartWrapper {
@@ -292,7 +317,7 @@
 .bottomGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-md);
+  gap: var(--space-lg);
 }
 
 @media (max-width: 1024px) {
@@ -304,19 +329,25 @@
 .listCard {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: var(--space-lg);
-  min-height: 250px;
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  min-height: 240px;
+  transition: border-color var(--dur-fast) ease;
+}
+
+.listCard:hover {
+  border-color: var(--border-hover);
 }
 
 .listCardTitle {
   font-family: var(--font-main);
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 0.875rem;
+  font-weight: 500;
   color: var(--text-primary);
-  margin: 0 0 var(--space-md) 0;
+  margin: 0 0 var(--space-lg) 0;
   border-bottom: 1px solid var(--border);
-  padding-bottom: var(--space-xs);
+  padding-bottom: var(--space-md);
+  letter-spacing: -0.005em;
 }
 
 .list {
@@ -325,19 +356,20 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .listItem {
   display: flex;
   align-items: center;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
 }
 
 .listItemIndex {
   font-family: var(--font-mono);
-  color: var(--text-muted);
-  width: 24px;
+  color: var(--text-faint);
+  width: 22px;
+  font-size: 0.75rem;
 }
 
 .listItemName {
@@ -346,19 +378,21 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-right: var(--space-xs);
+  margin-right: var(--space-sm);
 }
 
 .listItemValGreen {
   font-family: var(--font-mono);
-  color: var(--success);
-  font-weight: 600;
+  color: #34d399;
+  font-weight: 500;
+  font-size: 0.75rem;
 }
 
 .listItemValRed {
   font-family: var(--font-mono);
-  color: var(--error);
-  font-weight: 600;
+  color: #f87171;
+  font-weight: 500;
+  font-size: 0.75rem;
 }
 
 .activityList {
@@ -367,19 +401,19 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .activityItem {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: flex-start;
 }
 
 .activityIcon {
-  font-size: 1.1rem;
   display: inline-flex;
-  margin-top: 2px;
+  margin-top: 3px;
+  opacity: 0.7;
 }
 
 .activityContent {
@@ -392,11 +426,11 @@
 .activityMsg {
   font-size: 0.8125rem;
   color: var(--text-secondary);
-  line-height: 1.3;
+  line-height: 1.35;
 }
 
 .activityTime {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.6875rem;
   color: var(--text-muted);
 }

@@ -9,7 +9,7 @@
 .main {
   flex: 1;
   margin-top: var(--header-height);
-  transition: margin-left 0.2s var(--ease);
+  transition: margin-left var(--dur-base) var(--ease);
   min-height: calc(100vh - var(--header-height));
   display: flex;
   flex-direction: column;
@@ -28,16 +28,19 @@
   width: 100%;
   max-width: var(--maxw);
   margin: 0 auto;
-  padding: var(--space-lg);
+  padding: var(--space-2xl) var(--space-2xl);
   box-sizing: border-box;
+}
+
+@media (max-width: 1024px) {
+  .content { padding: var(--space-xl); }
 }
 
 @media (max-width: 768px) {
   .sidebarOpen, .sidebarCollapsed {
     margin-left: 0;
   }
-  
   .content {
-    padding: var(--space-md);
+    padding: var(--space-lg);
   }
 }

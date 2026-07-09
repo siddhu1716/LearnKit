@@ -4,7 +4,9 @@
   left: 0;
   right: 0;
   height: var(--header-height);
-  background: var(--surface);
+  background: rgba(10, 10, 10, 0.75);
+  backdrop-filter: saturate(150%) blur(12px);
+  -webkit-backdrop-filter: saturate(150%) blur(12px);
   border-bottom: 1px solid var(--border);
   z-index: 100;
   display: flex;
@@ -16,72 +18,96 @@
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  max-width: 100%;
-  padding: 0 var(--space-md);
-  margin: 0 auto;
+  padding: 0 var(--space-lg);
 }
 
 .left {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
+  gap: var(--space-lg);
 }
 
 .hamburger {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  width: 20px;
-  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
   background: transparent;
   border: none;
   cursor: pointer;
   padding: 0;
-  box-sizing: border-box;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  transition: color var(--dur-fast) ease, background var(--dur-fast) ease;
+}
+
+.hamburger:hover {
+  color: var(--text-primary);
+  background: var(--surface-accent);
 }
 
 .hamburgerLine {
-  width: 100%;
-  height: 2px;
-  background-color: var(--text-primary);
+  display: block;
+  width: 14px;
+  height: 1.5px;
+  background: currentColor;
   border-radius: 1px;
-  transition: transform 0.2s var(--ease), opacity 0.2s var(--ease);
+  margin: 2px 0;
 }
 
 .logo {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-xs);
+  gap: 10px;
   text-decoration: none;
   font-family: var(--font-main);
-  font-weight: 700;
-  font-size: 1.125rem;
+  font-weight: 500;
+  font-size: 0.9375rem;
   color: var(--text-primary);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 
-.logoBrace {
-  color: var(--accent);
-  font-family: var(--font-mono);
+.logoMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  background: var(--text-primary);
+  color: var(--bg);
+  font-family: var(--font-main);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0;
 }
 
 .logoName {
-  letter-spacing: -0.02em;
+  font-weight: 500;
+  letter-spacing: -0.005em;
 }
 
 .logoBadge {
-  font-size: 0.75rem;
-  background: var(--accent-dim);
-  border: 1px solid var(--accent);
-  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--text-muted);
   padding: 2px 6px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
+  background: var(--surface-accent);
+  border: 1px solid var(--border);
   font-weight: 500;
+  letter-spacing: 0.02em;
 }
+
+/* legacy classnames kept for backwards compat, hidden */
+.logoBrace { display: none; }
 
 .nav {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
+  gap: 2px;
 }
 
 @media (max-width: 768px) {
@@ -97,19 +123,21 @@
   color: var(--text-secondary);
   text-decoration: none;
   font-family: var(--font-main);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 500;
-  transition: color 0.15s ease;
-  padding: 4px 8px;
+  transition: color var(--dur-fast) ease, background var(--dur-fast) ease;
+  padding: 6px 10px;
   border-radius: var(--radius-sm);
 }
 
 .navLink:hover {
   color: var(--text-primary);
+  background: var(--surface-accent);
 }
 
 .navLink.active {
-  color: var(--accent);
+  color: var(--text-primary);
+  background: var(--surface-accent);
 }
 
 .right {
@@ -118,51 +146,50 @@
   gap: var(--space-md);
 }
 
-.mockBadge {
-  display: flex;
+.statusPill {
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-xs);
-  background: rgba(245, 158, 11, 0.1);
-  border: 1px solid var(--warn);
-  color: var(--warn);
+  gap: 6px;
   padding: 4px 10px;
   border-radius: var(--radius-full);
-  font-size: 0.75rem;
-  font-family: var(--font-mono);
+  background: var(--surface-accent);
+  border: 1px solid var(--border);
+  font-family: var(--font-main);
+  font-size: 0.6875rem;
   font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+.statusDotLive { background: var(--accent); box-shadow: 0 0 6px var(--accent-glow); }
+.statusDotDown { background: var(--warn); }
+
+.mockBadge {
+  display: none;
 }
 
 .mockDot {
-  color: var(--warn);
-  border-radius: 50%;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
-  }
-  70% {
-    transform: scale(1);
-    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0);
-  }
-  100% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
-  }
+  display: none;
 }
 
 .avatar {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: var(--radius-full);
-  background: var(--secondary);
-  color: var(--bg);
+  background: var(--surface-accent);
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
-  font-size: 0.875rem;
+  font-weight: 500;
+  font-size: 0.75rem;
   font-family: var(--font-main);
+  border: 1px solid var(--border);
 }
+
