@@ -1,4 +1,4 @@
-# LearnKit
+# Lia Labs/LearnKit
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/siddhu1716/LearnKit)
 
