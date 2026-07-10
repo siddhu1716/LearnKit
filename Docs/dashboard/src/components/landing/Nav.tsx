@@ -30,9 +30,9 @@ export function Nav() {
         <nav className="hidden items-center gap-8 md:flex">
           {[
             { label: 'Product', href: '#dashboard' },
+            { label: 'Use cases', href: '#usecases' },
             { label: 'Benchmarks', href: '#benchmarks' },
             { label: 'Compare', href: '#compare' },
-            { label: 'LearnKit', href: '#learnkit' },
             { label: 'FAQ', href: '#faq' },
             { label: 'Docs', href: '/docs.html' },
           ].map((item) => (
@@ -54,10 +54,10 @@ export function Nav() {
             Sign in
           </a>
           <a
-            href="/app.html"
+            href="#contact"
             className="group inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-sm font-medium text-black transition hover:bg-white/90"
           >
-            Get started
+            Book a demo
             <ArrowUpRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </a>
         </div>

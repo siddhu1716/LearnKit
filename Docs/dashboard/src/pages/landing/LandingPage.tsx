@@ -5,9 +5,13 @@ import { Benchmarks } from '../../components/landing/Benchmarks'
 import { CompetitorTable } from '../../components/landing/CompetitorTable'
 import { FAQ } from '../../components/landing/FAQ'
 import { ForgettingLoop } from '../../components/landing/ForgettingLoop'
+import { ProductShowcase } from '../../components/landing/ProductShowcase'
+import { ProductStory } from '../../components/landing/ProductStory'
+import { UseCases } from '../../components/landing/UseCases'
+import { Contact } from '../../components/landing/Contact'
 import { Nav } from '../../components/landing/Nav'
 import { Footer } from '../../components/landing/Footer'
-import { ArrowRight, ArrowUpRight } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Calendar } from 'lucide-react'
 
 export function LandingPage() {
   const [heroReady, setHeroReady] = useState(false)
@@ -22,10 +26,9 @@ export function LandingPage() {
       <Nav />
 
       {/* ══════════════════════════════════════════════════════════════
-          HERO — no spiral. Vapour only on "Introducing". Static "LIA LABS".
+          HERO
           ══════════════════════════════════════════════════════════════ */}
       <section className="relative min-h-[100vh] w-full overflow-hidden pt-24 pb-16">
-        {/* Ambient gradient backdrop (no spiral) */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,rgba(16,185,129,0.10),transparent_60%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_100%,rgba(139,92,246,0.06),transparent_60%)]" />
@@ -35,8 +38,10 @@ export function LandingPage() {
               backgroundImage:
                 'linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)',
               backgroundSize: '48px 48px',
-              maskImage: 'radial-gradient(ellipse 70% 70% at 50% 50%, black 20%, transparent 90%)',
-              WebkitMaskImage: 'radial-gradient(ellipse 70% 70% at 50% 50%, black 20%, transparent 90%)',
+              maskImage:
+                'radial-gradient(ellipse 70% 70% at 50% 50%, black 20%, transparent 90%)',
+              WebkitMaskImage:
+                'radial-gradient(ellipse 70% 70% at 50% 50%, black 20%, transparent 90%)',
             }}
           />
         </div>
@@ -47,67 +52,71 @@ export function LandingPage() {
               heroReady ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
             }`}
           >
-            {/* Vapour-animated "Introducing" — only this cycles */}
-            <div className="mx-auto mb-4 h-[42px] w-[280px] sm:h-[52px] sm:w-[380px]">
+            {/* Vapour "Introducing" — big and single word */}
+            <div className="mx-auto mb-6 h-[68px] w-[420px] sm:h-[80px] sm:w-[560px] md:h-[92px] md:w-[680px]">
               <VaporizeTextCycle
-                texts={['Introducing', 'Meet', 'This is']}
+                texts={['Introducing']}
                 font={{
                   fontFamily: "'Geist', 'Inter', sans-serif",
-                  fontSize: '32px',
+                  fontSize: '64px',
                   fontWeight: 400,
                 }}
-                color="rgb(160, 160, 160)"
+                color="rgb(200, 200, 200)"
                 spread={4}
                 density={6}
-                animation={{
-                  vaporizeDuration: 1.4,
-                  fadeInDuration: 0.9,
-                  waitDuration: 2.2,
-                }}
+                animation={{ vaporizeDuration: 1.6, fadeInDuration: 1.0, waitDuration: 3.0 }}
                 direction="left-to-right"
                 alignment="center"
                 tag={Tag.P}
               />
             </div>
 
-            {/* Static "LIA Labs" — big and prominent */}
+            {/* Static LIA Labs */}
             <h1 className="text-6xl font-semibold tracking-[-0.055em] text-white sm:text-7xl md:text-8xl lg:text-[128px] lg:leading-[0.9]">
               LIA Labs
             </h1>
 
-            <p className="mx-auto mt-8 max-w-xl text-lg leading-relaxed text-white/60 sm:text-xl">
-              We make your agents{' '}
-              <span className="text-white/90">learn, improve &amp; adapt.</span>
+            <p className="mx-auto mt-8 max-w-2xl text-lg leading-relaxed text-white/70 sm:text-xl">
+              Production infrastructure for
+              <span className="text-white"> self-improving AI agents.</span>
+              <br className="hidden sm:block" />
+              Every task teaches. Every deploy compounds.
             </p>
             <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-white/45">
-              Infrastructure for agents that compound knowledge — measurably.
+              Ship agents that learn, improve &amp; adapt — measurably — with LearnKit.
             </p>
 
             <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <a
-                href="/app.html"
+                href="#contact"
                 className="group inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-medium text-black transition hover:bg-white/90"
               >
-                Open the dashboard
-                <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                <Calendar className="h-4 w-4" />
+                Book a demo
               </a>
               <a
-                href="#benchmarks"
+                href="/app.html"
                 className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.02] px-5 py-2.5 text-sm font-medium text-white/90 transition hover:border-white/25 hover:bg-white/[0.05]"
               >
-                See the benchmarks
+                Open the dashboard
                 <ArrowUpRight className="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
               </a>
             </div>
 
-            {/* Small badge underneath */}
             <div className="mt-14 inline-flex items-center gap-2 rounded-full border border-white/8 bg-white/[0.02] px-3 py-1 text-xs font-medium text-white/50">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              LearnKit v0.4 · now open source · MIT
+              LearnKit v0.4 · MIT · +2.25 quality lift on Llama-3.3-70B
             </div>
           </div>
         </div>
       </section>
+
+      {/* ══════════════════════════════════════════════════════════════
+          PRODUCT STORY — scroll-driven Gemini effect
+          Explains the whole product: multiple learning streams converge
+          into a single self-improving agent.
+          ══════════════════════════════════════════════════════════════ */}
+      <ProductStory />
 
       {/* ══════════════════════════════════════════════════════════════
           TRUST STRIP
@@ -128,30 +137,30 @@ export function LandingPage() {
       </section>
 
       {/* ══════════════════════════════════════════════════════════════
-          01 — PROBLEM  (concise + visual on the right)
+          01 — PROBLEM
           ══════════════════════════════════════════════════════════════ */}
       <section id="problem" className="relative py-28 sm:py-36">
         <div className="mx-auto max-w-6xl px-6">
           <SectionEyebrow number="01" label="The problem" />
 
           <div className="mt-10 grid gap-12 lg:grid-cols-[1.1fr_1fr] lg:items-center">
-            {/* Left: concise message */}
             <div>
               <h2 className="text-3xl font-medium tracking-[-0.03em] text-white sm:text-4xl md:text-5xl md:leading-[1.1]">
-                Agents forget
+                Every release starts
                 <br />
-                <span className="text-white/40">everything.</span>
+                <span className="text-white/40">from zero.</span>
               </h2>
 
-              <p className="mt-6 text-base leading-relaxed text-white/60 sm:text-lg max-w-md">
-                Every session starts from zero. No retained skills. No learned
-                failures. No compounding intelligence.
+              <p className="mt-6 max-w-md text-base leading-relaxed text-white/60 sm:text-lg">
+                Your agent solved this problem last week. It won&apos;t remember
+                today. Learnings don&apos;t compound — and neither does your AI
+                investment.
               </p>
 
               <ul className="mt-8 space-y-3 max-w-md">
                 {[
                   'Repeated tool calls waste tokens',
-                  'The same mistakes recur weekly',
+                  'The same failures recur weekly',
                   'Reliability plateaus after week two',
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-3 text-sm text-white/55">
@@ -162,24 +171,23 @@ export function LandingPage() {
               </ul>
             </div>
 
-            {/* Right: visual animation */}
             <ForgettingLoop />
           </div>
         </div>
       </section>
 
       {/* ══════════════════════════════════════════════════════════════
-          02 — SOLUTION — Distill / Retrieve / Improve (compact)
+          02 — SOLUTION — Distill / Retrieve / Improve
           ══════════════════════════════════════════════════════════════ */}
       <section id="platform" className="border-t border-white/5 py-28 sm:py-36">
         <div className="mx-auto max-w-6xl px-6">
-          <SectionEyebrow number="02" label="What we build" />
+          <SectionEyebrow number="02" label="The solution" />
 
           <div className="mt-10 mb-10 max-w-2xl">
             <h2 className="text-3xl font-medium tracking-[-0.03em] text-white sm:text-4xl md:text-5xl md:leading-[1.1]">
-              A memory layer that
+              A closed-loop memory layer.
               <br />
-              <span className="text-white/40">compounds with use.</span>
+              <span className="text-white/40">Learn once. Reuse forever.</span>
             </h2>
           </div>
 
@@ -212,71 +220,96 @@ export function LandingPage() {
       </section>
 
       {/* ══════════════════════════════════════════════════════════════
-          03 — DASHBOARD PRODUCT SHOWCASE (all screens as tabs)
+          03 — PRODUCT SHOWCASE (BENTO-STYLE with screenshots)
           ══════════════════════════════════════════════════════════════ */}
       <section id="dashboard" className="border-t border-white/5 py-28 sm:py-36">
         <div className="mx-auto max-w-6xl px-6">
           <SectionEyebrow number="03" label="The product" />
 
-          <div className="mt-10 mb-14 flex flex-col justify-between gap-6 md:flex-row md:items-end">
-            <div className="max-w-2xl">
-              <h2 className="text-3xl font-medium tracking-[-0.03em] text-white sm:text-4xl md:text-5xl md:leading-[1.05]">
-                See exactly how
-                <br />
-                <span className="text-white/40">your agent thinks.</span>
-              </h2>
-              <p className="mt-6 text-base leading-relaxed text-white/60 sm:text-lg">
-                Every retrieval, distillation, and decision — traced, ranked, replayable.
-                Click any tab in the sidebar to explore a live slice of the dashboard.
-              </p>
-            </div>
-            <a
-              href="/app.html"
-              className="group inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-white/90 transition hover:border-white/30"
-            >
-              Try it yourself
-              <ArrowUpRight className="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-            </a>
+          <div className="mt-10 mb-14 max-w-3xl">
+            <h2 className="text-3xl font-medium tracking-[-0.03em] text-white sm:text-4xl md:text-5xl md:leading-[1.05]">
+              Improve your agents with
+              <br />
+              <span className="text-white/40">every production run.</span>
+            </h2>
+            <p className="mt-6 text-base leading-relaxed text-white/60 sm:text-lg">
+              One dashboard for the entire feedback loop — from raw trace to
+              distilled skill to deployed improvement. Click each feature to
+              explore.
+            </p>
           </div>
 
-          <div className="relative">
-            <div className="absolute -inset-4 -z-10 rounded-3xl bg-gradient-to-tr from-emerald-500/5 via-transparent to-violet-500/5 blur-2xl" />
-            <DashboardPreview />
-          </div>
+          <ProductShowcase />
 
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 md:grid-cols-4">
-            {[
-              { title: 'Real-time observability', desc: 'Every task streams in as it runs.' },
-              { title: 'Retrieval quality', desc: 'See what was fetched and why it ranked.' },
-              { title: 'Memory lifecycle', desc: 'Quarantine, promote, or delete records.' },
-              { title: 'Multi-agent view', desc: 'Compare paths across agent variants.' },
-            ].map((f) => (
-              <div key={f.title}>
-                <div className="mb-1 h-px w-6 bg-white/15" />
-                <div className="text-sm font-medium text-white">{f.title}</div>
-                <div className="mt-1 text-sm text-white/50">{f.desc}</div>
+          {/* Live interactive preview underneath */}
+          <div className="mt-24">
+            <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+              <div>
+                <div className="text-[11px] font-medium uppercase tracking-widest text-white/40">
+                  Or try it interactively
+                </div>
+                <h3 className="mt-1 text-2xl font-medium tracking-[-0.02em] text-white">
+                  Live dashboard preview
+                </h3>
               </div>
-            ))}
+              <a
+                href="/app.html"
+                className="group inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-white/90 transition hover:border-white/30"
+              >
+                Open the real thing
+                <ArrowUpRight className="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+              </a>
+            </div>
+
+            <div className="relative">
+              <div className="absolute -inset-4 -z-10 rounded-3xl bg-gradient-to-tr from-emerald-500/5 via-transparent to-violet-500/5 blur-2xl" />
+              <DashboardPreview />
+            </div>
           </div>
         </div>
       </section>
 
       {/* ══════════════════════════════════════════════════════════════
-          04 — BENCHMARKS (all models)
+          04 — USE CASES
+          ══════════════════════════════════════════════════════════════ */}
+      <section id="usecases" className="border-t border-white/5 py-28 sm:py-36">
+        <div className="mx-auto max-w-6xl px-6">
+          <SectionEyebrow number="04" label="Where it fits" />
+
+          <div className="mt-10 mb-14 flex flex-col justify-between gap-6 md:flex-row md:items-end">
+            <div className="max-w-2xl">
+              <h2 className="text-3xl font-medium tracking-[-0.03em] text-white sm:text-4xl md:text-5xl md:leading-[1.05]">
+                Built for teams
+                <br />
+                <span className="text-white/40">running agents in production.</span>
+              </h2>
+              <p className="mt-6 text-base leading-relaxed text-white/60 sm:text-lg">
+                If your agent takes tool actions and the same tasks recur, LearnKit
+                compounds. Here are the shapes we&apos;ve seen it win.
+              </p>
+            </div>
+          </div>
+
+          <UseCases />
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════
+          05 — BENCHMARKS
           ══════════════════════════════════════════════════════════════ */}
       <section id="benchmarks" className="border-t border-white/5 py-28 sm:py-36">
         <div className="mx-auto max-w-6xl px-6">
-          <SectionEyebrow number="04" label="Benchmarks" />
+          <SectionEyebrow number="05" label="Benchmarks" />
 
           <div className="mt-10 mb-14 max-w-3xl">
             <h2 className="text-3xl font-medium tracking-[-0.03em] text-white sm:text-4xl md:text-5xl md:leading-[1.05]">
-              Numbers we published.
+              Three models. Three passes.
               <br />
-              <span className="text-white/40">Numbers you can reproduce.</span>
+              <span className="text-white/40">All growth. No cherry-picking.</span>
             </h2>
             <p className="mt-6 text-base leading-relaxed text-white/60 sm:text-lg">
-              Every model, every suite, seeded and version-controlled. Run them against
-              your own agent and compare on identical infrastructure.
+              Every number below is generated by <span className="font-mono text-white/80">python -m benchmarks.make_results</span> from committed suite JSONs.
+              Run it against your own agent and compare on identical infrastructure.
             </p>
           </div>
 
@@ -285,7 +318,7 @@ export function LandingPage() {
           <div className="mt-10 rounded-2xl border border-white/5 bg-white/[0.02] p-6 text-sm text-white/60">
             <span className="font-mono text-xs text-white/40">$ </span>
             <span className="font-mono text-xs text-white/70">
-              python -m benchmarks.run_agentic_suite --trials 3 --k 3 --seed 7
+              LK_MAX_OUTPUT_TOKENS=128 python -m benchmarks.run_agentic_matrix --trials 1 --k 1 --seed 7
             </span>
             <span className="ml-3 text-xs text-white/40">
               → reproduces every number on this page
@@ -295,11 +328,11 @@ export function LandingPage() {
       </section>
 
       {/* ══════════════════════════════════════════════════════════════
-          05 — COMPARISON
+          06 — COMPARE
           ══════════════════════════════════════════════════════════════ */}
       <section id="compare" className="border-t border-white/5 py-28 sm:py-36">
         <div className="mx-auto max-w-6xl px-6">
-          <SectionEyebrow number="05" label="How we compare" />
+          <SectionEyebrow number="06" label="How we compare" />
 
           <div className="mt-10 mb-14 max-w-3xl">
             <h2 className="text-3xl font-medium tracking-[-0.03em] text-white sm:text-4xl md:text-5xl md:leading-[1.05]">
@@ -308,8 +341,8 @@ export function LandingPage() {
               <span className="text-white/40">vector store.</span>
             </h2>
             <p className="mt-6 text-base leading-relaxed text-white/60 sm:text-lg">
-              Most &ldquo;memory&rdquo; tools store conversation. LearnKit distills tool
-              trajectories into reusable procedures. Here&apos;s how we stack up.
+              Most &ldquo;memory&rdquo; tools store conversation. LearnKit distills
+              tool trajectories into reusable procedures.
             </p>
           </div>
 
@@ -322,11 +355,11 @@ export function LandingPage() {
       </section>
 
       {/* ══════════════════════════════════════════════════════════════
-          06 — LEARNKIT (open source)
+          07 — LEARNKIT (open source)
           ══════════════════════════════════════════════════════════════ */}
       <section id="learnkit" className="border-t border-white/5 py-28 sm:py-36">
         <div className="mx-auto max-w-6xl px-6">
-          <SectionEyebrow number="06" label="The open-source engine" />
+          <SectionEyebrow number="07" label="The open-source engine" />
 
           <div className="mt-14 grid gap-16 lg:grid-cols-[1.1fr_1fr] lg:items-center">
             <div>
@@ -337,8 +370,9 @@ export function LandingPage() {
                 LearnKit
               </h2>
               <p className="mt-6 text-base leading-relaxed text-white/60 sm:text-lg">
-                The experience-distillation SDK powering LIA Labs. A thin, framework-agnostic
-                layer that gives any agent a memory that improves with use.
+                The experience-distillation SDK powering LIA Labs. A thin,
+                framework-agnostic layer that gives any agent a memory that
+                improves with use.
               </p>
 
               <ul className="mt-8 space-y-4">
@@ -359,7 +393,7 @@ export function LandingPage() {
 
               <div className="mt-8 flex flex-wrap gap-3">
                 <a
-                  href="https://github.com/learnkit-ai/learnkit"
+                  href="https://github.com/siddhu1716/LearnKit/tree/lia/mvp"
                   target="_blank"
                   rel="noreferrer"
                   className="group inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-medium text-black transition hover:bg-white/90"
@@ -410,11 +444,11 @@ lk.distill(task, trajectory=result.trace)`}
       </section>
 
       {/* ══════════════════════════════════════════════════════════════
-          07 — FAQ
+          08 — FAQ
           ══════════════════════════════════════════════════════════════ */}
       <section id="faq" className="border-t border-white/5 py-28 sm:py-36">
         <div className="mx-auto max-w-6xl px-6">
-          <SectionEyebrow number="07" label="Frequently asked" />
+          <SectionEyebrow number="08" label="Frequently asked" />
 
           <div className="mt-10 mb-14 max-w-2xl">
             <h2 className="text-3xl font-medium tracking-[-0.03em] text-white sm:text-4xl md:text-5xl md:leading-[1.05]">
@@ -429,7 +463,20 @@ lk.distill(task, trajectory=result.trace)`}
       </section>
 
       {/* ══════════════════════════════════════════════════════════════
-          CTA
+          09 — CONTACT / BOOK A DEMO
+          ══════════════════════════════════════════════════════════════ */}
+      <section id="contact" className="border-t border-white/5 py-28 sm:py-36">
+        <div className="mx-auto max-w-6xl px-6">
+          <SectionEyebrow number="09" label="Get in touch" />
+
+          <div className="mt-10">
+            <Contact />
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════
+          FINAL CTA
           ══════════════════════════════════════════════════════════════ */}
       <section className="relative border-t border-white/5 py-28 sm:py-36">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_100%,rgba(16,185,129,0.12),transparent_70%)]" />
@@ -440,24 +487,24 @@ lk.distill(task, trajectory=result.trace)`}
             <span className="italic font-light text-white/50">better every week.</span>
           </h2>
           <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-white/60 sm:text-lg">
-            Start with LearnKit in fifteen minutes. No infrastructure. No vendor lock-in.
+            Fifteen-minute install. Fully self-hostable. No infrastructure.
+            No vendor lock-in.
           </p>
 
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <a
-              href="/app.html"
+              href="#contact"
               className="group inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition hover:bg-white/90"
+            >
+              <Calendar className="h-4 w-4" />
+              Book a demo
+            </a>
+            <a
+              href="/app.html"
+              className="group inline-flex items-center gap-2 rounded-full border border-white/15 px-6 py-3 text-sm font-medium text-white/90 transition hover:border-white/30"
             >
               Open dashboard
               <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
-            </a>
-            <a
-              href="https://github.com/learnkit-ai/learnkit"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-full border border-white/15 px-6 py-3 text-sm font-medium text-white/90 transition hover:border-white/30"
-            >
-              Star on GitHub
             </a>
           </div>
         </div>
