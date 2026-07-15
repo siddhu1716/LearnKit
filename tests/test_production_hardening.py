@@ -110,8 +110,8 @@ def test_post_process_falls_back_to_sync_after_shutdown(tmp_path):
     )
     lk.shutdown()  # close the pool BEFORE invoking the agent
 
-    @lk.agent(domain="coding")
-    def agent(task, _learnkit_context=None):
+    @lk.agent_learn(domain="coding")
+    def agent(task, _learnkit_context=None, _learnkit_tools=None):
         return "answered"
 
     # Would raise "cannot schedule new futures after shutdown" without the guard.

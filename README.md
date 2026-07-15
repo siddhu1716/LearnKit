@@ -7,30 +7,20 @@
 
 ---
 
-# Fine-Tuning Without Fine-Tuning
+# Stop Re-Planning the Same Task
 
-LearnKit is an **agent-agnostic SDK** that gives any AI agent a **self-improving memory layer**.
+LearnKit is an **agent-agnostic SDK** that makes tool-using AI agents **learn from experience**. It captures the tool-call *procedure* an agent uses to solve a task, then:
 
-Most agents today suffer from **amnesia** or rely on **naive memory** (storing endless raw chat logs). This creates:
+- **replays it on exact repeats with zero planning/LLM calls**, and
+- **guides sibling tasks with a distilled playbook** so the model follows the proven shape instead of re-exploring.
 
-- “Memory soup”
-- Exploding context windows
-- No signal on whether a past action was actually successful
+The expensive, compressible part of a tool-using agent isn't the answer text — it's the **planning loop** (the back-and-forth LLM calls to decide which tools to call in what order). That plan is normally thrown away after every task. LearnKit keeps it, quality-gates it on the **real tool outcome** (not a fragile LLM judge), and reuses it.
 
-LearnKit replaces raw chat logs with **Experience Distillation**.
+**Reproducible result (agentic matrix, 3/3 models PASS, equal task success):**
 
-Every time your agent runs, LearnKit:
+> **+2.25 best quality lift · −38.4% pooled LLM planning calls** on Qwen2.5-14B/32B and Llama-3.3-70B.
 
-1. Evaluates the execution trace
-2. Extracts what worked (and what failed)
-3. Compiles reusable structured memory artifacts
-
-Over time, the agent builds a compounding **“wiki” of expertise** — without retraining the underlying model.
-
-LearnKit now supports two learning paths:
-
-- `@memory.learn` / `@memory.agent` (model path): retrieves distilled context and injects `_learnkit_context`.
-- `@memory.agent_learn` (tool-using path): captures tool trajectories via `_learnkit_tools`, stores procedural skills, replays exact matches, and guides sibling tasks.
+Memory is **typed**, **quality-gated**, **attributed** (help/harm/reuse per record), and **lifecycle-managed** (confidence decay, quarantine → promote, TTL) — auditable, deletable JSON, no model retraining.
 
 ---
 
@@ -95,44 +85,16 @@ On bash/zsh: `export ANTHROPIC_API_KEY=sk-ant-...` in your shell rc.
 # 60-second Quick Start
 
 ```bash
-python examples/quick_start.py
+python examples/agent_learn_demo.py
 ```
 
-Walks through 5 parts that exercise the whole SDK:
-
-| Part | Demonstrates | Needs API key? |
-|---|---|---|
-| 1 | SQLite + FTS5 memory store: add / search / failure record | No |
-| 2 | Context composer: 1,200-token bounded block, inference-mode selection | No |
-| 3 | Trajectory capture: steps, CoT reasoning, quality score | No |
-| 4 | `SkillRecord.to_skill_md()` document generation | No |
-| 5 | Full `@lk.agent` loop: classify → retrieve → compose → run → evaluate → distill | **Yes** |
+A runnable, **offline** (no API key) demo of the cold→warm capture-and-replay
+loop: on first exposure the agent explores and LearnKit captures the productive
+tool procedure; on repeats it replays that procedure with zero planning calls.
 
 ---
 
-# Wrap your agent — 5 lines
-
-```python
-import learnkit as lk
-
-memory = lk.LearnKit(memory_backend="sqlite", scope="user")
-
-@memory.agent(domain="coding")
-def my_agent(task: str, _learnkit_context: str = "") -> str:
-    # _learnkit_context is injected by the decorator on every call.
-    # Splice it into your prompt however your framework expects.
-    return call_your_llm(prompt=task, system=_learnkit_context)
-
-# Same task, called twice — run 2 sees what run 1 distilled.
-my_agent("Debug a Python multiprocessing deadlock on macOS")
-my_agent("Debug a Python multiprocessing deadlock on macOS")
-```
-
-Valid `scope` values: `"user"`, `"team"`, `"public"` (see `learnkit/schemas/base.py`).
-
-## Tool-using agents (`@memory.agent_learn`)
-
-For agents that call tools, use the procedural path:
+# Wrap your agent — the agent path (`@memory.agent_learn`)
 
 ```python
 import learnkit as lk
@@ -141,35 +103,52 @@ memory = lk.LearnKit(memory_backend="sqlite", scope="team")
 
 @memory.agent_learn(domain="pipeline")
 def my_tool_agent(task: str, _learnkit_context: str = "", _learnkit_tools=None) -> str:
-    # Record every tool call so LearnKit can learn/replay the productive procedure.
-    rows = _learnkit_tools.record("query", {"table": "users"}, "rows")
-    _learnkit_tools.record("format", {"fmt": "csv"}, "done")
+    # Record every tool call so LearnKit can learn / replay the productive procedure.
+    rows = _learnkit_tools.record("query", {"table": "users"}, run_query("users"))
+    _learnkit_tools.record("format", {"fmt": "csv"}, to_csv(rows))
     return "report ready"
+
+# Same task, called twice — run 2 replays run 1's captured procedure (zero planning calls).
+my_tool_agent("Build an active-user CSV report")
+my_tool_agent("Build an active-user CSV report")
 ```
 
-This path supports exact replay (zero-LLM for exact re-encounters) and guided sibling reuse.
+Valid `scope` values: `"user"`, `"team"`, `"public"` (see `learnkit/schemas/base.py`).
 
-A runnable, offline demo of the cold→warm capture-and-replay loop (no API key) lives at [`examples/agent_learn_demo.py`](examples/agent_learn_demo.py). See `benchmarks/injection_ablation.py` for a quality-focused ablation that isolates the effect of playbook injection on novel sibling tasks.
+## Auto-replay — zero-wiring reuse (`run_react_agent`)
+
+Don't want to hand-check `has_plan`/`plan_steps`? Use the built-in ReAct runner.
+It prepares the run, retrieves any matching procedure, **auto-replays exact
+matches with zero planning calls**, and otherwise drives your planner while
+capturing the trajectory:
+
+```python
+from learnkit import run_react_agent, LLMStep, ToolCall
+
+def planner(task, context, history):
+    # One planning turn. Return tool calls to make, and/or a final answer.
+    # `context` already contains playbook guidance for sibling tasks.
+    ...
+    return LLMStep(tool_calls=[ToolCall("query", {"table": "users"})], final=None)
+
+result = run_react_agent(memory, task, tools, planner, exploration_tools={"list_tables"})
+print(result.replayed, result.llm_calls, result.tool_calls)  # True 0 3  on an exact repeat
+```
+
+This path supports exact replay (zero-LLM for exact re-encounters) and guided
+sibling reuse. A runnable, offline demo (no API key) lives at
+[`examples/agent_learn_demo.py`](examples/agent_learn_demo.py). See
+`benchmarks/injection_ablation.py` for a quality-focused ablation that isolates
+the effect of playbook injection on novel sibling tasks.
 
 ---
 
-# Integrate with LangChain
+# Integrate with LangChain (and others)
 
-A runnable end-to-end demo lives at [`examples/langchain_demo.py`](examples/langchain_demo.py). It wraps a real LangChain 1.x tool-calling agent (`create_agent` + `ChatAnthropic` + two tools) with `@memory.agent`, then runs the same task twice against a file-backed SQLite store:
-
-```text
-RUN 1 (cold memory):    [LearnKit] Context injected:   0 chars
-RUN 2 (warm memory):    [LearnKit] Context injected: 610 chars
-```
-
-Run 2's answer is qualitatively richer because the skill, facts, and failures distilled from run 1's trajectory get retrieved and spliced into the system prompt. The demo uses `background_postprocess=False` so distillation runs synchronously and the second call is guaranteed to see the first call's output — drop that flag for production.
-
-To run it yourself:
-
-```bash
-pip install -e ".[langchain]"
-python examples/langchain_demo.py
-```
+LangChain, LangGraph, AutoGen, CrewAI, LlamaIndex, and the OpenAI Agents SDK are
+all supported through the universal adapter contract described in **Framework
+integrations** below. Each adapter captures tool calls onto the run so the agent
+path learns and replays procedures with no change to your agent logic.
 
 ---
 
@@ -225,8 +204,8 @@ The agent function never changes. The decorator orchestrates everything around i
 3. **Retrieve** — `SemanticRetriever` pulls relevant records (FTS5 lexical + optional dense rerank), filtered by `domain` and `scope`.
 4. **Compose** — `compose_context` formats records into a bounded prompt block (≤ 8 records, ≤ 1,200 tokens, inference mode = `PRESCRIPTIVE` / `GUIDED` / `EXPLORATORY` based on top-record confidence).
 5. **Run** — your function executes with `_learnkit_context` injected as a kwarg.
-6. **Evaluate** — `Evaluator.evaluate_with_llm_judge` scores the response 0–5.
-7. **Distill** — if score ≥ `quality_threshold` (default 3.5), `MemoryDistiller` emits new `SkillRecord` / `FactRecord` / `FailureRecord` / `TraceRecord`. Below threshold, a `FailureRecord` is stored directly so future runs avoid the same path.
+6. **Evaluate** — on the agent path the outcome is gated on the **real tool success** (`ToolTracker.outcome_score()`), not a fragile LLM judge; an optional judge scores 0–5 when no tool signal is available.
+7. **Distill** — a passing run captures the cleaned productive tool sequence into a procedural `SkillRecord` (`procedure` / `tool_sequence` / `trigger`) for replay, plus optional facts/failures. Below threshold, a `FailureRecord` is stored directly so future runs avoid the same path.
 8. **Persist** — records are written via the active backend; the trajectory is registered against a per-run ID for inspection.
 
 ---
@@ -269,8 +248,7 @@ memory.maintain_memory(weeks=1, decay_rate=0.02, quarantine_hours=24)
 | File | Read when… |
 |---|---|
 | [`Docs/learnkit_architecture.md`](Docs/learnkit_architecture.md) | …you need the full mechanism diagrams and the agent-path runtime flow. |
-| [`improvements.md`](improvements.md) | …you are picking up the next pending enhancement or want the MVP handover snapshot. |
-| [`Docs/LEARNKIT_CONSOLIDATED_FLOW_PLAN.md`](Docs/LEARNKIT_CONSOLIDATED_FLOW_PLAN.md) | …you want the consolidated execution-flow document (roadmap, backlog, benchmark gates). |
+| [`architecture/`](architecture/) | …you want the Mermaid diagrams (product map, agent runtime flow, storage lifecycle, benchmark flow). |
 
 Run the test suite:
 

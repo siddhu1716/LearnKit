@@ -497,42 +497,6 @@ class LearnKit:
             self._is_shutdown = True
             self._worker_pool.shutdown(wait=wait)
 
-    def learn(self, domain: Optional[str] = None, task_type: Optional[str] = None):
-        """Model path — wrap a single-turn agent function with the LearnKit loop.
-
-        The wrapped function is treated as a black box: ``task`` in, answer string
-        out. Retrieved memory is injected as text via the ``_learnkit_context``
-        keyword, and only the final answer is judged and distilled. Use this for
-        models / single-shot generations that do not expose their tool calls.
-        """
-
-        def decorator(fn: Callable) -> Callable:
-            @functools.wraps(fn)
-            def wrapper(task: str, *args, **kwargs) -> str:
-                run = self.prepare_run(task)
-                run["learning_mode"] = "learn"
-
-                # Inject context into kwargs or modify the call
-                enriched_kwargs = {**kwargs, "_learnkit_context": run["context"]}
-                try:
-                    result = fn(task, *args, **enriched_kwargs)
-                except Exception as e:
-                    # Capture failure if the agent crashes
-                    logger.warning(
-                        "Agent execution failed",
-                        extra={"event": "agent_crash", "error_type": type(e).__name__},
-                    )
-                    raise e
-
-                return self.finalize_run(run, result)
-
-            return wrapper
-
-        return decorator
-
-    # Backward-compatible alias. Existing call sites use ``@memory.agent(...)``.
-    agent = learn
-
     def agent_learn(
         self, domain: Optional[str] = None, task_type: Optional[str] = None
     ):

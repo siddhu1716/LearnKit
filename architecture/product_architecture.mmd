@@ -7,7 +7,7 @@ flowchart TB
     subgraph Client["Client Layer"]
         direction LR
         User["User App /<br/>AI Agent"]
-        Decor["@memory.learn<br/>@memory.agent<br/>@memory.agent_learn"]
+        Decor["@memory.agent_learn"]
         User --> Decor
     end
 
@@ -132,12 +132,11 @@ flowchart TB
     subgraph Bench["Benchmarks & Evaluation Harness"]
         direction LR
         BAg["agentic_bench.py"]
-        BSLR["run_slr_bench.py"]
-        BPBE["run_pbebench.py"]
         BReact["react_live.py"]
         BEvo["evolution_live.py"]
+        BInj["injection_ablation.py"]
+        BSuite["run_agentic_suite.py"]
         BSeed["seed_dashboard.py"]
-        BRetr["retrieval_eval.py"]
     end
 
     %% ============ EDGES ============

@@ -77,13 +77,13 @@ export function LandingPage() {
             </h1>
 
             <p className="mx-auto mt-8 max-w-2xl text-lg leading-relaxed text-white/70 sm:text-xl">
-              Production infrastructure for
-              <span className="text-white"> self-improving AI agents.</span>
+              The learning layer for
+              <span className="text-white"> tool-using AI agents.</span>
               <br className="hidden sm:block" />
-              Every task teaches. Every deploy compounds.
+              Capture the winning tool procedure once — replay it on repeats with zero planning calls.
             </p>
             <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-white/45">
-              Ship agents that learn, improve &amp; adapt — measurably — with LearnKit.
+              −38% LLM planning calls at equal task success. Reproducible in one command, with LearnKit.
             </p>
 
             <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">

@@ -20,15 +20,9 @@ interface DashboardModeContextValue {
 const DashboardModeContext = createContext<DashboardModeContextValue | undefined>(undefined);
 
 function readInitialMode(): DashboardMode {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw === 'learn' || raw === 'agent_learn') return raw;
-  } catch {
-    /* ignore */
-  }
-  // Default to the agent (tool) path — that's where the published benchmark
-  // results live (calls-reduced + procedure replay), so a fresh visitor lands
-  // directly on the proof.
+  // agent_learn is the only path exposed in the product. The model/answer
+  // path was removed from the UI, so we always land on the agent (tool) path
+  // — where the published benchmark results live (calls-reduced + replay).
   return 'agent_learn';
 }
 

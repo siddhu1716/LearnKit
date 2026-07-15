@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import styles from './Header.module.css';
 import { Home, LayoutDashboard, BookOpen, FileText, Settings } from '../icons';
-import { useDashboardMode } from '../../context/DashboardModeContext';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -12,7 +11,6 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarOpen }) => {
   const location = useLocation();
   const [backendLive, setBackendLive] = useState<boolean | null>(null);
-  const { mode, setMode } = useDashboardMode();
 
   useEffect(() => {
     let cancelled = false;
@@ -89,51 +87,6 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarOpen }) 
 
         {/* Right side */}
         <div className={styles.right}>
-          {/* Learn / Agent-Learn mode toggle */}
-          <div
-            role="group"
-            aria-label="Dashboard mode"
-            style={{
-              display: 'inline-flex',
-              borderRadius: 6,
-              border: '1px solid var(--border)',
-              background: 'var(--surface-accent)',
-              overflow: 'hidden',
-              padding: 2,
-              gap: 2,
-            }}
-          >
-            {([
-              { key: 'agent_learn', label: 'Agent-Learn', title: 'Agent / tool path (@memory.agent_learn). Full view: calls-reduced, procedures, replays. This is the primary path.' },
-              { key: 'learn', label: 'Learn · beta', title: 'Model / answer-quality path (@memory.learn) — under development. Records & tasks, no tool procedures.' },
-            ] as const).map((opt) => {
-              const active = mode === opt.key;
-              return (
-                <button
-                  key={opt.key}
-                  type="button"
-                  onClick={() => setMode(opt.key)}
-                  title={opt.title}
-                  aria-pressed={active}
-                  style={{
-                    padding: '3px 10px',
-                    fontSize: 11,
-                    fontWeight: 500,
-                    letterSpacing: '0.01em',
-                    cursor: 'pointer',
-                    border: 'none',
-                    borderRadius: 4,
-                    background: active ? 'rgba(255,255,255,0.08)' : 'transparent',
-                    color: active ? 'var(--text-primary)' : 'var(--text-muted)',
-                    transition: 'background 0.15s, color 0.15s',
-                  }}
-                >
-                  {opt.label}
-                </button>
-              );
-            })}
-          </div>
-
           <div
             className={styles.statusPill}
             title={

@@ -97,13 +97,13 @@ def test_learnkit_agent():
     # Mock classifier to skip actual LM call
     lk = LearnKit(memory_backend="sqlite", db_path=":memory:")
 
-    @lk.agent(domain="test")
-    def mock_agent(task, _learnkit_context=None):
+    @lk.agent_learn(domain="test")
+    def mock_agent(task, _learnkit_context=None, _learnkit_tools=None):
         return f"Agent response for {task} with context len {len(_learnkit_context) if _learnkit_context else 0}"
 
     # We won't actually run this in the test because it spins a thread for distiller,
     # and requires full LM mocking for classifier and distiller. But we can check if it initializes.
-    assert hasattr(lk, "agent")
+    assert hasattr(lk, "agent_learn")
 
 
 def test_learnkit_agent_full_loop_sync():
@@ -155,8 +155,8 @@ def test_learnkit_agent_full_loop_sync():
 
     seen = {}
 
-    @lk.agent(domain="coding")
-    def mock_agent(task, _learnkit_context=None):
+    @lk.agent_learn(domain="coding")
+    def mock_agent(task, _learnkit_context=None, _learnkit_tools=None):
         seen["context"] = _learnkit_context
         return "fixed"
 
@@ -231,8 +231,8 @@ def test_distilled_records_inherit_instance_scope():
         background_postprocess=False,
     )
 
-    @lk.agent(domain="coding")
-    def agent(task, _learnkit_context=None):
+    @lk.agent_learn(domain="coding")
+    def agent(task, _learnkit_context=None, _learnkit_tools=None):
         return "ok"
 
     agent("do the thing")
@@ -317,8 +317,8 @@ def test_auto_promote_bypasses_quarantine_for_distilled_skills():
         auto_promote=True,
     )
 
-    @lk.agent(domain="coding")
-    def agent(task, _learnkit_context=None):
+    @lk.agent_learn(domain="coding")
+    def agent(task, _learnkit_context=None, _learnkit_tools=None):
         return "done"
 
     agent("a task")
@@ -366,8 +366,8 @@ def test_last_attribution_exposes_retrieved_records():
     )
     lk.backend.add(seeded)
 
-    @lk.agent(domain="coding")
-    def agent(task, _learnkit_context=None):
+    @lk.agent_learn(domain="coding")
+    def agent(task, _learnkit_context=None, _learnkit_tools=None):
         return "fixed"
 
     assert lk.last_attribution is None

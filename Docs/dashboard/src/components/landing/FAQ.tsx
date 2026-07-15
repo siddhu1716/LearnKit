@@ -12,7 +12,7 @@ const faqs = [
   },
   {
     q: 'Does it work with my existing agent framework?',
-    a: 'Yes. LearnKit is framework-agnostic. Officially tested with DSPy, LangChain, LlamaIndex, OpenAI Assistants, and plain Python. Two decorators (`@lk.agent_learn`, `@lk.learn`) integrate with any function that takes a task and returns a result.',
+    a: 'Yes. LearnKit is framework-agnostic. Officially tested with DSPy, LangChain, LlamaIndex, OpenAI Assistants, and plain Python. The `@lk.agent_learn` decorator integrates with any tool-using function that takes a task and returns a result.',
   },
   {
     q: 'What LLMs are supported?',
