@@ -1,0 +1,162 @@
+%% LearnKit — Product Design Architecture
+%% Generated 2026-07-12 from graphify knowledge graph
+%% Source: graphify-out/graph.json (2265 nodes · 4347 edges · 168 communities)
+%% Commit: df509270
+flowchart TB
+    %% ============ USERS & INTEGRATIONS ============
+    subgraph Client["Client Layer"]
+        direction LR
+        User["User App /<br/>AI Agent"]
+        Decor["@memory.learn<br/>@memory.agent<br/>@memory.agent_learn"]
+        User --> Decor
+    end
+
+    subgraph Adapters["Framework Adapters (learnkit/adapters)"]
+        direction LR
+        LC["langchain"]
+        LG["langgraph"]
+        AG["autogen"]
+        CR["crewai"]
+        LI["llamaindex"]
+        OAI["openai_agents /<br/>openai_raw"]
+    end
+
+    %% ============ CORE ORCHESTRATOR ============
+    subgraph Core["LearnKit Core Orchestrator (learnkit/core.py)"]
+        direction TB
+        LK["LearnKit()"]
+        Prep["prepare_run()"]
+        Fin["finalize_run()"]
+        Post["_post_process_now()"]
+        LK --> Prep
+        LK --> Fin --> Post
+    end
+
+    %% ============ ONLINE (READ) PATH ============
+    subgraph Read["Online Read Path — Context Assembly"]
+        direction TB
+        Class["classifier.py<br/>classify_task()"]
+        Retr["retriever.py<br/>SemanticRetriever"]
+        Div["diversity.py<br/>RRF / MMR re-rank"]
+        Route["router.py<br/>MemoryRouter"]
+        Infer["inference_mode.py<br/>determine_inference_mode()"]
+        Comp["composer.py<br/>compose_context()"]
+        Compr["compressor.py<br/>token budget"]
+        Class --> Retr --> Div --> Route --> Infer --> Comp --> Compr
+    end
+
+    %% ============ AGENT / TOOL PATH ============
+    subgraph AgentPath["Agent Path — Procedure Capture & Replay"]
+        direction TB
+        TT["tool_tracker.py<br/>ToolTracker"]
+        Match["_select_procedure /<br/>_match_procedure"]
+        Replay["replay.py<br/>replay_plan()"]
+        ProcEx["procedural.py<br/>extract_procedure()"]
+        ProcEv["procedure_evolution.py<br/>reinforce / demote"]
+        TT --> Match
+        Match -->|exact| Replay
+        Match -->|sibling / none| TT
+        TT --> ProcEx --> ProcEv
+    end
+
+    %% ============ WRITE / LEARNING PATH ============
+    subgraph Write["Post-Process Learning Path"]
+        direction TB
+        Eval["evaluator.py<br/>Evaluator (heuristic / LLM judge)"]
+        Dist["distiller.py<br/>MemoryDistiller"]
+        Qual["memory_quality.py<br/>decide_storage()"]
+        Attr["attribution.py<br/>build_attribution()"]
+        Traj["trajectory.py<br/>Trajectory capture"]
+        Cons["consolidation.py<br/>consolidate_skills()"]
+        Play["playbook.py<br/>merge_insights()"]
+        Eval --> Dist --> Qual
+        Traj --> Attr --> Qual
+        Qual --> Cons --> Play
+    end
+
+    %% ============ EVOLUTION ============
+    subgraph Evo["Evolution (learnkit/evolution)"]
+        GEPA["gepa.py<br/>prompt mutation"]
+        Skills["skills_loader.py<br/>seed_bundled_skills()"]
+        Skills -.-> GEPA
+    end
+
+    %% ============ MEMORY SCHEMAS ============
+    subgraph Schemas["Memory Record Types (learnkit/schemas)"]
+        direction LR
+        S1["SkillRecord"]
+        S2["FailureRecord"]
+        S3["FactRecord"]
+        S4["StrategyRecord"]
+        S5["PreferenceRecord"]
+        S6["TraceRecord"]
+        S7["MemoryRecord (base)"]
+    end
+
+    %% ============ BACKENDS ============
+    subgraph Backends["Storage Backends (learnkit/backends)"]
+        direction TB
+        Reg["registry.get_backend()"]
+        BSql["SQLiteBackend<br/>+ FTS5 + sqlite-vec"]
+        BQd["QdrantBackend"]
+        BMem["Mem0Backend"]
+        BZep["ZepBackend"]
+        Reg --> BSql & BQd & BMem & BZep
+        DB[("records / records_fts /<br/>records_vec / runs")]
+        BSql --> DB
+    end
+
+    %% ============ OBSERVABILITY & CLI ============
+    subgraph Ops["Observability & Ops"]
+        direction LR
+        Obs["observability.py"]
+        Log["logging.py"]
+        CLI["cli.py<br/>learnkit maintain"]
+    end
+
+    %% ============ FRONTEND ============
+    subgraph Dashboard["Dashboard (Docs/dashboard — React + Vite + TS)"]
+        direction TB
+        Landing["LandingPage / Nav / Footer /<br/>ProductShowcase / FAQ"]
+        AppShell["AppShell + AppRoutes"]
+        Pages["Overview · Agents · AgentDetail<br/>MemoryExplorer · MemoryLifecycle<br/>TaskHistory · TracePlayback<br/>RetrievalQuality · Benchmarks<br/>Observability · Playground · Settings"]
+        APIClient["api/client.ts"]
+        Landing --> AppShell --> Pages --> APIClient
+    end
+
+    subgraph Server["API Server"]
+        Srv["Docs/server.py<br/>_live() endpoints"]
+    end
+
+    %% ============ BENCHMARKS ============
+    subgraph Bench["Benchmarks & Evaluation Harness"]
+        direction LR
+        BAg["agentic_bench.py"]
+        BSLR["run_slr_bench.py"]
+        BPBE["run_pbebench.py"]
+        BReact["react_live.py"]
+        BEvo["evolution_live.py"]
+        BSeed["seed_dashboard.py"]
+        BRetr["retrieval_eval.py"]
+    end
+
+    %% ============ EDGES ============
+    Client --> Adapters --> LK
+    LK --> Read
+    LK --> AgentPath
+    AgentPath -.-> Read
+    Post --> Write
+    Write --> Schemas
+    Schemas --> Reg
+    Read --> Reg
+    Play -.-> Evo
+    Evo --> Schemas
+    LK --> Obs
+    LK --> Log
+    CLI --> Reg
+
+    Bench --> LK
+    Bench --> DB
+    Srv --> DB
+    Srv --> LK
+    APIClient <--> Srv

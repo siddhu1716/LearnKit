@@ -66,13 +66,25 @@ failing the quality gate; `/healthz` surfaces which mode is active.
     artifact pipeline.
   - Use when: you want a big-picture architecture map for onboarding or review.
 
+- `product_architecture.mmd`
+  - Scope: **product-level** architecture map derived from the graphify
+    knowledge graph (`graphify-out/graph.json` — 2265 nodes · 4347 edges ·
+    168 communities). Groups the codebase into its ten major subsystems —
+    Client, Framework Adapters, Core Orchestrator, Read Path, Agent Path,
+    Post-Process Learning, Evolution, Memory Schemas, Storage Backends,
+    Observability/CLI, Dashboard (React), API Server, and Benchmarks —
+    and shows how they wire together.
+  - Use when: onboarding at the product level, discussing scope with
+    stakeholders, or planning cross-subsystem changes.
+
 ## Suggested reading order
 
-1. `agent_runtime_flow.mmd` for procedure capture and replay (the primary path).
-2. `runtime_flow.mmd` for the model-path request loop (beta).
-3. `storage_lifecycle.mmd` for memory semantics and status transitions.
-4. `benchmark_flow.mmd` for the reproducible benchmark artifact + dashboard.
-5. `full_system_flow.mmd` for a complete architecture overview.
+1. `product_architecture.mmd` for the product-level subsystem map.
+2. `agent_runtime_flow.mmd` for procedure capture and replay (the primary path).
+3. `runtime_flow.mmd` for the model-path request loop (beta).
+4. `storage_lifecycle.mmd` for memory semantics and status transitions.
+5. `benchmark_flow.mmd` for the reproducible benchmark artifact + dashboard.
+6. `full_system_flow.mmd` for a complete architecture overview.
 
 ## How to view
 
