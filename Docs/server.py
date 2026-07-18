@@ -348,7 +348,7 @@ def _run_to_task(run: dict) -> dict:
         "armName": "warmed" if run.get("replayed") else "coldStart",
         "timestamp": run.get("created_at"),
         "agentId": run.get("agent_id"),
-        "mode": run.get("mode") or "learn",
+        "mode": run.get("mode") or "agent_learn",
         "toolCalls": run.get("tool_calls", 0),
         "callsReduced": run.get("calls_reduced", 0),
         "telemetry": _run_telemetry(run),
