@@ -459,17 +459,29 @@ class LearnKit:
                 },
             )
 
-    def export_skill_library(self, path) -> int:
-        """Write the learned procedural skills to an on-disk Hermes-style library.
+    def export_skill_library(self, path, fmt: str = "learnkit") -> int:
+        """Write the learned procedural skills to an on-disk skill library.
 
-        Each procedure becomes ``<path>/<name>/SKILL.md`` (YAML frontmatter +
-        procedure body). This is the durable institutional-knowledge artifact:
-        a growing, human-readable library that survives the process and can be
-        reviewed, versioned, or shared. Returns the number of skills written.
+        Each procedure becomes ``<path>/<name>/SKILL.md``. ``fmt`` selects the
+        rendering:
+
+        - ``"learnkit"`` (default) — Hermes-style frontmatter + procedure body.
+        - ``"deepagents"`` — Deep Agents / Anthropic Agent Skills-compatible
+          frontmatter (``name`` / ``description`` / ``allowed-tools``), so the
+          library drops straight into a Deep Agents skills directory.
+
+        This is the durable institutional-knowledge artifact: a growing,
+        human-readable library that survives the process and can be reviewed,
+        versioned, or shared. Returns the number of skills written.
         """
         from pathlib import Path
         import re
 
+        render = (
+            (lambda r: r.to_deepagents_md())
+            if fmt == "deepagents"
+            else (lambda r: r.to_skill_md())
+        )
         out = Path(path)
         out.mkdir(parents=True, exist_ok=True)
         records = self.backend.list_by_scope(self.scope, limit=1000)
@@ -481,11 +493,16 @@ class LearnKit:
             name = re.sub(r"[^a-z0-9._-]+", "-", raw.lower()).strip("-") or r.id[:8]
             skill_dir = out / name
             skill_dir.mkdir(parents=True, exist_ok=True)
-            (skill_dir / "SKILL.md").write_text(r.to_skill_md(), encoding="utf-8")
+            (skill_dir / "SKILL.md").write_text(render(r), encoding="utf-8")
             written += 1
         logger.info(
             "Exported procedural skill library",
-            extra={"event": "skill_library_export", "count": written, "path": str(out)},
+            extra={
+                "event": "skill_library_export",
+                "count": written,
+                "path": str(out),
+                "format": fmt,
+            },
         )
         return written
 

@@ -30,6 +30,7 @@ from .backends.sqlite import SQLiteBackend
 from .composer import compose_context
 from .compressor import compress_context
 from .core import LearnKit
+from .drift import DriftReport, build_golden_suite, check_drift, export_golden_suite, golden_sequence
 from .inference_mode import InferenceMode, determine_inference_mode
 from .schemas.base import MemoryRecord
 from .schemas.fact import FactRecord
@@ -80,4 +81,9 @@ __all__ = [
     "Observation",
     "ToolCall",
     "ReActResult",
+    "check_drift",
+    "DriftReport",
+    "golden_sequence",
+    "build_golden_suite",
+    "export_golden_suite",
 ]

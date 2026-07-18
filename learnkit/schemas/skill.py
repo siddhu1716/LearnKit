@@ -119,3 +119,62 @@ reuse_count: {self.reuse_count}
 {failures_block}
 """
 
+    def to_deepagents_md(self) -> str:
+        """Render a Deep Agents / Anthropic Agent Skills-compatible SKILL.md.
+
+        Frontmatter carries ``name`` (a slug), ``description`` (the when-to-use
+        line the agent matches on), and ``allowed-tools`` (the captured tool
+        sequence, de-duplicated). The body is plain on-demand instructions.
+        Works for both procedural and declarative skills, so a LearnKit store
+        can be exported straight into a Deep Agents skill directory.
+        """
+        import re
+
+        c = self.content
+        raw_name = (self.task_type or "skill").lower()
+        name = re.sub(r"[^a-z0-9]+", "-", raw_name).strip("-")[:64] or "skill"
+        trigger = c.get("trigger") or (
+            f"Use for {self.task_type} tasks in {list(self.domains.keys())} domains."
+        )
+        description = " ".join(str(trigger).split())[:1024]
+
+        tool_seq = c.get("tool_sequence") or c.get("tools_used") or []
+        seen: list[str] = []
+        for t in tool_seq:
+            if t not in seen:
+                seen.append(t)
+        allowed = ", ".join(seen)
+
+        if self.is_procedural:
+            body_steps = []
+            for i, step in enumerate(c.get("procedure", [])):
+                tool = step.get("tool", "tool")
+                args = step.get("args")
+                line = f"{i + 1}. Call `{tool}`"
+                if args:
+                    line += f" with args `{args}`"
+                body_steps.append(line)
+            steps_block = "\n".join(body_steps) or "_No tool calls captured._"
+        else:
+            steps_block = "\n".join(
+                f"{i + 1}. {s}" for i, s in enumerate(c.get("steps", []))
+            ) or "_No steps recorded._"
+
+        playbook_block = "\n".join(f"- {p}" for p in c.get("playbook", []))
+        pitfalls_block = "\n".join(
+            f"- {p}" for p in list(c.get("pitfalls", [])) + list(c.get("failure_modes", []))
+        )
+        constraints_block = "\n".join(f"- {ct}" for ct in c.get("constraints", []))
+
+        parts = ["---", f"name: {name}", f'description: "{description}"']
+        if allowed:
+            parts.append(f"allowed-tools: {allowed}")
+        parts += ["---", "", f"# {self.task_type}", "", "## When to use", trigger, "", "## Steps", steps_block, ""]
+        if playbook_block:
+            parts += ["## Playbook", playbook_block, ""]
+        if constraints_block:
+            parts += ["## Constraints", constraints_block, ""]
+        if pitfalls_block:
+            parts += ["## Known failure modes", pitfalls_block, ""]
+        return "\n".join(parts).rstrip() + "\n"
+

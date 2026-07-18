@@ -1,14 +1,10 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { setDashboardMode, type DashboardMode } from '../api/client';
 
-// LearnKit exposes two learning paths that produce very different telemetry:
-//   • learn       — model/answer-quality path (@memory.learn / @memory.agent).
-//                   No tools, no procedures; value = answer quality.
-//   • agent_learn — agent/tool path (@memory.agent_learn). Captures procedures,
-//                   replays exact matches; value = tool calls reduced.
-// The dashboard lets the user toggle between these so each view is scoped to
-// one path. 'agent_learn' shows the full rich view (calls-reduced, procedures);
-// 'learn' shows a lighter records + tasks + quality view.
+// The dashboard operates in a single mode: 'agent_learn' — the agent/tool path
+// (@memory.agent_learn). It captures tool procedures, replays exact matches, and
+// reports calls-reduced. The DashboardMode type is retained so run/telemetry
+// queries stay explicitly scoped, but there is no user-facing path toggle.
 
 const STORAGE_KEY = 'learnkit_dashboard_mode';
 

@@ -24,6 +24,23 @@ Memory is **typed**, **quality-gated**, **attributed** (help/harm/reuse per reco
 
 ---
 
+## Where this fits — procedural memory, not caching or hand-written skills
+
+LearnKit adds **procedural memory** (how to do a task) — distinct from the
+semantic/episodic memory that Mem0, Zep, and vector stores provide (facts and past
+conversations).
+
+- **Not plan caching.** Plan caching keys a whole plan and trades accuracy for cost.
+  LearnKit does *workflow induction*: hard-replay only on an **exact** match (zero
+  LLM), and *guide* sibling tasks (the model still plans) — never a fuzzy replay
+  that could silently produce the wrong result. Success holds; it doesn't degrade.
+- **Not hand-written Skills.** LangChain / Deep Agents Skills are procedural memory
+  too, but you author and maintain each one by hand. LearnKit **auto-induces**
+  procedures from real successful runs, quality-gates them on the tool outcome,
+  tracks help/harm, and decays the stale ones — and it's framework-agnostic. It
+  even exports a Deep Agents-compatible library:
+  `learnkit skills export --format deepagents`.
+
 # Core Philosophy
 
 LearnKit treats agent memory like a curated wiki operating across three continuous loops:

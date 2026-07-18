@@ -4,43 +4,43 @@ import { Plus } from 'lucide-react'
 const faqs = [
   {
     q: 'What exactly does LearnKit store?',
-    a: 'LearnKit stores three types of records: **skills** (things that worked — reusable procedures and playbooks), **failures** (things that didn\u2019t work, with the context for why), and **facts** (task-scoped knowledge like schemas, conventions, or user preferences). Each record ships with provenance (which task produced it), confidence, and use counts.',
+    a: 'LearnKit stores three kinds of records: **skills** (reusable tool procedures and playbooks that worked), **failures** (dead ends, with the context for why), and **facts** (task-scoped knowledge like schemas or conventions). Each record carries provenance (which run produced it), a confidence score, and reuse counts.',
   },
   {
-    q: 'How is this different from a vector database?',
-    a: 'Vector databases store what your agent said. LearnKit distills what your agent did — the full trajectory of tool calls, reasoning steps, and outcomes — into structured, reusable knowledge. Retrieval is hybrid (semantic + task classification + procedural playbooks) rather than pure similarity search.',
+    q: 'Isn\u2019t this just a vector database?',
+    a: 'A vector database stores and retrieves text your agent saw. LearnKit distills what your agent **did** — the productive tool-call sequence — and can replay it. Retrieval is hybrid (semantic + task classification), but the reusable unit is a procedure, not a text chunk.',
+  },
+  {
+    q: 'Isn\u2019t this just Mem0 or Zep?',
+    a: 'Those are **semantic/episodic** memory — they help an agent remember facts and conversations, and they benchmark long-conversation recall (Mem0 and Zep publish LoCoMo / LongMemEval accuracy). LearnKit is **procedural** memory: it cuts the planning/LLM calls a tool-using agent spends re-deriving the same workflow. Different axis — often complementary.',
+  },
+  {
+    q: 'How is this different from LangChain Deep Agents Skills?',
+    a: 'Deep Agents Skills is the closest — also procedural memory. The difference is authoring and scope: Skills are **hand-written and maintained by you** and live inside LangGraph / Deep Agents. LearnKit **auto-induces** procedures from real successful runs, quality-gates them on the tool outcome, tracks help/harm, and decays stale ones — and it\u2019s framework-agnostic. It can even export a Deep Agents-compatible SKILL.md library, so the two compose.',
+  },
+  {
+    q: 'Is this the same as plan caching?',
+    a: 'No. Plan caching keys a whole plan and trades a few points of accuracy for cost. LearnKit does **workflow induction**: it hard-replays only on an exact match (zero LLM) and *guides* similar tasks — the model still plans — so success holds rather than degrades.',
   },
   {
     q: 'Does it work with my existing agent framework?',
-    a: 'Yes. LearnKit is framework-agnostic. Officially tested with DSPy, LangChain, LlamaIndex, OpenAI Assistants, and plain Python. The `@lk.agent_learn` decorator integrates with any tool-using function that takes a task and returns a result.',
+    a: 'Yes — LearnKit is framework-agnostic. It ships adapters for **LangChain, LangGraph, CrewAI, AutoGen, LlamaIndex, the OpenAI Agents SDK, and raw OpenAI/Anthropic**. The `@lk.agent_learn` decorator wraps any tool-using function that takes a task and returns a result.',
   },
   {
     q: 'What LLMs are supported?',
-    a: 'Any chat-completions-compatible model — OpenAI, Anthropic, Google, Mistral, and any self-hosted model via vLLM or sglang. Our published benchmarks use Qwen2.5-14B and 32B running on local GPUs, but the SDK is model-agnostic.',
+    a: 'Any chat-completions-compatible model — OpenAI, Anthropic, Google, Mistral, or self-hosted via vLLM / sglang. The published benchmarks run on self-hosted **Qwen2.5-14B, Qwen2.5-32B, and Llama-3.3-70B**, but the SDK is model-agnostic.',
   },
   {
-    q: 'How much does it cost to run?',
-    a: 'The SDK is MIT-licensed and free. Storage runs on SQLite locally or Postgres in production — no proprietary infrastructure. Distillation uses ~1 additional LLM call per completed task, offset many times over by the −33% to −46% reduction in future call counts.',
-  },
-  {
-    q: 'Is my data ever sent to LIA Labs?',
-    a: 'Never. LearnKit runs entirely inside your infrastructure. There is no phone-home, no telemetry, no data upload. The observability dashboard is self-hosted and reads directly from your local store.',
-  },
-  {
-    q: 'How do I know memories are actually helping?',
-    a: 'Every dashboard view answers this. The Overview shows cold-vs-warm success rates side by side. The Benchmarks page reproduces our published numbers against your own agent. The Trace view shows exactly which memories were retrieved and applied for any given task.',
+    q: 'How much does it cost, and how much does it save?',
+    a: 'The SDK is MIT-licensed; storage is local SQLite (or Postgres) — no proprietary infrastructure. Capturing a procedure adds ~1 LLM call per task, repaid many times over: the published benchmarks show **~38% fewer planning calls** on repeat tasks (up to ~45% on some suites) at equal success.',
   },
   {
     q: 'What happens to bad or outdated memories?',
-    a: 'LearnKit tracks confidence and decay on every record. Memories that consistently fail get automatically down-weighted; memories that repeatedly succeed get reinforced. You can also quarantine or delete records manually from the Memory Lifecycle page.',
+    a: 'Every record has a confidence score that decays over time. Memories that consistently fail get down-weighted; ones that repeatedly succeed get reinforced. You can also quarantine or delete records manually from the Memory Lifecycle page.',
   },
   {
-    q: 'How is this different from LangChain\u2019s memory?',
-    a: 'LangChain memory is a chat-buffer abstraction — it stores conversation turns, not learned behavior. LearnKit sits at a different layer: it captures agent decisions, distills them into playbooks, and injects them back as procedural guidance. The two are complementary, not competing.',
-  },
-  {
-    q: 'Can I contribute or self-host the dashboard?',
-    a: 'Yes to both. The dashboard, SDK, and benchmark harness are all in the same open-source repository. Docker images and a one-command deploy script are shipped in `/deploy`. Community contributions welcome — see CONTRIBUTING.md.',
+    q: 'Is my data ever sent to LIA Labs?',
+    a: 'Never. LearnKit runs entirely inside your infrastructure — no phone-home, no telemetry, no data upload. The observability dashboard is self-hosted and reads directly from your local store.',
   },
 ]
 

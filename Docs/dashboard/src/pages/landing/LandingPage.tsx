@@ -83,7 +83,7 @@ export function LandingPage() {
               Capture the winning tool procedure once — replay it on repeats with zero planning calls.
             </p>
             <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-white/45">
-              −38% LLM planning calls at equal task success. Reproducible in one command, with LearnKit.
+              Procedural memory for agents — workflow induction, not a vector store. −38% planning calls at equal task success.
             </p>
 
             <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">

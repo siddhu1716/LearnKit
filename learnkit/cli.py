@@ -20,6 +20,15 @@ def main():
     maintain_parser.add_argument("--quarantine-hours", type=float, default=24.0, help="Minimum age in hours to promote quarantined records")
     maintain_parser.add_argument("--consolidate", action="store_true", help="Merge overlapping skills into umbrellas (archives near-duplicates)")
 
+    # Skills command — export the learned procedural skill library.
+    skills_parser = subparsers.add_parser("skills", help="Export the learned procedural skill library")
+    skills_sub = skills_parser.add_subparsers(dest="skills_command")
+    export_parser = skills_sub.add_parser("export", help="Export skills to disk")
+    export_parser.add_argument("--db-path", type=str, default="~/.learnkit/memory.db", help="Path to SQLite database")
+    export_parser.add_argument("--out", type=str, required=True, help="Output directory (learnkit/deepagents) or JSON file (golden-tests)")
+    export_parser.add_argument("--format", choices=["learnkit", "deepagents", "golden-tests"], default="learnkit", help="Export format")
+    export_parser.add_argument("--scope", type=str, default="team", help="Memory scope to export (user/team/public)")
+
     args = parser.parse_args()
 
     if args.command == "maintain":
@@ -42,6 +51,23 @@ def main():
             lk.shutdown()
         except Exception as e:
             print(f"ERROR: Maintenance failed: {e}", file=sys.stderr)
+            sys.exit(1)
+    elif args.command == "skills":
+        if args.skills_command != "export":
+            parser.parse_args(["skills", "--help"])
+            sys.exit(1)
+        try:
+            lk = LearnKit(memory_backend="sqlite", db_path=args.db_path, scope=args.scope)
+            if args.format == "golden-tests":
+                from learnkit.drift import export_golden_suite
+                n = export_golden_suite(lk, args.out)
+                print(f"Wrote {n} golden tool-sequence(s) to {args.out}")
+            else:
+                n = lk.export_skill_library(args.out, fmt=args.format)
+                print(f"Exported {n} skill(s) as '{args.format}' to {args.out}")
+            lk.shutdown()
+        except Exception as e:
+            print(f"ERROR: Skill export failed: {e}", file=sys.stderr)
             sys.exit(1)
     else:
         parser.print_help()

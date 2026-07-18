@@ -10,10 +10,10 @@ interface Competitor {
 
 const competitors: Competitor[] = [
   { name: 'LIA Labs', tagline: 'LearnKit', isUs: true },
-  { name: 'Mem0', tagline: 'Personal memory' },
-  { name: 'MemGPT', tagline: 'Letta / long context' },
-  { name: 'LangChain Memory', tagline: 'Chat buffers' },
-  { name: 'Vector RAG', tagline: 'Pinecone / Weaviate' },
+  { name: 'Deep Agents', tagline: 'LangChain Skills' },
+  { name: 'Letta', tagline: 'MemGPT' },
+  { name: 'Mem0', tagline: 'Semantic memory' },
+  { name: 'Zep', tagline: 'Temporal graph' },
 ]
 
 interface Row {
@@ -24,54 +24,42 @@ interface Row {
 
 const rows: Row[] = [
   {
-    label: 'Distills tool trajectories',
-    hint: 'Not just messages — full agent execution traces',
-    cells: [true, false, false, false, false],
+    label: 'Procedural memory',
+    hint: 'Reuses how a task was done — not just facts or conversations',
+    cells: [true, true, 'partial', false, false],
   },
   {
-    label: 'Procedural playbooks',
-    hint: 'Reusable step-by-step procedures, not just facts',
-    cells: [true, false, false, false, false],
-  },
-  {
-    label: 'Reduces LLM calls',
-    hint: 'Measured cost reduction on repeat tasks',
-    cells: ['−46%', 'partial', 'partial', false, false],
-  },
-  {
-    label: 'Failure records',
-    hint: 'Learns from mistakes, not only successes',
-    cells: [true, false, false, false, false],
-  },
-  {
-    label: 'Memory evolution tracking',
-    hint: 'Watch confidence, decay, and reinforcement over time',
-    cells: [true, false, false, false, false],
-  },
-  {
-    label: 'Framework agnostic',
-    cells: [true, true, false, false, true],
-  },
-  {
-    label: 'Semantic retrieval',
-    cells: [true, true, true, 'partial', true],
-  },
-  {
-    label: 'Auditable provenance',
-    hint: 'Every memory shows where it came from',
-    cells: [true, false, false, false, 'partial'],
-  },
-  {
-    label: 'Reproducible benchmarks',
-    hint: 'Published numbers you can reproduce',
+    label: 'Auto-induced from real runs',
+    hint: 'Procedures are captured automatically, not hand-authored',
     cells: [true, false, 'partial', false, false],
   },
   {
-    label: 'Open source',
-    cells: [true, true, true, true, 'partial'],
+    label: 'Replays tool procedures',
+    hint: 'Zero-LLM execution on an exact repeat',
+    cells: [true, false, false, false, false],
   },
   {
-    label: 'Self-hostable',
+    label: 'Cuts planning / LLM calls',
+    hint: 'Published, reproducible call reduction on repeat tasks',
+    cells: ['−38%', false, false, false, false],
+  },
+  {
+    label: 'Quality-gated + help/harm attribution',
+    hint: 'Tracks whether each memory actually helped, and decays the rest',
+    cells: [true, false, 'partial', false, false],
+  },
+  {
+    label: 'Semantic recall (LoCoMo)',
+    hint: 'Vendor-published long-conversation recall — a different axis; each number is the vendor’s own',
+    cells: [false, false, 'partial', '92.5', '94.7'],
+  },
+  {
+    label: 'Framework-agnostic',
+    hint: 'Works outside a single agent framework',
+    cells: [true, false, false, true, true],
+  },
+  {
+    label: 'Open source',
     cells: [true, true, true, true, 'partial'],
   },
 ]
@@ -100,7 +88,7 @@ function CellIcon({ value, isUs }: { value: Cell; isUs?: boolean }) {
       </div>
     )
   }
-  // string value like "−46%"
+  // string value like "−38%"
   return (
     <div className="flex items-center justify-center">
       <span className={`font-mono text-[11px] font-medium ${isUs ? 'text-emerald-400' : 'text-white/60'}`}>

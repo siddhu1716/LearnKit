@@ -79,11 +79,9 @@ export const Overview: React.FC = () => {
     <div className={styles.overview}>
       <header className={styles.header}>
         <div>
-          <h1 className={styles.title}>{isAgent ? 'Agent-Learn Overview' : 'Learn Overview'}</h1>
+          <h1 className={styles.title}>Overview</h1>
           <p className={styles.subtitle}>
-            {isAgent
-              ? 'Tool-use procedures, replays & calls-reduced for the agent path'
-              : 'Answer-quality memory & task outcomes for the model path'}
+            Tool-use procedures, replays &amp; calls-reduced across your agents
           </p>
         </div>
         <button className={styles.refreshBtn} onClick={fetchData} aria-label="Refresh metrics">
@@ -199,9 +197,7 @@ export const Overview: React.FC = () => {
         <div className={styles.chartHeader}>
           <h2 className={styles.sectionTitle}>Success Rate Trend (30 Days)</h2>
           <div className={styles.chartLegendHint}>
-            {isAgent
-              ? 'Comparing agent starts: Control vs. Cold vs. Warmed'
-              : 'Task success over time (model path)'}
+            Comparing agent starts: Control vs. Cold vs. Warmed
           </div>
         </div>
         <div className={styles.chartWrapper}>
