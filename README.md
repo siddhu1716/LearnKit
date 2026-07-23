@@ -1,9 +1,10 @@
 # LearnKit
 
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/siddhu1716/LearnKit)
+**Procedural memory for tool-using AI agents.** Capture the tool procedure that solved a task, replay it on exact repeats with **zero planning calls**, and guide similar tasks with a learned playbook.
 
-> **🚀 Live Pre-Release on PyPI!**
-> LearnKit is installable via PyPI as `learnkit-ai`. It provides the complete experience-distillation layer for Python AI agents. Let your agents compound knowledge dynamically!
+[![PyPI](https://img.shields.io/pypi/v/learnkit-ai.svg)](https://pypi.org/project/learnkit-ai/) [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE) [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml) [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/siddhu1716/LearnKit)
+
+> **v1.0** · `pip install learnkit-ai` · wrap one function · watch it stop re-planning.
 
 ---
 
@@ -41,33 +42,33 @@ conversations).
   even exports a Deep Agents-compatible library:
   `learnkit skills export --format deepagents`.
 
-# Core Philosophy
+# Architecture at a glance
 
-LearnKit treats agent memory like a curated wiki operating across three continuous loops:
+```mermaid
+flowchart LR
+    T[Task] --> W["@memory.agent_learn"]
+    W --> R["classify → retrieve → compose"]
+    R --> M{"procedure match?"}
+    M -->|exact| RP["replay_plan<br/>0 planning calls"]
+    M -->|sibling| G["guided ReAct<br/>follows playbook"]
+    M -->|none| C["cold ReAct<br/>explore + capture"]
+    RP --> O["tool-success gate"]
+    G --> O
+    C --> O
+    O -->|pass| D["distill procedure → SkillRecord"]
+    O -->|fail| X["demote"]
+    D --> S[("SQLite: records + runs")]
+    X --> S
+    S -->|next encounter| R
+    S --> DASH["FastAPI → React dashboard<br/>calls-reduced · replays · traces"]
+```
 
-## 1. Ingest (The Distiller)
+The wrapped agent function never changes — the `@memory.agent_learn` decorator
+orchestrates everything around it. Full, detailed diagrams live in
+[`architecture/`](architecture/); see [How it works](#how-it-works--the-8-step-loop)
+for the step-by-step.
 
-After a task completes, LearnKit analyzes the agent’s Chain-of-Thought (CoT).
-
-- Successful traces → distilled into reusable `SkillRecord`
-- Failed traces → converted into `FailureRecord`
-- Prevents agents from repeating known mistakes
-
-## 2. Query (The Retriever)
-
-Before a task begins:
-
-- LearnKit classifies the domain and task type
-- Retrieves high-confidence relevant memories
-- Injects only the most useful context
-
-## 3. Maintain (The Evolver)
-
-Memory is continuously optimized:
-
-- Unused records decay over time
-- High-value skills evolve automatically
-- GEPA-based prompt mutation discovers better strategies
+> 🎨 A colored, presentation-ready version is in [`architecture/high_level_architecture.mmd`](architecture/high_level_architecture.mmd) — render it at [mermaid.live](https://mermaid.live) and export a PNG.
 
 ---
 
@@ -89,7 +90,8 @@ pip install -e ".[dev]"             # pytest + pytest-asyncio
 
 Other optional extras: `mem0`, `zep`, `qdrant`.
 
-Set your Anthropic key once (PowerShell, persists across sessions):
+Set your Anthropic key (optional — only the LLM classifier/distiller use it; the
+agent path and benchmarks run keyless). PowerShell, persists across sessions:
 
 ```powershell
 [Environment]::SetEnvironmentVariable("ANTHROPIC_API_KEY", "sk-ant-...", "User")
@@ -173,8 +175,9 @@ path learns and replays procedures with no change to your agent logic.
 
 LearnKit is framework-agnostic. Every integration subclasses one universal
 contract (`learnkit.adapters.BaseAdapter`), so they all expose the same
-two-path API — `start_run` → inject memory, `complete_run` → distill the
-outcome — and an exception-safe `session()` / `asession()` lifecycle.
+agent-path API — `start_run` → inject memory + arm the ToolTracker,
+`complete_run` → capture and distill the procedure — and an exception-safe
+`session()` / `asession()` lifecycle.
 
 | Framework | Adapter | Install | Native hook |
 |---|---|---|---|
@@ -260,60 +263,96 @@ memory.maintain_memory(weeks=1, decay_rate=0.02, quarantine_hours=24)
 
 ---
 
-# Architecture & contributing
+# Project structure
 
-| File | Read when… |
-|---|---|
-| [`Docs/learnkit_architecture.md`](Docs/learnkit_architecture.md) | …you need the full mechanism diagrams and the agent-path runtime flow. |
-| [`architecture/`](architecture/) | …you want the Mermaid diagrams (product map, agent runtime flow, storage lifecycle, benchmark flow). |
+```text
+learnkit/
+├─ core.py            # orchestrator: @memory.agent_learn, prepare_run → finalize_run → post-process
+├─ tool_tracker.py    # ToolTracker — captures tool calls, tool-success gate, plan attach
+├─ procedural.py      # extract_procedure, task-signature / coverage matching
+├─ replay.py          # replay_plan — execute a captured procedure with 0 LLM calls
+├─ adapters/react.py  # run_react_agent — auto-replay ReAct runner
+├─ drift.py           # check_drift + golden-suite export (procedure regression)
+├─ retriever.py       # hybrid FTS5 + dense retrieval
+├─ router.py          # bounded retrieval plan (≤ 8 records / ~1,200 tokens)
+├─ composer.py        # compose_context — the injected prompt block
+├─ distiller.py       # MemoryDistiller (DSPy) — distills records
+├─ memory_quality.py  # storage gates, confidence, help/harm utility
+├─ schemas/           # 7 typed record kinds (SkillRecord, FailureRecord, …)
+├─ backends/          # SQLite (default) + Qdrant / Mem0 / Zep + registry
+├─ adapters/          # LangChain, LangGraph, CrewAI, AutoGen, LlamaIndex, OpenAI
+└─ cli.py             # `learnkit maintain`, `learnkit skills export`
 
-Run the test suite:
-
-```bash
-pytest tests/ -q       # 167 passed, 1 xfailed
-```
-
-Pre-commit hooks (black / ruff / isort / whitespace / yaml / debug-statements) are enforced on commit:
-
-```bash
-pip install pre-commit
-pre-commit install
+architecture/          # Mermaid diagrams (product map · agent runtime · storage · benchmark)
+benchmarks/            # agentic suite + reproducible RESULTS.json / MATRIX.md
+Docs/                  # FastAPI server + React observability dashboard
+examples/              # runnable demos (agent_learn_demo.py — offline, no key)
+tests/                 # pytest suite
 ```
 
 ---
 
-# Status
+# Contributing
 
-**v0.0.2 — MVP handover-ready (2026-06-27).** The full ingest / query / maintain
-loop runs end-to-end with SQLite + FTS5 + DSPy classifier + LLM-judge
-evaluator + structured distiller, and includes an agentic procedural-learning
-path (`@memory.agent_learn`) with replay and guided sibling reuse. Published
-and installable from PyPI as `learnkit-ai`.
+Contributions are welcome — see **[CONTRIBUTING.md](CONTRIBUTING.md)** for the
+full guide (setup, structure, PR checklist, design principles).
 
-Supported MVP lane (verified end-to-end): self-hosted Qwen via sglang —
-`Qwen/Qwen2.5-Coder-32B-Instruct`, `Qwen/Qwen2.5-32B-Instruct`,
-`Qwen/Qwen2.5-14B-Instruct`. See
-[`improvements.md` → MVP Handover Snapshot](improvements.md) for the
-supported environment table, known limitations, and the handover checklist.
+```bash
+git clone https://github.com/siddhu1716/LearnKit && cd LearnKit
+python -m venv .venv && . .venv/Scripts/Activate.ps1   # bash: source .venv/bin/activate
+pip install -e ".[dev]"
+pytest -q                     # run the test suite (offline, no key)
+ruff check learnkit tests     # lint
+pre-commit install            # enable commit hooks
+```
 
-Latest published benchmark numbers (Qwen2.5-7B-Instruct reference,
-2026-06-21):
+The observability dashboard (`Docs/dashboard`) builds with `npm install && npm run build`.
 
-- Live ReAct ([`benchmarks/react_live.py`](benchmarks/react_live.py)): LLM
-  planning calls 21 → 8 (~62% reduction), success preserved 6/6 → 6/6.
-- Evolution ([`benchmarks/evolution_live.py`](benchmarks/evolution_live.py)):
-  LLM calls 58 → 20 (~66% reduction), success preserved 16/16 → 16/16,
-  evolved=true.
-- Injection ablation
-  ([`benchmarks/injection_ablation.py`](benchmarks/injection_ablation.py)):
-  `playbook_effect = +2.625`, `pass^k(full) = 1.0`; the agentic suite gate
-  (`min_playbook_effect >= 0.5`) PASSES.
+---
 
-Cross-model matrix (same seed/tasks):
-[`Docs/FINAL_MODEL_MATRIX_2026-06-21.txt`](Docs/FINAL_MODEL_MATRIX_2026-06-21.txt).
-Single-model published numbers:
-[`Docs/FINAL_BENCHMARK_NUMBERS_2026-06-21.txt`](Docs/FINAL_BENCHMARK_NUMBERS_2026-06-21.txt).
+# Architecture docs
 
-See [`benchmarks/README.md`](benchmarks/README.md) for benchmark coverage,
-run commands, and how to point benchmark runs at the live observability
-dashboard via `LEARNKIT_DB_PATH`.
+All diagrams live in [`architecture/`](architecture/):
+
+| Diagram | Shows |
+|---|---|
+| [`high_level_architecture.mmd`](architecture/high_level_architecture.mmd) | **colored, at-a-glance overview** (screenshot-ready) |
+| [`product_architecture.mmd`](architecture/product_architecture.mmd) | the whole system, subsystem by subsystem |
+| [`agent_runtime_flow.mmd`](architecture/agent_runtime_flow.mmd) | one task: capture → match → replay/guide → gate → persist |
+| [`storage_lifecycle.mmd`](architecture/storage_lifecycle.mmd) | a record's lifecycle (quarantine → active → decay) |
+| [`benchmark_flow.mmd`](architecture/benchmark_flow.mmd) | how the reproducible benchmark numbers are produced |
+
+---
+
+# Benchmarks & status
+
+**v1.0.** The agent path (`@memory.agent_learn`) is the product: procedure
+capture, exact-match replay (zero planning calls), and guided sibling reuse,
+over a SQLite + FTS5 store with a React observability dashboard.
+
+Reproduce the published numbers in one command (offline, from committed runs):
+
+```bash
+python -m benchmarks.make_results     # regenerates benchmarks/RESULTS.json + MATRIX.md
+```
+
+Agentic matrix (`trials=1`, `k=1`, `seed=7`, `temperature=0`) — 3/3 models PASS
+the `playbook_effect ≥ 0.5` gate at **equal task success**:
+
+| Model | Gate | Quality lift | LLM calls (pooled) |
+|---|---|---|---|
+| `Qwen2.5-14B-Instruct` | ✓ PASS | +1.875 | 53 → 30 (−43%) |
+| `Qwen2.5-32B-Instruct` | ✓ PASS | +1.75 | 44 → 28 (−36%) |
+| `Llama-3.3-70B-Instruct` | ✓ PASS | +2.25 | 88 → 56 (−36%) |
+
+**Headline: +2.25 best quality lift · −38.4% pooled LLM planning calls · equal success.**
+See [`benchmarks/README.md`](benchmarks/README.md) to run against your own endpoints.
+
+---
+
+# License
+
+Apache-2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE). © 2026 LIA Labs.
+
+> Apache-2.0 is a permissive open-source license: **commercial use is allowed.**
+> It adds an explicit patent grant and attribution/NOTICE requirements over MIT.

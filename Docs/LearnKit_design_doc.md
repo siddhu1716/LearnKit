@@ -1,6 +1,9 @@
 # LearnKit SDK — Design Document
 ## Incorporating Hermes Agent + ReaComp
 
+> ⚠️ **Historical document — superseded.** The current **v1.0 is agent-path only**;
+> see the [README](../README.md) and [`architecture/`](../architecture/).
+
 **Version:** 1.0 | **Date:** May 2026
 **For:** ML engineers and SDK contributors
 

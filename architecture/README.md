@@ -21,6 +21,14 @@ failing the quality gate; `/healthz` surfaces which mode is active.
 
 ## Files and what they show
 
+- `high_level_architecture.mmd`
+  - Scope: **the whole system in one colored, at-a-glance picture** — your agent,
+    the LearnKit learning layer (retrieve → match → replay/guide/capture), the
+    local memory store, and the observability dashboard.
+  - Use when: you want the fastest possible mental model, or a screenshot-ready
+    diagram for a README / slide (render at [mermaid.live](https://mermaid.live),
+    export PNG).
+
 - `agent_runtime_flow.mmd`
   - Scope: single task execution through the **agent path** (`@lk.agent_learn`).
   - Shows: classify/retrieve/compose (shared) → ToolTracker inject → procedure

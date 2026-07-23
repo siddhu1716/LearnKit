@@ -1,0 +1,54 @@
+%% LearnKit — High-Level Architecture (screenshot this for the README)
+%% Colored, easy-to-read overview of how the learning layer works.
+%% Render: https://mermaid.live  (or VS Code Mermaid preview) → export PNG.
+flowchart TB
+    A["🧑‍💻 Your Tool-Using Agent<br/><b>@memory.agent_learn</b><br/><i>any framework — LangChain, LangGraph, raw API…</i>"]
+
+    subgraph LK["🧠 LearnKit — the learning layer"]
+        direction TB
+        RET["🔎 Retrieve &amp; Compose<br/>find relevant learned procedures"]
+        MATCH{"Seen this<br/>task before?"}
+        REPLAY["⚡ <b>Replay</b> the proven procedure<br/><b>0 planning / LLM calls</b>"]
+        GUIDE["🧭 <b>Guide</b> with a playbook<br/>model plans, but explores far less"]
+        CAPTURE["📝 <b>Capture</b> the winning procedure<br/>gated on real tool success"]
+    end
+
+    subgraph MEM["💾 Memory Store — local SQLite"]
+        direction TB
+        REC["Skills · Failures · Facts<br/><i>quality-gated · confidence-decayed · yours to delete</i>"]
+    end
+
+    subgraph OBS["📊 Observability Dashboard"]
+        direction TB
+        DASH["Calls reduced · Replays · Traces<br/>Memory lifecycle · Benchmarks"]
+    end
+
+    A -->|"① task"| RET
+    RET --> MATCH
+    MATCH -->|"exact match"| REPLAY
+    MATCH -->|"similar task"| GUIDE
+    MATCH -->|"brand new"| A
+    REPLAY -->|"② result"| A
+    GUIDE -->|"② result"| A
+    A -->|"③ on success"| CAPTURE
+    CAPTURE -->|"store"| REC
+    REC -. "④ reused next time" .-> RET
+    A -. "telemetry" .-> DASH
+    REC -. "records" .-> DASH
+
+    %% ---- styling: four clear, colored zones ----
+    classDef agent fill:#1e3a8a,stroke:#60a5fa,stroke-width:2px,color:#ffffff;
+    classDef learn fill:#064e3b,stroke:#34d399,stroke-width:2px,color:#ffffff;
+    classDef mem fill:#4c1d95,stroke:#a78bfa,stroke-width:2px,color:#ffffff;
+    classDef obs fill:#7c2d12,stroke:#fb923c,stroke-width:2px,color:#ffffff;
+    classDef decision fill:#78350f,stroke:#fbbf24,stroke-width:2px,color:#ffffff;
+
+    class A agent;
+    class RET,REPLAY,GUIDE,CAPTURE learn;
+    class MATCH decision;
+    class REC mem;
+    class DASH obs;
+
+    style LK fill:#022c22,stroke:#10b981,stroke-width:2px,color:#d1fae5;
+    style MEM fill:#2e1065,stroke:#a78bfa,stroke-width:2px,color:#ede9fe;
+    style OBS fill:#431407,stroke:#fb923c,stroke-width:2px,color:#ffedd5;

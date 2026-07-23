@@ -1,5 +1,10 @@
 # LearnKit — Operating System for Agent Experience
 
+> ⚠️ **Historical document — superseded.** This describes an earlier two-path
+> design (model path + agent path). The current **v1.0 is agent-path only**;
+> see the [README](../README.md) and the [`architecture/`](../architecture/)
+> diagrams for the up-to-date system.
+
 > **Technical Architecture Document v1.0**
 > For distribution to developers and collaborators.
 

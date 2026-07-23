@@ -41,42 +41,99 @@ This is the Vite + React + TypeScript observability dashboard for LearnKit, buil
 
 ## API Proxy
 
-The Vite dev server is configured with a proxy to forward API requests starting with `/api` to the local FastAPI backend running at `http://127.0.0.1:8000`. If the FastAPI backend is offline or pending the implementation of the v1.1 endpoints, the dashboard automatically falls back to a mock simulation layer powered by `localStorage` so all screens remain fully functional and interactive.
+The Vite dev server proxies any request starting with `/api` or `/healthz` to the
+FastAPI backend at `http://127.0.0.1:8090` (see [`vite.config.ts`](vite.config.ts)).
+`:8090` is the dashboard backend (`Docs/run_server.py`); `:8000` is reserved for a
+self-hosted model endpoint. If the backend is offline, the dashboard falls back to
+a `localStorage`-backed mock layer so every screen still renders.
+
+## How it starts
+
+**Dev (hot reload):**
+
+```bash
+cd Docs/dashboard
+npm install
+npm run dev            # Vite on http://localhost:5173 → opens the landing page
+```
+
+`npm run dev` serves a **multi-page app** (see [`vite.config.ts`](vite.config.ts)):
+
+- `index.html` → the marketing **landing** page (opens by default)
+- `app.html` → the **React dashboard** (HashRouter sub-app) — open `http://localhost:5173/app.html`
+- `docs.html` → a standalone docs page
+
+**Production build:**
+
+```bash
+npm run build         # tsc + vite build → dist/ (main / app / docs bundles)
+```
+
+In production the FastAPI server serves the built `dist/`, so one process hosts
+both the API and the UI.
+
+## How data flows and is visualized
+
+```mermaid
+flowchart LR
+    subgraph BROWSER["🖥️ Browser — Vite :5173 (or built dist/)"]
+        direction TB
+        PAGES["React pages<br/>Overview · Memory Explorer · Task History · Observability"]
+        CLIENT["api/client.ts<br/>BASE_URL = /api/v1"]
+        CHARTS["Recharts<br/>trends · pies · curves"]
+        PAGES --> CLIENT
+        PAGES --> CHARTS
+    end
+    subgraph API["⚙️ FastAPI — Docs/server.py :8090"]
+        EP["/api/v1/* · /healthz"]
+    end
+    DB[("🗄️ SQLite<br/>LEARNKIT_DB_PATH<br/>records + runs")]
+    AGENT["🤖 @memory.agent_learn runs"]
+
+    CLIENT -->|"fetch (Vite proxy)"| EP
+    EP -->|"query"| DB
+    AGENT -->|"write records + telemetry"| DB
+    CLIENT -. "backend offline → /healthz fails" .-> MOCK["🧪 mock data + localStorage"]
+
+    classDef b fill:#0c4a6e,stroke:#38bdf8,color:#fff;
+    classDef a fill:#065f46,stroke:#34d399,color:#fff;
+    classDef d fill:#4c1d95,stroke:#a78bfa,color:#fff;
+    class PAGES,CLIENT,CHARTS b;
+    class EP a;
+    class DB,AGENT,MOCK d;
+```
+
+**In words:**
+
+1. Each React page calls a typed getter in [`src/api/client.ts`](src/api/client.ts).
+2. The client fetches `/api/v1/...`; Vite proxies it to FastAPI on `:8090`.
+3. [`Docs/server.py`](../server.py) reads the SQLite store at `LEARNKIT_DB_PATH`
+   (two tables: `records` = typed memory, `runs` = per-run telemetry) and returns JSON.
+4. Pages render the JSON as cards, tables, and **Recharts** visualizations
+   (success-rate trend, injection pie, learning curve).
+5. On a fresh checkout with no backend, `client.ts` probes `/healthz`; if it fails
+   it serves `localStorage`-backed **mock** data so every screen still works.
 
 ## See real data instead of mock
 
-The mock fallback is what you see on a fresh checkout. To wire the dashboard
-to **real agent runs** (real `records`, real `runs` with per-run telemetry):
+To populate the dashboard with **real agent runs**:
 
-1. Start the FastAPI backend that serves `/api/v1/*` against the live store:
+```bash
+# 1) Launch the backend (sets LEARNKIT_DB_PATH + runs uvicorn on :8090)
+python Docs/run_server.py
 
-   ```bash
-   # from repo root
-   export LEARNKIT_DB_PATH="$HOME/.learnkit/memory.db"      # default; override per-store
-   # Windows PowerShell: $env:LEARNKIT_DB_PATH = "$HOME\.learnkit\memory.db"
-   python Docs/server.py                                     # FastAPI on :8000
-   ```
+# 2) Seed real @memory.agent_learn runs into the same store
+python -m benchmarks.seed_dashboard
 
-2. Generate some runs into the same DB (any `@lk.agent` or `@lk.agent_learn`
-   script that uses `LearnKit(db_path=os.environ["LEARNKIT_DB_PATH"])`):
+# 3) Open the dashboard
+cd Docs/dashboard && npm run dev      # then open http://localhost:5173/app.html
+```
 
-   ```bash
-   python examples/minimal_agent.py                          # writes runs + records
-   ```
+The API contract lives in [`Docs/server.py`](../server.py) (`/api/v1/metrics`,
+`/records`, `/records/{id}`, `/records/{id}/reinforce|demote`, `/tasks`,
+`/observability`, `/agents`, `/benchmarks`). Anything not implemented falls back
+to mock per-screen so the UI never breaks.
 
-3. Run this dashboard against that backend:
-
-   ```bash
-   cd Docs/dashboard && npm run dev                          # http://localhost:5173/dashboard/
-   ```
-
-The API contract the client expects is implemented in
-[`Docs/server.py`](../server.py) (`/api/v1/metrics`, `/records`,
-`/records/{id}`, `/records/{id}/reinforce|demote`, `/tasks`,
-`/observability`). Anything the backend does not yet implement gracefully
-falls back to mock per-screen so the UI never breaks.
-
-> **Note (MVP):** the `agentic_*` benchmarks under `benchmarks/` use
-> `db_path=":memory:"` so their gate runs stay self-contained. They do **not**
-> populate the dashboard. Use the path above (or any agent script with
-> `db_path` pointed at `$LEARNKIT_DB_PATH`) to see real traces in the UI.
+> **Note:** the `agentic_*` benchmarks use `db_path=":memory:"` and do **not**
+> populate the dashboard. Use `benchmarks/seed_dashboard.py` (or any
+> `@memory.agent_learn` script with `db_path` = `LEARNKIT_DB_PATH`) for real traces.

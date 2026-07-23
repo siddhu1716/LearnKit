@@ -52,7 +52,7 @@ from .adapters.react import (
 from .tool_tracker import ToolTracker
 from .trajectory import Trajectory, TrajectoryStep
 
-__version__ = "0.0.3"
+__version__ = "1.0.0"
 
 __all__ = [
     "__version__",

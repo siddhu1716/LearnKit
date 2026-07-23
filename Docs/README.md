@@ -10,10 +10,8 @@ A single-page marketing site for LearnKit + a live **Playground** that runs the 
 | `server.py` | FastAPI app — serves the page, the `/api/inspect` Playground endpoint, and the `/api/v1/*` dashboard API (records, runs, metrics, observability) against `LEARNKIT_DB_PATH` (default `~/.learnkit/memory.db`). |
 | `data/playground_*.db` | SQLite memory stores pre-seeded with distilled records from the v0.1.0 benchmark run. One per Playground domain. |
 | `dashboard/` | React/Vite/TypeScript observability dashboard (see [`dashboard/README.md`](dashboard/README.md)). Hits `/api/v1/*` from `server.py`; falls back to mock data if the backend is offline. |
-| `learnkit_architecture.md` | Full architecture document (mechanism, agent path, mermaid diagrams). |
-| `LEARNKIT_CONSOLIDATED_FLOW_PLAN.md` | Master execution flow document that consolidates roadmap, backlog, benchmark gates, and cross-repo production additions. |
-| `FINAL_BENCHMARK_NUMBERS_2026-06-21.txt` | Single-model (Qwen2.5-7B) reference numbers — cited by the root README's Status section. |
-| `FINAL_MODEL_MATRIX_2026-06-21.txt` | Cross-model matrix table. |
+| `learnkit_architecture.md` | Historical architecture doc (superseded — see [`architecture/`](../architecture/) and the root README). |
+| `LearnKit_design_doc.md` | Historical design doc (superseded — see [`architecture/`](../architecture/)). |
 | `.env.example` | Copy to `.env` to override defaults. Gitignored. |
 
 ## How the Playground works
