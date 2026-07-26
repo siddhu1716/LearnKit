@@ -179,6 +179,9 @@ class SQLiteBackend(BaseBackend):
                         tool_calls INTEGER DEFAULT 0,
                         baseline_calls REAL,
                         calls_reduced REAL DEFAULT 0,
+                        llm_calls INTEGER DEFAULT 0,
+                        baseline_llm_calls REAL,
+                        llm_calls_reduced REAL DEFAULT 0,
                         replayed INTEGER DEFAULT 0,
                         outcome TEXT,
                         quality_score REAL,
@@ -211,6 +214,9 @@ class SQLiteBackend(BaseBackend):
                     ("models", "TEXT"),
                     ("estimated", "INTEGER DEFAULT 1"),
                     ("mode", "TEXT DEFAULT 'learn'"),
+                    ("llm_calls", "INTEGER DEFAULT 0"),
+                    ("baseline_llm_calls", "REAL"),
+                    ("llm_calls_reduced", "REAL DEFAULT 0"),
                 ):
                     if col not in existing_cols:
                         conn.execute(f"ALTER TABLE runs ADD COLUMN {col} {ddl}")
@@ -790,6 +796,26 @@ class SQLiteBackend(BaseBackend):
         finally:
             self._close(conn)
 
+    def family_llm_baseline(self, signature_fp: Optional[str]) -> Optional[float]:
+        """Average planning-LLM calls of prior cold runs in a task family."""
+        if not signature_fp:
+            return None
+        conn = self._conn()
+        try:
+            row = conn.execute(
+                """
+                SELECT AVG(llm_calls) AS avg_calls
+                FROM runs
+                WHERE signature_fp = ? AND replayed = 0 AND llm_calls > 0
+            """,
+                (signature_fp,),
+            ).fetchone()
+            if row is None or row["avg_calls"] is None:
+                return None
+            return float(row["avg_calls"])
+        finally:
+            self._close(conn)
+
     def insert_run(self, run: dict) -> str:
         """Persist a single finalized run. ``run`` is a plain dict; missing keys
         default sensibly so callers can pass a partial record.
@@ -804,8 +830,9 @@ class SQLiteBackend(BaseBackend):
                         mode, tool_calls, baseline_calls, calls_reduced, replayed,
                         outcome, quality_score, record_ids, signature_fp, steps,
                         created_at, latency_ms, prompt_tokens, completion_tokens,
-                        total_tokens, context_tokens, cost_usd, models, estimated
-                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                        total_tokens, context_tokens, cost_usd, models, estimated,
+                        llm_calls, baseline_llm_calls, llm_calls_reduced
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """,
                     (
                         run["run_id"],
@@ -833,6 +860,9 @@ class SQLiteBackend(BaseBackend):
                         float(run.get("cost_usd", 0) or 0),
                         json.dumps(run.get("models", {})),
                         1 if run.get("estimated", True) else 0,
+                        int(run.get("llm_calls", 0) or 0),
+                        run.get("baseline_llm_calls"),
+                        float(run.get("llm_calls_reduced", 0) or 0),
                     ),
                 )
             return run["run_id"]
@@ -853,6 +883,13 @@ class SQLiteBackend(BaseBackend):
             "tool_calls": row["tool_calls"],
             "baseline_calls": row["baseline_calls"],
             "calls_reduced": row["calls_reduced"],
+            "llm_calls": row["llm_calls"] if "llm_calls" in keys else 0,
+            "baseline_llm_calls": (
+                row["baseline_llm_calls"] if "baseline_llm_calls" in keys else None
+            ),
+            "llm_calls_reduced": (
+                row["llm_calls_reduced"] if "llm_calls_reduced" in keys else 0.0
+            ),
             "replayed": bool(row["replayed"]),
             "outcome": row["outcome"],
             "quality_score": row["quality_score"],
@@ -935,7 +972,13 @@ class SQLiteBackend(BaseBackend):
                     MAX(agent_name) AS agent_name,
                     COUNT(*) AS task_count,
                     AVG(CASE WHEN outcome = 'success' THEN 1.0 ELSE 0.0 END) AS success_rate,
-                    SUM(CASE WHEN calls_reduced > 0 THEN calls_reduced ELSE 0 END) AS calls_reduced,
+                    SUM(
+                        CASE
+                            WHEN baseline_llm_calls IS NOT NULL THEN MAX(llm_calls_reduced, 0)
+                            WHEN calls_reduced > 0 THEN calls_reduced
+                            ELSE 0
+                        END
+                    ) AS calls_reduced,
                     SUM(CASE WHEN replayed = 0 AND outcome = 'success' THEN 1 ELSE 0 END) AS skills_learned,
                     AVG(quality_score) AS avg_score,
                     SUM(COALESCE(total_tokens, 0)) AS total_tokens,

@@ -130,17 +130,16 @@ export const Overview: React.FC = () => {
               <span className={styles.metricValLabel}>Success Rate</span>
               <div className={styles.metricVal}>
                 {Math.round(metrics.successRate * 100)}%
-                <span className={styles.trendUp}>+5pp</span>
               </div>
             </div>
             <div className={styles.metricsDetailsRow}>
               <div className={styles.metricSub}>
-                <span className={styles.metricSubLabel}>Avg Cost</span>
-                <span className={styles.metricSubVal}>{metrics.avgTokens} tk</span>
+                <span className={styles.metricSubLabel}>Avg Tokens / Run</span>
+                <span className={styles.metricSubVal}>{metrics.avgTokens.toLocaleString()} tk</span>
               </div>
               {isAgent && (
                 <div className={styles.metricSub}>
-                  <span className={styles.metricSubLabel}>Retries Saved</span>
+                  <span className={styles.metricSubLabel}>Tool Calls Saved</span>
                   <span className={styles.metricSubVal}>-{Math.round(metrics.retryReduction * 100)}%</span>
                 </div>
               )}
@@ -174,7 +173,7 @@ export const Overview: React.FC = () => {
             <span className={`${styles.agentStatValue} ${styles.accentText}`}>
               {Math.round(agents.reduce((acc, a) => acc + a.callsReduced, 0))}
             </span>
-            <span className={styles.agentStatLabel}>Calls Reduced</span>
+            <span className={styles.agentStatLabel}>Planning Calls Saved</span>
           </div>
           <div className={styles.agentStat}>
             <span className={`${styles.agentStatValue} ${styles.greenText}`}>

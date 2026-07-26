@@ -102,3 +102,37 @@ def test_observation_dataclass_roundtrip():
     obs = Observation("query", {"table": "users"}, "rows", True)
     assert obs.name == "query"
     assert obs.success is True
+
+
+def test_observed_planner_usage_is_persisted_and_replay_is_zero_tokens():
+    memory = _build_memory()
+
+    def metered_planner(task, context, history):
+        return LLMStep(
+            tool_calls=[ToolCall("query", {"table": "users"})],
+            final="done",
+            prompt_tokens=120,
+            completion_tokens=30,
+            model="meta-llama/Llama-3.3-70B-Instruct",
+        )
+
+    cold = run_react_agent(memory, TASK, _tools(), metered_planner, mark_success=True)
+    warm = run_react_agent(memory, TASK, _tools(), _forbidden_planner, mark_success=True)
+
+    assert cold.prompt_tokens == 120
+    assert cold.completion_tokens == 30
+    assert warm.llm_calls == 0
+
+    runs = memory.backend.list_runs(limit=10)
+    cold_run = next(run for run in runs if not run["replayed"])
+    warm_run = next(run for run in runs if run["replayed"])
+    assert cold_run["total_tokens"] == 150
+    assert cold_run["models"] == {"agent": "meta-llama/Llama-3.3-70B-Instruct"}
+    assert cold_run["estimated"] is False
+    assert warm_run["total_tokens"] == 0
+    assert warm_run["estimated"] is False
+    assert cold_run["llm_calls"] == 1
+    assert warm_run["baseline_llm_calls"] == 1
+    assert warm_run["llm_calls_reduced"] == 1
+    summary = memory.backend.agent_summaries()[0]
+    assert summary["calls_reduced"] == 1

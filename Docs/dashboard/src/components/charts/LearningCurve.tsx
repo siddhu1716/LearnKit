@@ -16,14 +16,14 @@ interface LearningCurveProps {
   data: AgentCurvePoint[];
 }
 
-// Visualizes how an agent learns over successive runs: tool calls per run
-// (going down as memory kicks in), calls reduced vs. its own baseline, and the
-// cumulative count of skills learned.
+// Visualizes how an agent learns over successive runs: planning calls per run,
+// planning calls saved against the cold baseline, and cumulative skills.
 export const LearningCurve: React.FC<LearningCurveProps> = ({ data }) => {
   const formatted = data.map((d) => ({
     index: d.index,
     task: d.task,
     toolCalls: d.toolCalls,
+    llmCalls: d.llmCalls,
     callsReduced: Math.round(d.callsReduced),
     cumulativeSkills: d.cumulativeSkills,
     replayed: d.replayed,
@@ -50,7 +50,8 @@ export const LearningCurve: React.FC<LearningCurveProps> = ({ data }) => {
           <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: 'var(--text-secondary)' }}>{p.task}</p>
           <div style={{ fontSize: '13px', color: 'var(--text-primary)', display: 'grid', gap: 4 }}>
             <span>Tool calls: <b style={{ fontFamily: 'var(--font-mono)' }}>{p.toolCalls}</b></span>
-            <span>Calls reduced: <b style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent)' }}>{p.callsReduced}</b></span>
+            <span>Planning calls: <b style={{ fontFamily: 'var(--font-mono)' }}>{p.llmCalls}</b></span>
+            <span>Planning calls saved: <b style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent)' }}>{p.callsReduced}</b></span>
             <span>Skills learned: <b style={{ fontFamily: 'var(--font-mono)', color: 'var(--secondary)' }}>{p.cumulativeSkills}</b></span>
           </div>
         </div>
@@ -92,8 +93,8 @@ export const LearningCurve: React.FC<LearningCurveProps> = ({ data }) => {
               </span>
             )}
           />
-          <Bar name="Calls reduced" dataKey="callsReduced" fill="rgba(0, 255, 136, 0.25)" radius={[3, 3, 0, 0]} barSize={22} />
-          <Line name="Tool calls / run" type="monotone" dataKey="toolCalls" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />
+          <Bar name="Planning calls saved" dataKey="callsReduced" fill="rgba(0, 255, 136, 0.25)" radius={[3, 3, 0, 0]} barSize={22} />
+          <Line name="Planning calls / run" type="monotone" dataKey="llmCalls" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />
           <Line name="Skills learned" type="monotone" dataKey="cumulativeSkills" stroke="#00ff88" strokeWidth={2} dot={false} />
         </ComposedChart>
       </ResponsiveContainer>

@@ -114,3 +114,7 @@ class BaseBackend(ABC):
         """Baseline tool-call count for a task family. None by default."""
         return None
 
+    def family_llm_baseline(self, signature_fp: Optional[str]) -> Optional[float]:
+        """Baseline planning-LLM-call count for a task family. None by default."""
+        return None
+

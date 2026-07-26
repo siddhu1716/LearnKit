@@ -156,7 +156,7 @@ export const TaskHistory: React.FC = () => {
           <h1 className={styles.title}>Task History</h1>
           <p className={styles.subtitle}>
             {isAgent
-              ? 'Agent-path runs (tool use, replays & calls reduced) — outputs and scores'
+              ? 'Agent-path runs (tool use, replays, and planning calls saved) — outputs and scores'
               : 'Model-path runs (answer quality) — historical outputs and scores'}
           </p>
         </div>

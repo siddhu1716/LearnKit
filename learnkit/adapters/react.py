@@ -65,6 +65,11 @@ class LLMStep:
 
     tool_calls: list[ToolCall] = field(default_factory=list)
     final: Optional[str] = None
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+    cost_usd: Optional[float] = None
+    model: Optional[str] = None
+    usage_estimated: bool = False
 
 
 @dataclass
@@ -76,6 +81,8 @@ class ReActResult:
     llm_calls: int
     replayed: bool
     plan_kind: Optional[str]
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
 
 
 def run_react_agent(
@@ -118,7 +125,16 @@ def run_react_agent(
     if tracker.has_plan and tracker.plan_kind == "exact":
         replay_plan(tracker, tools, overrides=overrides)
         run["tool_calls"] = tracker.call_count
+        run["llm_calls"] = 0
         run["outcome_score"] = tracker.outcome_score()
+        run["observed_telemetry"] = {
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+            "cost_usd": 0.0,
+            "models": {},
+            "estimated": False,
+        }
         response = "[replayed proven procedure]"
         memory.finalize_run(run, response)
         logger.info(
@@ -135,11 +151,26 @@ def run_react_agent(
 
     # ── Cold / sibling: drive the model loop (context carries guidance) ──
     llm_calls = 0
+    prompt_tokens = 0
+    completion_tokens = 0
+    cost_usd = 0.0
+    observed_usage = False
+    usage_estimated = False
+    planner_model: Optional[str] = None
     history: list[Observation] = []
     final_response = ""
     for _ in range(max_steps):
         step = llm_step(task, run["context"], history)
         llm_calls += 1
+        if step.prompt_tokens is not None or step.completion_tokens is not None:
+            observed_usage = True
+            prompt_tokens += max(0, int(step.prompt_tokens or 0))
+            completion_tokens += max(0, int(step.completion_tokens or 0))
+        if step.cost_usd is not None:
+            cost_usd += max(0.0, float(step.cost_usd))
+        usage_estimated = usage_estimated or step.usage_estimated
+        if step.model:
+            planner_model = step.model
         for call in step.tool_calls:
             fn = tools.get(call.name)
             productive = call.name not in exploration_tools
@@ -159,6 +190,16 @@ def run_react_agent(
             break
 
     run["tool_calls"] = tracker.call_count
+    run["llm_calls"] = llm_calls
+    if observed_usage:
+        run["observed_telemetry"] = {
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": prompt_tokens + completion_tokens,
+            "cost_usd": round(cost_usd, 6),
+            "models": {"agent": planner_model} if planner_model else {},
+            "estimated": usage_estimated,
+        }
     if mark_success is not None:
         tracker.mark_outcome(bool(mark_success))
     run["outcome_score"] = tracker.outcome_score()
@@ -169,4 +210,6 @@ def run_react_agent(
         llm_calls=llm_calls,
         replayed=False,
         plan_kind=tracker.plan_kind,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
     )

@@ -279,9 +279,9 @@ export const Observability: React.FC = () => {
       </section>
 
       <p className={styles.footnote}>
-        Latency and model names are measured directly. Token counts and cost are
-        estimated from text volume across the classify, judge, and distill stages
-        (LearnKit calls models through DSPy, which does not expose per-call usage).
+        {data.estimated
+          ? 'This view includes runs with estimated token or cost values; planner usage is observed when the provider returns it.'
+          : 'Planner token usage, latency, and model names are observed directly from the configured provider.'}
       </p>
     </div>
   );

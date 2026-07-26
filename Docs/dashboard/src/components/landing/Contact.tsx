@@ -3,7 +3,7 @@ import { Calendar, Mail, Code2, ArrowUpRight, MessageSquare } from 'lucide-react
 
 const CALENDLY_URL = 'https://calendly.com/shivanampalli/30min'
 const CONTACT_EMAIL = 'shivanampalli@gmail.com'
-const GITHUB_URL = 'https://github.com/siddhu1716/LearnKit/tree/lia/mvp'
+const GITHUB_URL = 'https://github.com/siddhu1716/LearnKit'
 
 export function Contact() {
   const [copied, setCopied] = useState(false)

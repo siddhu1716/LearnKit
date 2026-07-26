@@ -39,7 +39,7 @@ const features: Feature[] = [
     body:
       'Watch tool calls drop and skills accumulate as memory reuse compounds. Prove to your team that every deploy is measurably smarter than the last.',
     image: '/screenshots/Lia-Agents-2.png',
-    alt: 'LIA Agents learning curve showing calls reduced and skills learned per run',
+    alt: 'LIA Agents learning curve showing planning calls saved and skills learned per run',
   },
   {
     num: '04',
@@ -53,7 +53,7 @@ const features: Feature[] = [
     num: '05',
     title: 'Agent overview',
     body:
-      'Real-time dashboard for the agent path: procedures, replays, injection trends, and calls reduced — the closed loop, at a glance.',
+      'Real-time dashboard for the agent path: procedures, replays, injection trends, and planning calls saved — the closed loop, at a glance.',
     image: '/screenshots/Lia-Dashboard.png',
     alt: 'LIA Agent-Learn overview with memory stats, task metrics, and injection trends',
   },

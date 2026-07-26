@@ -21,7 +21,7 @@ export function Footer() {
     {
       title: 'Developers',
       links: [
-        { label: 'GitHub', href: 'https://github.com/siddhu1716/LearnKit/tree/lia/mvp' },
+        { label: 'GitHub', href: 'https://github.com/siddhu1716/LearnKit' },
         { label: 'Docs', href: '/docs.html' },
         { label: 'Examples', href: '/docs.html' },
         { label: 'Changelog', href: '#' },
@@ -87,7 +87,7 @@ export function Footer() {
           <div className="flex gap-6 text-xs text-white/40">
             <a href="#" className="transition hover:text-white/60">Twitter</a>
             <a href="#" className="transition hover:text-white/60">LinkedIn</a>
-            <a href="https://github.com/siddhu1716/LearnKit/tree/lia/mvp" className="transition hover:text-white/60">GitHub</a>
+            <a href="https://github.com/siddhu1716/LearnKit" className="transition hover:text-white/60">GitHub</a>
           </div>
         </div>
       </div>

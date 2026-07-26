@@ -656,7 +656,9 @@ class LearnKit:
             latency_ms = round((time.perf_counter() - t_start) * 1000.0, 2)
         run_meta = {
             "tool_calls": int(run.get("tool_calls", 0) or 0),
+            "llm_calls": int(run.get("llm_calls", 0) or 0),
             "learning_mode": run.get("learning_mode"),
+            "observed_telemetry": run.get("observed_telemetry"),
             "record_ids": [
                 getattr(r, "id", None) for r in run.get("records", []) if getattr(r, "id", None)
             ],
@@ -931,6 +933,7 @@ class LearnKit:
         """
         meta = run_meta or {}
         tool_calls = int(meta.get("tool_calls", 0) or 0)
+        llm_calls = int(meta.get("llm_calls", 0) or 0)
 
         # Family key: prefer the captured task-signature (agent path, same key as
         # procedure consolidation), else fall back to the classified task type so
@@ -947,6 +950,10 @@ class LearnKit:
         calls_reduced = 0.0
         if baseline is not None and tool_calls > 0:
             calls_reduced = max(0.0, baseline - tool_calls)
+        llm_baseline = self.backend.family_llm_baseline(signature_fp)
+        llm_calls_reduced = 0.0
+        if llm_baseline is not None:
+            llm_calls_reduced = max(0.0, llm_baseline - llm_calls)
 
         # Learning path for this run: prefer the explicit tag set by the
         # learn / agent_learn decorators; fall back to tool evidence so
@@ -975,15 +982,32 @@ class LearnKit:
         # not expose per-call usage, so token/cost are flagged ``estimated``.
         succeeded = traj.outcome == "success"
         trajectory_chars = sum(len(s.content or "") for s in traj.steps)
-        telemetry = estimate_run_telemetry(
-            task_chars=int(meta.get("task_chars", 0) or 0),
-            context_chars=int(meta.get("context_chars", 0) or 0),
-            response_chars=int(meta.get("response_chars", 0) or 0),
-            trajectory_chars=trajectory_chars,
-            models=resolve_models(),
-            replayed=replayed,
-            succeeded=succeeded,
-        )
+        observed = meta.get("observed_telemetry")
+        if isinstance(observed, dict):
+            prompt_tokens = int(observed.get("prompt_tokens", 0) or 0)
+            completion_tokens = int(observed.get("completion_tokens", 0) or 0)
+            telemetry = {
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": int(
+                    observed.get("total_tokens", prompt_tokens + completion_tokens) or 0
+                ),
+                "context_tokens": int(observed.get("context_tokens", 0) or 0),
+                "cost_usd": round(float(observed.get("cost_usd", 0.0) or 0.0), 6),
+                "estimated": bool(observed.get("estimated", False)),
+            }
+            run_models = observed.get("models") or {}
+        else:
+            run_models = resolve_models()
+            telemetry = estimate_run_telemetry(
+                task_chars=int(meta.get("task_chars", 0) or 0),
+                context_chars=int(meta.get("context_chars", 0) or 0),
+                response_chars=int(meta.get("response_chars", 0) or 0),
+                trajectory_chars=trajectory_chars,
+                models=run_models,
+                replayed=replayed,
+                succeeded=succeeded,
+            )
 
         self.backend.insert_run(
             {
@@ -997,6 +1021,9 @@ class LearnKit:
                 "tool_calls": tool_calls,
                 "baseline_calls": baseline,
                 "calls_reduced": calls_reduced,
+                "llm_calls": llm_calls,
+                "baseline_llm_calls": llm_baseline,
+                "llm_calls_reduced": llm_calls_reduced,
                 "replayed": replayed,
                 "outcome": traj.outcome,
                 "quality_score": traj.quality_score,
@@ -1010,7 +1037,7 @@ class LearnKit:
                 "total_tokens": telemetry["total_tokens"],
                 "context_tokens": telemetry["context_tokens"],
                 "cost_usd": telemetry["cost_usd"],
-                "models": resolve_models(),
+                "models": run_models,
                 "estimated": telemetry["estimated"],
             }
         )

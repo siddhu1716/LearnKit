@@ -59,7 +59,7 @@ export const AgentDetail: React.FC = () => {
           <span className={styles.kpiValue}>{Math.round(stats.successRate * 100)}%</span>
         </div>
         <div className={styles.kpiCard}>
-          <span className={styles.kpiLabel}>Calls Reduced</span>
+          <span className={styles.kpiLabel}>Planning Calls Saved</span>
           <span className={`${styles.kpiValue} ${styles.accent}`}>{Math.round(stats.callsReduced)}</span>
         </div>
         <div className={styles.kpiCard}>
@@ -71,7 +71,7 @@ export const AgentDetail: React.FC = () => {
       <section className={styles.chartSection}>
         <div className={styles.chartHeader}>
           <h2 className={styles.sectionTitle}>Learning Curve</h2>
-          <div className={styles.hint}>Tool calls drop and skills accumulate as memory is reused</div>
+          <div className={styles.hint}>Planning calls drop to zero on exact replay while skills accumulate</div>
         </div>
         <div className={styles.chartWrapper}>
           <LearningCurve data={stats.curve} />
@@ -88,8 +88,9 @@ export const AgentDetail: React.FC = () => {
                 <th>Task</th>
                 <th>Mode</th>
                 <th>Tool Calls</th>
-                <th>Baseline</th>
-                <th>Reduced</th>
+                <th>Planning Calls</th>
+                <th>Cold Baseline</th>
+                <th>Saved</th>
                 <th>Outcome</th>
                 <th>Score</th>
               </tr>
@@ -109,7 +110,8 @@ export const AgentDetail: React.FC = () => {
                     </span>
                   </td>
                   <td className={styles.mono}>{p.toolCalls}</td>
-                  <td className={styles.mono}>{p.baselineCalls ?? '—'}</td>
+                  <td className={styles.mono}>{p.llmCalls}</td>
+                  <td className={styles.mono}>{p.baselineLlmCalls ?? '—'}</td>
                   <td className={`${styles.mono} ${styles.accent}`}>{Math.round(p.callsReduced)}</td>
                   <td>
                     <span className={p.outcome === 'success' ? styles.ok : styles.bad}>

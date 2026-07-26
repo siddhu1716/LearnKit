@@ -142,22 +142,24 @@ def _stub_classifier(task: str) -> ClassificationOutput:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     """Pre-load the LearnKit instances and promote quarantined records once."""
-    for key, cfg in PLAYGROUND_STORES.items():
-        db = cfg["db_path"]
-        if not db.exists():
-            print(f"[warn] missing playground store: {db}")
-            continue
-        mem = lk.LearnKit(
-            memory_backend="sqlite",
-            db_path=str(db),
-            scope="user",
-            background_postprocess=False,
-        )
-        # Records from the benchmark are still in `quarantine` (24h probation).
-        # Promote them now so the demo surfaces real distilled records.
-        stats = mem.maintain_memory(quarantine_hours=0)
-        print(f"[init] {key}: promoted={stats['promoted']} stale={stats['stale']}")
-        MEMORIES[key] = mem
+    skip_playground = os.environ.get("LEARNKIT_SKIP_PLAYGROUND_PRELOAD", "").lower()
+    if skip_playground not in ("1", "true", "yes"):
+        for key, cfg in PLAYGROUND_STORES.items():
+            db = cfg["db_path"]
+            if not db.exists():
+                print(f"[warn] missing playground store: {db}")
+                continue
+            mem = lk.LearnKit(
+                memory_backend="sqlite",
+                db_path=str(db),
+                scope="user",
+                background_postprocess=False,
+            )
+            # Records from the benchmark are still in `quarantine` (24h probation).
+            # Promote them now so the demo surfaces real distilled records.
+            stats = mem.maintain_memory(quarantine_hours=0)
+            print(f"[init] {key}: promoted={stats['promoted']} stale={stats['stale']}")
+            MEMORIES[key] = mem
     yield
     for mem in MEMORIES.values():
         mem.shutdown(wait=True)
@@ -340,6 +342,11 @@ def _record_to_api(r) -> dict:
 
 
 def _run_to_task(run: dict) -> dict:
+    planning_reduced = (
+        run.get("llm_calls_reduced", 0)
+        if run.get("baseline_llm_calls") is not None
+        else run.get("calls_reduced", 0)
+    )
     return {
         "id": run["run_id"],
         "input": run.get("task") or "",
@@ -350,7 +357,8 @@ def _run_to_task(run: dict) -> dict:
         "agentId": run.get("agent_id"),
         "mode": run.get("mode") or "agent_learn",
         "toolCalls": run.get("tool_calls", 0),
-        "callsReduced": run.get("calls_reduced", 0),
+        "llmCalls": run.get("llm_calls", 0),
+        "callsReduced": planning_reduced,
         "telemetry": _run_telemetry(run),
     }
 
@@ -404,8 +412,11 @@ def api_metrics(mode: Optional[str] = None) -> dict:
     ratios = []
     inj_records, inj_replayed = [], 0
     for r in runs:
-        base = r.get("baseline_calls")
-        calls = r.get("tool_calls") or 0
+        base = r.get("baseline_llm_calls")
+        calls = r.get("llm_calls") or 0
+        if base is None:
+            base = r.get("baseline_calls")
+            calls = r.get("tool_calls") or 0
         if base and base > 0 and calls is not None:
             ratios.append(max(0.0, (base - calls) / base))
         inj_records.append(len(r.get("record_ids") or []))
@@ -415,6 +426,8 @@ def api_metrics(mode: Optional[str] = None) -> dict:
 
     avg_records_injected = (sum(inj_records) / len(inj_records)) if inj_records else 0.0
     replayed_frac = (inj_replayed / len(runs)) if runs else 0.0
+    total_tokens = sum(int(r.get("total_tokens") or 0) for r in runs)
+    avg_tokens_per_run = int(total_tokens / len(runs)) if runs else 0
 
     router = mem.router
     max_tokens = getattr(router, "max_tokens", 1200)
@@ -422,7 +435,7 @@ def api_metrics(mode: Optional[str] = None) -> dict:
         "recordCounts": counts,
         "lastUpdated": _now_iso(),
         "successRate": round(success_rate, 3),
-        "avgTokens": int(avg_records_injected * 160),
+        "avgTokens": avg_tokens_per_run,
         "retryReduction": round(retry_reduction, 3),
         "primaryDistribution": {
             "skill": round(counts["skill"] / total_records, 3),
@@ -510,8 +523,9 @@ def api_observability(agentId: Optional[str] = None, mode: Optional[str] = None)
     """LLM observability summary: token usage, latency, cost, and per-model
     breakdown, in the style of agent-observability dashboards.
 
-    Token and cost figures are estimated (LearnKit calls LLMs through DSPy,
-    which does not surface per-call usage); ``estimated`` flags this to the UI.
+    Planners may persist observed provider usage. Runs without usage metadata
+    fall back to text-volume estimates; ``estimated`` flags mixed/estimated
+    datasets to the UI.
     """
     mem = _live()
     runs = mem.backend.list_runs(agent_id=agentId, limit=2000, mode=mode)
@@ -572,7 +586,7 @@ def api_observability(agentId: Optional[str] = None, mode: Optional[str] = None)
 
     return {
         "lastUpdated": _now_iso(),
-        "estimated": True,
+        "estimated": any(bool(r.get("estimated", True)) for r in runs),
         "totals": {
             "runs": total_runs,
             "promptTokens": total_prompt,
@@ -644,7 +658,12 @@ def api_trace(task_id: str) -> dict:
         "expected": "",
         "score": round(float(run.get("quality_score") or 0.0), 2),
         "toolCalls": run.get("tool_calls", 0),
-        "callsReduced": run.get("calls_reduced", 0),
+        "llmCalls": run.get("llm_calls", 0),
+        "callsReduced": (
+            run.get("llm_calls_reduced", 0)
+            if run.get("baseline_llm_calls") is not None
+            else run.get("calls_reduced", 0)
+        ),
         "baselineCalls": run.get("baseline_calls"),
         "telemetry": _run_telemetry(run),
         "attribution": [
@@ -705,7 +724,13 @@ def api_agent_stats(agent_id: str, mode: Optional[str] = None) -> dict:
             "task": (r.get("task") or "")[:80],
             "toolCalls": r.get("tool_calls", 0),
             "baselineCalls": r.get("baseline_calls"),
-            "callsReduced": round(float(r.get("calls_reduced") or 0.0), 1),
+            "llmCalls": r.get("llm_calls", 0),
+            "baselineLlmCalls": r.get("baseline_llm_calls"),
+            "callsReduced": round(float(
+                r.get("llm_calls_reduced", 0)
+                if r.get("baseline_llm_calls") is not None
+                else r.get("calls_reduced", 0)
+            ), 1),
             "replayed": bool(r.get("replayed")),
             "outcome": r.get("outcome"),
             "score": round(float(r.get("quality_score") or 0.0), 2),
@@ -714,7 +739,14 @@ def api_agent_stats(agent_id: str, mode: Optional[str] = None) -> dict:
             "timestamp": r.get("created_at"),
         })
 
-    total_reduced = sum(max(0.0, float(r.get("calls_reduced") or 0.0)) for r in runs)
+    total_reduced = sum(
+        max(0.0, float(
+            r.get("llm_calls_reduced", 0)
+            if r.get("baseline_llm_calls") is not None
+            else r.get("calls_reduced", 0)
+        ))
+        for r in runs
+    )
     total_calls = sum(int(r.get("tool_calls") or 0) for r in runs)
     success = [1.0 if r.get("outcome") == "success" else 0.0 for r in runs]
     total_tokens = sum(int(r.get("total_tokens") or 0) for r in runs)

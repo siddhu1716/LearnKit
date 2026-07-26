@@ -91,6 +91,7 @@ export interface Task {
   agentId?: string;
   mode?: 'learn' | 'agent_learn';
   toolCalls?: number;
+  llmCalls?: number;
   callsReduced?: number;
   telemetry?: RunTelemetry;
 }
@@ -115,6 +116,8 @@ export interface AgentCurvePoint {
   task: string;
   toolCalls: number;
   baselineCalls: number | null;
+  llmCalls: number;
+  baselineLlmCalls: number | null;
   callsReduced: number;
   replayed: boolean;
   outcome: string | null;

@@ -200,20 +200,20 @@ export const MOCK_AGENT_STATS: Record<string, AgentStats> = {
     agentId: 'agent-support', agentName: 'Support Agent', taskCount: 5,
     successRate: 1.0, callsReduced: 17, totalToolCalls: 10, skillsLearned: 4,
     curve: [
-      { index: 1, task: 'Update customer preference', toolCalls: 6, baselineCalls: 6, callsReduced: 0, replayed: false, outcome: 'success', score: 4.7, cumulativeSkills: 1, successRate: 1.0, timestamp: '2026-06-13T11:20:00Z' },
-      { index: 2, task: 'Answer return policy question', toolCalls: 3, baselineCalls: 6, callsReduced: 3, replayed: false, outcome: 'success', score: 5.0, cumulativeSkills: 2, successRate: 1.0, timestamp: '2026-06-13T12:30:00Z' },
-      { index: 3, task: 'Escalate complaint', toolCalls: 5, baselineCalls: 6, callsReduced: 1, replayed: true, outcome: 'success', score: 4.2, cumulativeSkills: 2, successRate: 1.0, timestamp: '2026-06-13T13:48:00Z' },
-      { index: 4, task: 'Apply discount code', toolCalls: 2, baselineCalls: 5, callsReduced: 3, replayed: true, outcome: 'success', score: 4.8, cumulativeSkills: 2, successRate: 1.0, timestamp: '2026-06-13T14:15:00Z' },
-      { index: 5, task: 'Refund request processing', toolCalls: 1, baselineCalls: 5, callsReduced: 4, replayed: true, outcome: 'success', score: 5.0, cumulativeSkills: 2, successRate: 1.0, timestamp: '2026-06-13T14:32:00Z' },
+      { index: 1, task: 'Update customer preference', toolCalls: 6, baselineCalls: 6, llmCalls: 6, baselineLlmCalls: null, callsReduced: 0, replayed: false, outcome: 'success', score: 4.7, cumulativeSkills: 1, successRate: 1.0, timestamp: '2026-06-13T11:20:00Z' },
+      { index: 2, task: 'Answer return policy question', toolCalls: 3, baselineCalls: 6, llmCalls: 3, baselineLlmCalls: 6, callsReduced: 3, replayed: false, outcome: 'success', score: 5.0, cumulativeSkills: 2, successRate: 1.0, timestamp: '2026-06-13T12:30:00Z' },
+      { index: 3, task: 'Escalate complaint', toolCalls: 5, baselineCalls: 6, llmCalls: 5, baselineLlmCalls: 6, callsReduced: 1, replayed: true, outcome: 'success', score: 4.2, cumulativeSkills: 2, successRate: 1.0, timestamp: '2026-06-13T13:48:00Z' },
+      { index: 4, task: 'Apply discount code', toolCalls: 2, baselineCalls: 5, llmCalls: 2, baselineLlmCalls: 5, callsReduced: 3, replayed: true, outcome: 'success', score: 4.8, cumulativeSkills: 2, successRate: 1.0, timestamp: '2026-06-13T14:15:00Z' },
+      { index: 5, task: 'Refund request processing', toolCalls: 1, baselineCalls: 5, llmCalls: 1, baselineLlmCalls: 5, callsReduced: 4, replayed: true, outcome: 'success', score: 5.0, cumulativeSkills: 2, successRate: 1.0, timestamp: '2026-06-13T14:32:00Z' },
     ],
   },
   'agent-sql': {
     agentId: 'agent-sql', agentName: 'SQL Authoring Agent', taskCount: 3,
     successRate: 0.33, callsReduced: 5, totalToolCalls: 17, skillsLearned: 1,
     curve: [
-      { index: 1, task: 'Generate sales report summary', toolCalls: 2, baselineCalls: 7, callsReduced: 5, replayed: false, outcome: 'success', score: 4.9, cumulativeSkills: 1, successRate: 1.0, timestamp: '2026-06-13T12:55:00Z' },
-      { index: 2, task: 'Process bulk order', toolCalls: 8, baselineCalls: 7, callsReduced: 0, replayed: false, outcome: 'failure', score: 2.1, cumulativeSkills: 1, successRate: 0.5, timestamp: '2026-06-13T11:45:00Z' },
-      { index: 3, task: 'Handle API max retries', toolCalls: 7, baselineCalls: 7, callsReduced: 0, replayed: true, outcome: 'failure', score: 1.5, cumulativeSkills: 1, successRate: 0.33, timestamp: '2026-06-13T13:22:00Z' },
+      { index: 1, task: 'Generate sales report summary', toolCalls: 2, baselineCalls: 7, llmCalls: 2, baselineLlmCalls: 7, callsReduced: 5, replayed: false, outcome: 'success', score: 4.9, cumulativeSkills: 1, successRate: 1.0, timestamp: '2026-06-13T12:55:00Z' },
+      { index: 2, task: 'Process bulk order', toolCalls: 8, baselineCalls: 7, llmCalls: 8, baselineLlmCalls: 7, callsReduced: 0, replayed: false, outcome: 'failure', score: 2.1, cumulativeSkills: 1, successRate: 0.5, timestamp: '2026-06-13T11:45:00Z' },
+      { index: 3, task: 'Handle API max retries', toolCalls: 7, baselineCalls: 7, llmCalls: 7, baselineLlmCalls: 7, callsReduced: 0, replayed: true, outcome: 'failure', score: 1.5, cumulativeSkills: 1, successRate: 0.33, timestamp: '2026-06-13T13:22:00Z' },
     ],
   },
 };

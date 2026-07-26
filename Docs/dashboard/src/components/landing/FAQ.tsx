@@ -32,7 +32,7 @@ const faqs = [
   },
   {
     q: 'How much does it cost, and how much does it save?',
-    a: 'The SDK is MIT-licensed; storage is local SQLite (or Postgres) — no proprietary infrastructure. Capturing a procedure adds ~1 LLM call per task, repaid many times over: the published benchmarks show **~38% fewer planning calls** on repeat tasks (up to ~45% on some suites) at equal success.',
+    a: 'The SDK is Apache-2.0 licensed and includes local SQLite storage behind a pluggable backend contract. Deterministic procedure capture itself needs no extra LLM call. The published matrix shows **38.4% fewer planning calls** in aggregate at equal task success.',
   },
   {
     q: 'What happens to bad or outdated memories?',
@@ -40,7 +40,7 @@ const faqs = [
   },
   {
     q: 'Is my data ever sent to LIA Labs?',
-    a: 'Never. LearnKit runs entirely inside your infrastructure — no phone-home, no telemetry, no data upload. The observability dashboard is self-hosted and reads directly from your local store.',
+    a: 'The SDK does not phone home or upload telemetry to LIA Labs. The dashboard is self-hosted and reads your configured store. Tasks or traces are sent only to model providers you explicitly configure, so teams can keep the full path local with a self-hosted model.',
   },
 ]
 

@@ -205,7 +205,7 @@ export function Benchmarks() {
             </div>
           </div>
           <a
-            href="https://github.com/siddhu1716/LearnKit/tree/lia/mvp/benchmarks"
+            href="https://github.com/siddhu1716/LearnKit/tree/main/benchmarks"
             target="_blank"
             rel="noreferrer"
             className="text-[11px] font-medium text-white/50 transition hover:text-white"

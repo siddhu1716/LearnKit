@@ -69,7 +69,7 @@ export const Agents: React.FC = () => {
           <span className={styles.kpiValue}>{totals.tasks}</span>
         </div>
         <div className={styles.kpiCard}>
-          <span className={styles.kpiLabel}>Calls Reduced</span>
+          <span className={styles.kpiLabel}>Planning Calls Saved</span>
           <span className={`${styles.kpiValue} ${styles.accent}`}>{Math.round(totals.callsReduced)}</span>
         </div>
         <div className={styles.kpiCard}>
@@ -90,7 +90,7 @@ export const Agents: React.FC = () => {
                 <th>Agent</th>
                 <th>Tasks</th>
                 <th>Success</th>
-                <th>Calls Reduced</th>
+                <th>Planning Calls Saved</th>
                 <th>Skills</th>
                 <th>Avg Score</th>
                 <th>Last Active</th>
