@@ -35,6 +35,8 @@ logging.disable(logging.INFO)
 TASK = "Refund the latest delivered order for ada@example.com"
 DEFAULT_DB = Path.home() / ".learnkit" / "yc_demo.db"
 TOOL_SEQUENCE = ("find_customer", "list_orders", "get_order", "issue_refund")
+_REFUNDS_BY_ORDER: dict[str, dict[str, Any]] = {}
+_REFUND_CREATIONS = 0
 
 
 def find_customer(email: str) -> dict[str, str]:
@@ -57,7 +59,28 @@ def get_order(order_id: str) -> dict[str, Any]:
 
 
 def issue_refund(order_id: str, amount: float) -> dict[str, Any]:
-    return {"refund_id": "ref_9001", "order_id": order_id, "amount": amount, "status": "paid"}
+    """Create one refund per order; exact replay returns the original result."""
+    global _REFUND_CREATIONS
+    existing = _REFUNDS_BY_ORDER.get(order_id)
+    if existing is not None:
+        return {**existing, "idempotent_replay": True}
+    refund = {
+        "refund_id": "ref_9001",
+        "order_id": order_id,
+        "amount": amount,
+        "status": "paid",
+        "idempotency_key": f"refund:{order_id}",
+        "idempotent_replay": False,
+    }
+    _REFUNDS_BY_ORDER[order_id] = refund
+    _REFUND_CREATIONS += 1
+    return refund
+
+
+def reset_refunds() -> None:
+    global _REFUND_CREATIONS
+    _REFUNDS_BY_ORDER.clear()
+    _REFUND_CREATIONS = 0
 
 
 TOOLS = {
@@ -345,6 +368,7 @@ def main() -> None:
         )
 
     print("1) EXISTING AGENT: the repeat still re-plans from scratch")
+    reset_refunds()
     baseline = run_plain_agent(planner)
     print_result("Without LearnKit", baseline)
     if not baseline.success:
@@ -352,6 +376,7 @@ def main() -> None:
 
     print("\n2) ATTACH LEARNKIT: same planner, same tools, one wrapper")
     print("   lk.run_react_agent(memory, task, tools, planner, mark_success=True)")
+    reset_refunds()
     memory = build_memory(args.db)
     try:
         cold = lk.run_react_agent(memory, TASK, TOOLS, planner, mark_success=True)
@@ -370,6 +395,8 @@ def main() -> None:
         f"\nRESULT: exact replay saved {saved_calls} planning calls and "
         f"{cold_tokens - warm_tokens} planner tokens while preserving the tool outcome."
     )
+    print(f"Refund side effects: {_REFUND_CREATIONS} (replays reused the idempotency key).")
+    assert _REFUND_CREATIONS == 1, "exact replay must not create duplicate refunds"
     print(f"Dashboard database: {args.db}")
     print("Open /app.html, then Agents -> Llama 3.3 Refund Agent.")
 
