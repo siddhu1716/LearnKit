@@ -74,11 +74,11 @@ def signature_coverage(stored: list[str], task: str) -> float:
 
 
 def content_tokens(task: str) -> list[str]:
-    """Full content fingerprint of a task: non-stopword tokens (slot values and
-    numbers kept). Used to decide whether a candidate procedure is an *exact*
-    re-encounter of a task vs a parameterized sibling.
+    """Ordered content fingerprint of a task: non-stopword tokens with slot
+    values, numbers, and repetitions preserved. Exact replay is order-sensitive
+    so directional tasks cannot match after their arguments are reversed.
     """
-    return sorted({t for t in _tokenize(task) if t not in _STOPWORDS})
+    return [t for t in _tokenize(task) if t not in _STOPWORDS]
 
 
 def match_kind(
@@ -96,7 +96,7 @@ def match_kind(
       re-binding, so it is better handled as guidance than blind replay.
     - ``None`` — not a match; do not replay.
     """
-    if stored_tokens and set(content_tokens(task)) == set(stored_tokens):
+    if stored_tokens and content_tokens(task) == stored_tokens:
         return "exact"
     if signature_coverage(stored_signature, task) >= threshold:
         return "sibling"

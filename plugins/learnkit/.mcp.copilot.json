@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "learnkit": {
+      "type": "local",
+      "command": "learnkit",
+      "args": ["mcp"],
+      "tools": ["*"]
+    }
+  }
+}

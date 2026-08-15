@@ -36,6 +36,7 @@ export interface MemoryRecord {
   expiresAt: string | null;
   isProcedural?: boolean;
   stepCount?: number;
+  toolSequence?: string[];
 }
 
 export interface RecordCounts {

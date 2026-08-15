@@ -51,7 +51,7 @@ export const Agents: React.FC = () => {
         <div>
           <h1 className={styles.title}>Agents</h1>
           <p className={styles.subtitle}>
-            Track how each agent is learning — calls saved and skills acquired over time
+            Track planning calls saved and procedural skills acquired over time
           </p>
         </div>
         <button className={styles.refreshBtn} onClick={fetchData} aria-label="Refresh agents">

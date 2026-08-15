@@ -314,8 +314,10 @@ def _record_to_api(r) -> dict:
     """Map a backend MemoryRecord to the dashboard's record shape (snake_case;
     the client normalizes it)."""
     content = r.content or {}
-    steps = content.get("steps") if isinstance(content, dict) else None
-    is_procedural = bool(r.type == "skill" and isinstance(steps, list) and len(steps) > 0)
+    procedure = content.get("procedure") if isinstance(content, dict) else None
+    is_procedural = bool(
+        r.type == "skill" and isinstance(procedure, list) and len(procedure) > 0
+    )
     return {
         "id": r.id,
         "type": r.type,
@@ -324,7 +326,10 @@ def _record_to_api(r) -> dict:
         "confidence": round(float(r.confidence), 3),
         "content": content,
         "is_procedural": is_procedural,
-        "step_count": len(steps) if isinstance(steps, list) else 0,
+        "step_count": len(procedure) if isinstance(procedure, list) else 0,
+        "tool_sequence": (
+            list(content.get("tool_sequence") or []) if isinstance(content, dict) else []
+        ),
         "scope": r.scope,
         "status": r.status,
         "retrieval_count": r.reuse_count,

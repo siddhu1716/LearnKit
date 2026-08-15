@@ -7,7 +7,6 @@ from learnkit.procedural import (
     match_kind,
     procedure_fingerprint,
     signature_coverage,
-    task_signature,
 )
 from learnkit.replay import bind_args, replay_plan
 from learnkit.tool_tracker import ToolTracker
@@ -109,6 +108,19 @@ def test_match_kind_exact_sibling_none():
     assert match_kind(sig, toks, "compute monthly revenue total") is None
 
 
+def test_match_kind_does_not_treat_reversed_arguments_as_exact():
+    t = _traj("copy alpha to beta", [
+        ("copy", {"source": "alpha", "destination": "beta"}, True),
+    ])
+    proc = extract_procedure(t)
+
+    assert match_kind(
+        proc["task_signature"],
+        proc["task_tokens"],
+        "copy beta to alpha",
+    ) != "exact"
+
+
 # ── fingerprint stability ────────────────────────────────────────────────────
 def test_fingerprint_is_order_sensitive_and_case_insensitive():
     assert procedure_fingerprint(["A", "b"]) == procedure_fingerprint(["a", "B"])
@@ -143,6 +155,18 @@ def test_replay_plan_without_plan_raises():
         assert False, "expected ValueError"
     except ValueError:
         pass
+
+
+def test_replay_plan_does_not_mark_missing_tool_as_success():
+    tracker = ToolTracker(Trajectory(task="export report"))
+    tracker.set_plan([
+        {"tool": "missing", "arg_template": {}},
+    ], source_id="skill-1")
+
+    replay_plan(tracker, {})
+
+    assert tracker.failures == 1
+    assert tracker.outcome_score() == 0.0
 
 
 # ── evolution: reinforce / refine / demote (Hermes institutional knowledge) ──

@@ -84,7 +84,7 @@ def replay_plan(
             raise
         executed += 1
 
-    if mark_success and executed:
+    if mark_success and executed and tracker.failures == 0:
         tracker.mark_outcome(True)
     logger.info(
         "Replayed stored procedure",

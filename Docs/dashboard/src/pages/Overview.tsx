@@ -81,7 +81,7 @@ export const Overview: React.FC = () => {
         <div>
           <h1 className={styles.title}>Overview</h1>
           <p className={styles.subtitle}>
-            Tool-use procedures, replays &amp; calls-reduced across your agents
+            Tool-use procedures, exact replays, and planning-call savings
           </p>
         </div>
         <button className={styles.refreshBtn} onClick={fetchData} aria-label="Refresh metrics">
@@ -139,7 +139,7 @@ export const Overview: React.FC = () => {
               </div>
               {isAgent && (
                 <div className={styles.metricSub}>
-                  <span className={styles.metricSubLabel}>Tool Calls Saved</span>
+                  <span className={styles.metricSubLabel}>Planning Calls Saved</span>
                   <span className={styles.metricSubVal}>-{Math.round(metrics.retryReduction * 100)}%</span>
                 </div>
               )}
@@ -147,10 +147,10 @@ export const Overview: React.FC = () => {
           </div>
         </div>
 
-        {/* Injection Trends Card — replay/injection mix is an agent-path concept */}
+        {/* Record-type mix for the active agent-learning store. */}
         {isAgent && (
           <div className={styles.statCard}>
-            <h2 className={styles.cardTitle}>Injection Trends</h2>
+            <h2 className={styles.cardTitle}>Memory Mix</h2>
             <InjectionPie data={metrics.primaryDistribution} />
           </div>
         )}
@@ -194,9 +194,9 @@ export const Overview: React.FC = () => {
       {/* Mid row: Main Chart */}
       <section className={styles.chartSection}>
         <div className={styles.chartHeader}>
-          <h2 className={styles.sectionTitle}>Success Rate Trend (30 Days)</h2>
+          <h2 className={styles.sectionTitle}>Success Rate by Run Type</h2>
           <div className={styles.chartLegendHint}>
-            Comparing agent starts: Control vs. Cold vs. Warmed
+            Overall cold reference vs. daily cold and replayed runs
           </div>
         </div>
         <div className={styles.chartWrapper}>

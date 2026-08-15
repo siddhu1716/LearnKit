@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "command": "node \"${COPILOT_PLUGIN_ROOT}/scripts/hook.mjs\" sessionStart"
+      }
+    ],
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "command": "node \"${COPILOT_PLUGIN_ROOT}/scripts/hook.mjs\" userPromptSubmitted"
+      }
+    ],
+    "postToolUse": [
+      {
+        "type": "command",
+        "command": "node \"${COPILOT_PLUGIN_ROOT}/scripts/hook.mjs\" postToolUse"
+      }
+    ],
+    "postToolUseFailure": [
+      {
+        "type": "command",
+        "command": "node \"${COPILOT_PLUGIN_ROOT}/scripts/hook.mjs\" postToolUseFailure"
+      }
+    ],
+    "preCompact": [
+      {
+        "type": "command",
+        "command": "node \"${COPILOT_PLUGIN_ROOT}/scripts/hook.mjs\" preCompact"
+      }
+    ],
+    "agentStop": [
+      {
+        "type": "command",
+        "command": "node \"${COPILOT_PLUGIN_ROOT}/scripts/hook.mjs\" agentStop"
+      }
+    ]
+  }
+}

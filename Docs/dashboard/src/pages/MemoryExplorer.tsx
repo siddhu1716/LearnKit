@@ -351,6 +351,25 @@ export const MemoryExplorer: React.FC = () => {
                 </div>
               </div>
 
+              {selectedRecord.isProcedural && (
+                <div className={styles.detailSection}>
+                  <h3 className={styles.sectionLabel}>Captured Procedure</h3>
+                  <div className={styles.badgeRow}>
+                    <div>
+                      <span className={styles.badgeLabel}>Ordered tool steps</span>
+                      <span className={styles.badgeVal}>{selectedRecord.stepCount ?? 0}</span>
+                    </div>
+                  </div>
+                  <div className={styles.tagWrap}>
+                    {(selectedRecord.toolSequence ?? []).map((tool, index) => (
+                      <Badge key={`${tool}-${index}`} variant="neutral">
+                        {index + 1}. {tool}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className={styles.detailSection}>
                 <h3 className={styles.sectionLabel}>Content Description</h3>
                 <div className={styles.contentBlock}>

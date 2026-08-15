@@ -1,4 +1,5 @@
 import argparse
+import json
 import sys
 from learnkit import __version__
 from learnkit.core import LearnKit
@@ -28,6 +29,19 @@ def main():
     export_parser.add_argument("--out", type=str, required=True, help="Output directory (learnkit/deepagents) or JSON file (golden-tests)")
     export_parser.add_argument("--format", choices=["learnkit", "deepagents", "golden-tests"], default="learnkit", help="Export format")
     export_parser.add_argument("--scope", type=str, default="team", help="Memory scope to export (user/team/public)")
+
+    mcp_parser = subparsers.add_parser("mcp", help="Run the LearnKit coding-agent MCP server over stdio")
+    mcp_parser.add_argument("--db-path", type=str, default=None, help="Path to SQLite database (defaults to LEARNKIT_DB_PATH or ~/.learnkit/memory.db)")
+
+    plugin_parser = subparsers.add_parser("plugin", help="Coding-agent plugin utilities")
+    plugin_sub = plugin_parser.add_subparsers(dest="plugin_command")
+    hook_parser = plugin_sub.add_parser("hook", help="Process one coding-agent lifecycle hook")
+    hook_parser.add_argument("event", type=str, help="Host lifecycle event name")
+    hook_parser.add_argument("--db-path", type=str, default=None, help="Path to SQLite database (defaults to LEARNKIT_DB_PATH or ~/.learnkit/memory.db)")
+    hook_parser.add_argument("--state-dir", type=str, default=None, help="Hook journal directory")
+    doctor_parser = plugin_sub.add_parser("doctor", help="Validate coding-agent plugin prerequisites")
+    doctor_parser.add_argument("--db-path", type=str, default=None, help="Path to SQLite database (defaults to LEARNKIT_DB_PATH or ~/.learnkit/memory.db)")
+    doctor_parser.add_argument("--state-dir", type=str, default=None, help="Hook journal directory")
 
     args = parser.parse_args()
 
@@ -68,6 +82,36 @@ def main():
             lk.shutdown()
         except Exception as e:
             print(f"ERROR: Skill export failed: {e}", file=sys.stderr)
+            sys.exit(1)
+    elif args.command == "mcp":
+        from learnkit.mcp_server import run_server
+
+        run_server(db_path=args.db_path)
+    elif args.command == "plugin":
+        if args.plugin_command == "hook":
+            from learnkit.plugin_runtime import handle_hook
+
+            try:
+                payload = json.load(sys.stdin)
+            except json.JSONDecodeError:
+                payload = {}
+            output = handle_hook(
+                args.event,
+                payload if isinstance(payload, dict) else {},
+                db_path=args.db_path,
+                state_dir=args.state_dir,
+            )
+            if output:
+                sys.stdout.write(output)
+        elif args.plugin_command == "doctor":
+            from learnkit.plugin_runtime import doctor
+
+            result = doctor(db_path=args.db_path, state_dir=args.state_dir)
+            print(json.dumps(result, indent=2))
+            if not result["ok"]:
+                sys.exit(1)
+        else:
+            plugin_parser.print_help()
             sys.exit(1)
     else:
         parser.print_help()

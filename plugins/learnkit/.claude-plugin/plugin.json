@@ -1,0 +1,18 @@
+{
+  "name": "learnkit",
+  "version": "1.0.0",
+  "description": "Procedural memory for coding agents. Captures successful tool workflows and exposes learned procedures through MCP.",
+  "author": {
+    "name": "LIA Labs"
+  },
+  "homepage": "https://github.com/siddhu1716/LearnKit",
+  "repository": "https://github.com/siddhu1716/LearnKit",
+  "license": "Apache-2.0",
+  "mcpServers": {
+    "learnkit": {
+      "command": "learnkit",
+      "args": ["mcp"]
+    }
+  },
+  "skills": "../skills/"
+}

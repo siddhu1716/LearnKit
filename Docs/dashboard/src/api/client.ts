@@ -157,6 +157,7 @@ function toContent(value: unknown): string {
     const obj = value as Record<string, unknown>;
     const preferred = [
       obj.description,
+      obj.trigger,
       obj.lesson_title,
       obj.summary,
       obj.workflow,
@@ -191,6 +192,7 @@ function normalizeRecord(raw: any): MemoryRecord {
     expiresAt: raw?.expiresAt ?? raw?.expires_at ?? null,
     isProcedural: Boolean(raw?.isProcedural ?? raw?.is_procedural ?? false),
     stepCount: Number(raw?.stepCount ?? raw?.step_count ?? 0),
+    toolSequence: toArray<unknown>(raw?.toolSequence ?? raw?.tool_sequence).map(String),
   };
 }
 

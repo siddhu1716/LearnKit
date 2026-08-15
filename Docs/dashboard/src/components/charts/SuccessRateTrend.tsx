@@ -112,7 +112,7 @@ export const SuccessRateTrend: React.FC<SuccessRateTrendProps> = ({ data }) => {
             )}
           />
           <Line
-            name="Control (Baseline)"
+            name="Overall Cold Reference"
             type="monotone"
             dataKey="control"
             stroke="#52525b"
@@ -121,7 +121,7 @@ export const SuccessRateTrend: React.FC<SuccessRateTrendProps> = ({ data }) => {
             activeDot={{ r: 4, strokeWidth: 0 }}
           />
           <Line
-            name="Cold Start"
+            name="Cold Run"
             type="monotone"
             dataKey="coldStart"
             stroke="#f59e0b"
@@ -130,7 +130,7 @@ export const SuccessRateTrend: React.FC<SuccessRateTrendProps> = ({ data }) => {
             activeDot={{ r: 4, strokeWidth: 0 }}
           />
           <Line
-            name="Warmed Start"
+            name="Replayed Run"
             type="monotone"
             dataKey="warmedStart"
             stroke="#00ff88"

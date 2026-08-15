@@ -160,6 +160,49 @@ sibling reuse. A runnable, offline demo (no API key) lives at
 `benchmarks/injection_ablation.py` for a quality-focused ablation that isolates
 the effect of playbook injection on novel sibling tasks.
 
+## Coding-agent plugins (preview)
+
+The repository ships one plugin bundle for Claude Code and GitHub Copilot CLI
+under [`plugins/learnkit/`](plugins/learnkit/). Lifecycle hooks capture prompts
+and tool outcomes across separate host processes; the stop hook turns a
+successful tool sequence into a local procedural skill. The bundled read-only
+MCP server exposes:
+
+- `learnkit_status` — database, hook-journal, and MCP health;
+- `learnkit_search` — typed memory search;
+- `learnkit_procedures` — learned tool workflows; and
+- `learnkit_context` — bounded guidance for a new task.
+
+Install the plugin extra first:
+
+```bash
+pip install "learnkit-ai[coding-agents]"
+learnkit plugin doctor
+```
+
+Claude Code:
+
+```text
+/plugin marketplace add siddhu1716/LearnKit
+/plugin install learnkit@learnkit
+```
+
+GitHub Copilot CLI:
+
+```bash
+copilot plugin install siddhu1716/LearnKit:plugins/learnkit
+```
+
+For local development, use `copilot --plugin-dir ./plugins/learnkit` or point
+Claude Code at the same bundle directory. Set `LEARNKIT_DB_PATH` to isolate a
+test database and `LEARNKIT_PLUGIN_DIR` to isolate hook journals.
+
+The preview captures and retrieves procedures but does not directly execute
+native host tools. Exact zero-planning replay remains available through
+`run_react_agent`, where LearnKit owns the tool registry and can enforce the
+outcome gate. Host-side automatic execution will remain opt-in until the host
+provides a safe execution and approval contract.
+
 ---
 
 # Integrate with LangChain (and others)

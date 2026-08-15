@@ -52,6 +52,7 @@ crewai = ["crewai>=0.40.0"]
 llamaindex = ["llama-index-core>=0.11.0"]
 openai-agents = ["openai-agents>=0.0.1"]
 dashboard = ["fastapi>=0.115.0", "uvicorn>=0.30.0", "python-dotenv>=1.0.0"]
+coding-agents = ["mcp>=1.12.0,<2.0.0"]
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",

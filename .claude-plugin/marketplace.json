@@ -1,0 +1,14 @@
+{
+  "name": "learnkit",
+  "owner": {
+    "name": "LIA Labs",
+    "github": "siddhu1716"
+  },
+  "plugins": [
+    {
+      "name": "learnkit",
+      "description": "Procedural memory for coding agents: capture successful tool workflows and reuse them as bounded guidance.",
+      "source": "./plugins/learnkit"
+    }
+  ]
+}
