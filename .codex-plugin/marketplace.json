@@ -1,0 +1,22 @@
+{
+  "name": "learnkit",
+  "interface": {
+    "displayName": "LearnKit"
+  },
+  "plugins": [
+    {
+      "name": "learnkit",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/siddhu1716/LearnKit.git",
+        "path": "./plugins/learnkit",
+        "ref": "v1.0.0"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Memory"
+    }
+  ]
+}

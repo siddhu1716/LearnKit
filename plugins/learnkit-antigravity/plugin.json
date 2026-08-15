@@ -1,0 +1,13 @@
+{
+  "name": "learnkit",
+  "version": "1.0.0",
+  "description": "Procedural memory for Antigravity CLI coding workflows.",
+  "author": {
+    "name": "LIA Labs"
+  },
+  "homepage": "https://github.com/siddhu1716/LearnKit",
+  "license": "Apache-2.0",
+  "skills": [
+    "./skills/learnkit"
+  ]
+}

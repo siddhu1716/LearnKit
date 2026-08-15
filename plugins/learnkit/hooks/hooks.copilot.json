@@ -4,37 +4,37 @@
     "sessionStart": [
       {
         "type": "command",
-        "command": "node \"${COPILOT_PLUGIN_ROOT}/scripts/hook.mjs\" sessionStart"
+        "command": "node \"${COPILOT_PLUGIN_ROOT}/scripts/hook.mjs\" sessionStart copilot-cli"
       }
     ],
     "userPromptSubmitted": [
       {
         "type": "command",
-        "command": "node \"${COPILOT_PLUGIN_ROOT}/scripts/hook.mjs\" userPromptSubmitted"
+        "command": "node \"${COPILOT_PLUGIN_ROOT}/scripts/hook.mjs\" userPromptSubmitted copilot-cli"
       }
     ],
     "postToolUse": [
       {
         "type": "command",
-        "command": "node \"${COPILOT_PLUGIN_ROOT}/scripts/hook.mjs\" postToolUse"
+        "command": "node \"${COPILOT_PLUGIN_ROOT}/scripts/hook.mjs\" postToolUse copilot-cli"
       }
     ],
     "postToolUseFailure": [
       {
         "type": "command",
-        "command": "node \"${COPILOT_PLUGIN_ROOT}/scripts/hook.mjs\" postToolUseFailure"
+        "command": "node \"${COPILOT_PLUGIN_ROOT}/scripts/hook.mjs\" postToolUseFailure copilot-cli"
       }
     ],
     "preCompact": [
       {
         "type": "command",
-        "command": "node \"${COPILOT_PLUGIN_ROOT}/scripts/hook.mjs\" preCompact"
+        "command": "node \"${COPILOT_PLUGIN_ROOT}/scripts/hook.mjs\" preCompact copilot-cli"
       }
     ],
     "agentStop": [
       {
         "type": "command",
-        "command": "node \"${COPILOT_PLUGIN_ROOT}/scripts/hook.mjs\" agentStop"
+        "command": "node \"${COPILOT_PLUGIN_ROOT}/scripts/hook.mjs\" agentStop copilot-cli"
       }
     ]
   }

@@ -82,7 +82,10 @@ logs/
 !package-lock.json
 !tsconfig.json
 !.claude-plugin/marketplace.json
-!plugins/learnkit/**/*.json
+!.codex-plugin/marketplace.json
+!gemini-extension.json
+!hooks/hooks.json
+!plugins/**/*.json
 
 # Node
 node_modules/

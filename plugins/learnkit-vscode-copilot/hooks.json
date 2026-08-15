@@ -1,0 +1,22 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "learnkit plugin hook SessionStart --host vscode-copilot"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "type": "command",
+        "command": "learnkit plugin hook PostToolUse --host vscode-copilot"
+      }
+    ],
+    "PreCompact": [
+      {
+        "type": "command",
+        "command": "learnkit plugin hook PreCompact --host vscode-copilot"
+      }
+    ]
+  }
+}

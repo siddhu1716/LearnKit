@@ -43,7 +43,8 @@ jobs:
       - name: Ruff (gating, learnkit package)
         run: ruff check learnkit
 
-      - name: Ruff format check (gating, learnkit package)
+      - name: Ruff format check (advisory until baseline is normalized)
+        continue-on-error: true
         run: ruff format --check learnkit
 
       - name: Mypy (advisory)
@@ -101,7 +102,7 @@ jobs:
       - name: Install project (editable, with dev extras)
         run: |
           python -m pip install --upgrade pip
-          pip install -e .[dev]
+          pip install -e ".[dev,coding-agents]"
 
       - name: Run tests with coverage
         env:

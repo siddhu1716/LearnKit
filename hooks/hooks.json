@@ -1,0 +1,76 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "name": "learnkit-session-start",
+            "type": "command",
+            "command": "learnkit plugin hook SessionStart --host gemini-cli"
+          }
+        ]
+      }
+    ],
+    "BeforeAgent": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "name": "learnkit-before-agent",
+            "type": "command",
+            "command": "learnkit plugin hook BeforeAgent --host gemini-cli"
+          }
+        ]
+      }
+    ],
+    "AfterTool": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "name": "learnkit-after-tool",
+            "type": "command",
+            "command": "learnkit plugin hook AfterTool --host gemini-cli"
+          }
+        ]
+      }
+    ],
+    "AfterModel": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "name": "learnkit-after-model",
+            "type": "command",
+            "command": "learnkit plugin hook AfterModel --host gemini-cli"
+          }
+        ]
+      }
+    ],
+    "AfterAgent": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "name": "learnkit-after-agent",
+            "type": "command",
+            "command": "learnkit plugin hook AfterAgent --host gemini-cli"
+          }
+        ]
+      }
+    ],
+    "PreCompress": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "name": "learnkit-pre-compress",
+            "type": "command",
+            "command": "learnkit plugin hook PreCompress --host gemini-cli"
+          }
+        ]
+      }
+    ]
+  }
+}

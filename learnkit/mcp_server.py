@@ -12,7 +12,9 @@ from .plugin_runtime import context_for_task, doctor
 
 
 def _database_path(db_path: Optional[str] = None) -> str:
-    return str(Path(db_path or os.environ.get("LEARNKIT_DB_PATH", "~/.learnkit/memory.db")).expanduser())
+    return str(
+        Path(db_path or os.environ.get("LEARNKIT_DB_PATH", "~/.learnkit/memory.db")).expanduser()
+    )
 
 
 def search_memory(query: str, limit: int = 5, *, db_path: Optional[str] = None) -> list[dict]:
@@ -34,7 +36,9 @@ def search_memory(query: str, limit: int = 5, *, db_path: Optional[str] = None) 
         memory.shutdown()
 
 
-def list_procedures(query: str = "", limit: int = 10, *, db_path: Optional[str] = None) -> list[dict]:
+def list_procedures(
+    query: str = "", limit: int = 10, *, db_path: Optional[str] = None
+) -> list[dict]:
     memory = LearnKit(memory_backend="sqlite", db_path=_database_path(db_path))
     try:
         bounded = max(1, min(limit, 50))
@@ -94,7 +98,9 @@ def build_server(*, db_path: Optional[str] = None):
     def learnkit_procedures(query: str = "", limit: int = 10) -> list[dict]:
         return list_procedures(query, limit, db_path=db_path)
 
-    @server.tool(description="Retrieve bounded procedural guidance for a task. This never executes tools.")
+    @server.tool(
+        description="Retrieve bounded procedural guidance for a task. This never executes tools."
+    )
     def learnkit_context(task: str) -> str:
         return context_for_task(task, db_path=db_path)
 

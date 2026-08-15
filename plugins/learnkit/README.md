@@ -9,6 +9,10 @@ learnkit plugin doctor
 
 The `learnkit` command must be available in the environment that launches the coding agent.
 
+The Python engine and host integration are separate layers. A Git clone is not
+required for the engine, but the `learnkit` executable must be available on the
+PATH inherited by the host.
+
 ## Claude Code
 
 ```text
@@ -29,6 +33,22 @@ For a local checkout:
 ```bash
 copilot --plugin-dir ./plugins/learnkit
 ```
+
+## Codex CLI
+
+```bash
+codex plugin marketplace add siddhu1716/LearnKit
+codex plugin add learnkit@learnkit
+```
+
+## Other hosts
+
+- Gemini CLI: the repository root is a Gemini extension.
+- Antigravity CLI: use `plugins/learnkit-antigravity/`.
+- Antigravity IDE: use the MCP-only config in `plugins/learnkit-antigravity-ide/`.
+- VS Code Copilot: use the project files in `plugins/learnkit-vscode-copilot/`.
+
+See [`DEVELOPERS.md`](../../DEVELOPERS.md) for complete install and verification steps.
 
 ## Scope
 

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "learnkit": {
+      "command": "learnkit",
+      "args": ["mcp"]
+    }
+  }
+}

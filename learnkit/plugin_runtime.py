@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import re
+import threading
 import time
 import uuid
 from pathlib import Path
@@ -30,13 +31,32 @@ _EVENT_ALIASES = {
     "sessionstart": "session_start",
     "userpromptsubmit": "user_prompt",
     "userpromptsubmitted": "user_prompt",
+    "beforeagent": "user_prompt",
+    "preinvocation": "user_prompt",
     "posttooluse": "tool_success",
     "posttoolusefailure": "tool_failure",
+    "aftertool": "tool_success",
+    "aftermodel": "model_usage",
     "precompact": "pre_compact",
+    "precompress": "pre_compact",
     "agentstop": "stop",
+    "afteragent": "stop",
     "sessionend": "stop",
     "taskcompleted": "stop",
 }
+
+_HOST_NAMES = {
+    "claude-code": "Claude Code",
+    "copilot-cli": "GitHub Copilot CLI",
+    "codex": "Codex CLI",
+    "gemini-cli": "Gemini CLI",
+    "vscode-copilot": "VS Code Copilot",
+    "antigravity-cli": "Antigravity CLI",
+    "antigravity-ide": "Antigravity IDE",
+}
+
+_EVENT_CLOCK_LOCK = threading.Lock()
+_LAST_EVENT_NS = 0
 
 
 class _PluginDistiller:
@@ -50,6 +70,13 @@ class _PluginDistiller:
 def normalize_event_name(event: str) -> str:
     compact = re.sub(r"[^a-z]", "", (event or "").lower())
     return _EVENT_ALIASES.get(compact, (event or "unknown").strip().lower())
+
+
+def _next_event_ns() -> int:
+    global _LAST_EVENT_NS
+    with _EVENT_CLOCK_LOCK:
+        _LAST_EVENT_NS = max(time.time_ns(), _LAST_EVENT_NS + 1)
+        return _LAST_EVENT_NS
 
 
 def redact_payload(value: Any, *, key: str = "") -> Any:
@@ -72,11 +99,18 @@ def _state_root(state_dir: Optional[str] = None) -> Path:
 
 
 def _db_path(db_path: Optional[str] = None) -> str:
-    return str(Path(db_path or os.environ.get("LEARNKIT_DB_PATH", "~/.learnkit/memory.db")).expanduser())
+    return str(
+        Path(db_path or os.environ.get("LEARNKIT_DB_PATH", "~/.learnkit/memory.db")).expanduser()
+    )
 
 
 def _session_key(payload: dict) -> str:
-    session_id = payload.get("session_id") or payload.get("sessionId")
+    session_id = (
+        payload.get("session_id")
+        or payload.get("sessionId")
+        or payload.get("conversationId")
+        or os.environ.get("GEMINI_SESSION_ID")
+    )
     if not session_id:
         session_id = f"{payload.get('cwd') or os.getcwd()}:{payload.get('source') or 'agent'}"
     return hashlib.sha256(str(session_id).encode("utf-8")).hexdigest()[:24]
@@ -91,7 +125,7 @@ def append_event(event: str, payload: dict, *, state_dir: Optional[str] = None) 
     directory.mkdir(parents=True, exist_ok=True)
     body = {
         "event": normalize_event_name(event),
-        "captured_at_ns": time.time_ns(),
+        "captured_at_ns": _next_event_ns(),
         "payload": redact_payload(payload),
     }
     encoded = json.dumps(body, ensure_ascii=True, separators=(",", ":"))
@@ -148,7 +182,33 @@ def _tool_event(event: dict) -> Optional[dict]:
         "name": str(name),
         "args": args if isinstance(args, dict) else {"value": args},
         "output": output,
-        "success": event.get("event") == "tool_success",
+        "success": event.get("event") == "tool_success"
+        and not bool(payload.get("is_error") or payload.get("isError")),
+    }
+
+
+def _model_usage(event: dict) -> Optional[dict]:
+    if event.get("event") != "model_usage":
+        return None
+    payload = event.get("payload") or {}
+    response = payload.get("llm_response")
+    if not isinstance(response, dict):
+        return None
+    metadata = response.get("usageMetadata")
+    if not isinstance(metadata, dict):
+        return None
+
+    def number(key: str) -> int:
+        value = metadata.get(key)
+        return max(0, int(value)) if isinstance(value, (int, float)) else 0
+
+    request = payload.get("llm_request")
+    request_model = request.get("model") if isinstance(request, dict) else None
+    model = response.get("modelVersion") or request_model
+    return {
+        "prompt_tokens": number("promptTokenCount"),
+        "completion_tokens": number("candidatesTokenCount") + number("thoughtsTokenCount"),
+        "model": str(model) if model else None,
     }
 
 
@@ -175,6 +235,7 @@ def finalize_session(
     *,
     db_path: Optional[str] = None,
     state_dir: Optional[str] = None,
+    host: Optional[str] = None,
 ) -> dict:
     events = _load_events(payload, state_dir)
     prompt_index = -1
@@ -189,6 +250,7 @@ def finalize_session(
 
     selected = events[prompt_index + 1 :] if prompt_index >= 0 else []
     tools = [tool for _, event in selected if (tool := _tool_event(event)) is not None]
+    usages = [usage for _, event in selected if (usage := _model_usage(event)) is not None]
     if not task or not tools:
         return {"learned": False, "reason": "no task or tool calls"}
 
@@ -198,6 +260,8 @@ def finalize_session(
         background_postprocess=False,
         auto_promote=True,
         distiller=_PluginDistiller(),
+        agent_id=f"plugin-{host or 'coding-agent'}",
+        agent_name=_HOST_NAMES.get(host or "", host or "Coding Agent Plugin"),
     )
     try:
         run = memory.prepare_run(task)
@@ -212,6 +276,18 @@ def finalize_session(
                 productive=tool["success"],
             )
         run["tool_calls"] = tracker.call_count
+        run["llm_calls"] = len(usages)
+        prompt_tokens = sum(usage["prompt_tokens"] for usage in usages)
+        completion_tokens = sum(usage["completion_tokens"] for usage in usages)
+        models = [usage["model"] for usage in usages if usage["model"]]
+        run["observed_telemetry"] = {
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": prompt_tokens + completion_tokens,
+            "cost_usd": 0.0,
+            "models": {"agent": models[-1]} if models else {},
+            "estimated": not bool(usages),
+        }
         run["outcome_score"] = tracker.outcome_score()
         response = _text(payload, "last_assistant_message", "response", "result")
         memory.finalize_run(run, response or "coding-agent task completed")
@@ -236,6 +312,7 @@ def handle_hook(
     *,
     db_path: Optional[str] = None,
     state_dir: Optional[str] = None,
+    host: Optional[str] = None,
 ) -> str:
     normalized = normalize_event_name(event)
     append_event(normalized, payload, state_dir=state_dir)
@@ -249,8 +326,20 @@ def handle_hook(
                 task = _text(item.get("payload") or {}, "prompt", "user_prompt", "userPrompt")
                 return context_for_task(task, db_path=db_path)
     if normalized == "stop":
-        finalize_session(payload, db_path=db_path, state_dir=state_dir)
+        finalize_session(payload, db_path=db_path, state_dir=state_dir, host=host)
     return ""
+
+
+def format_hook_output(host: Optional[str], event: str, context: str) -> str:
+    """Format hook stdout for hosts with strict JSON response contracts."""
+    if host == "gemini-cli":
+        output = {"hookEventName": event}
+        if context:
+            output["additionalContext"] = context
+        return json.dumps({"hookSpecificOutput": output}, ensure_ascii=True)
+    if host in {"antigravity-cli", "antigravity-ide"}:
+        return "{}"
+    return context
 
 
 def doctor(*, db_path: Optional[str] = None, state_dir: Optional[str] = None) -> dict:
@@ -283,7 +372,5 @@ def doctor(*, db_path: Optional[str] = None, state_dir: Optional[str] = None) ->
         result["mcp_available"] = True
     except ImportError:
         pass
-    result["ok"] = all(
-        result[key] for key in ("database_ok", "state_dir_ok", "mcp_available")
-    )
+    result["ok"] = all(result[key] for key in ("database_ok", "state_dir_ok", "mcp_available"))
     return result

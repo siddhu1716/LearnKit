@@ -17,6 +17,7 @@ function logError(message) {
 
 async function main() {
   const event = process.argv[2];
+  const host = process.argv[3];
   if (!event) return;
 
   let input = "";
@@ -24,7 +25,9 @@ async function main() {
   if (!input.trim()) input = "{}";
 
   const command = process.env.LEARNKIT_COMMAND || "learnkit";
-  const result = spawnSync(command, ["plugin", "hook", event], {
+  const args = ["plugin", "hook", event];
+  if (host) args.push("--host", host);
+  const result = spawnSync(command, args, {
     input,
     encoding: "utf8",
     windowsHide: true,

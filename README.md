@@ -6,6 +6,8 @@
 
 > **v1.0** · `pip install learnkit-ai` · wrap one function · watch it stop re-planning.
 
+[Developer guide](DEVELOPERS.md) · [Release guide](RELEASING.md) · [Changelog](CHANGELOG.md)
+
 ---
 
 # Stop Re-Planning the Same Task
@@ -78,6 +80,8 @@ To install from PyPI (recommended):
 pip install learnkit-ai
 # Or with integration extras:
 pip install "learnkit-ai[langchain]"
+# Coding-agent MCP + hook runtime:
+pipx install "learnkit-ai[coding-agents]"
 ```
 
 To install from local repo root:
@@ -88,7 +92,7 @@ pip install -e ".[langchain]"       # adds LangChain + langchain-anthropic
 pip install -e ".[dev]"             # pytest + pytest-asyncio
 ```
 
-Other optional extras: `mem0`, `zep`, `qdrant`.
+Other optional extras: `mem0`, `zep`, `qdrant`, `dashboard`, and `coding-agents`.
 
 Set your Anthropic key (optional — only the LLM classifier/distiller use it; the
 agent path and benchmarks run keyless). PowerShell, persists across sessions:
@@ -160,13 +164,13 @@ sibling reuse. A runnable, offline demo (no API key) lives at
 `benchmarks/injection_ablation.py` for a quality-focused ablation that isolates
 the effect of playbook injection on novel sibling tasks.
 
-## Coding-agent plugins (preview)
+## Coding-agent integrations (preview)
 
-The repository ships one plugin bundle for Claude Code and GitHub Copilot CLI
-under [`plugins/learnkit/`](plugins/learnkit/). Lifecycle hooks capture prompts
-and tool outcomes across separate host processes; the stop hook turns a
-successful tool sequence into a local procedural skill. The bundled read-only
-MCP server exposes:
+LearnKit's full coding-agent integration has two layers: install the Python
+engine from PyPI, then install the host plugin or hook configuration. No Git
+clone is required for the engine. Lifecycle hooks capture prompts and tool
+outcomes across separate host processes; the stop hook turns a successful tool
+sequence into a local procedural skill. The read-only MCP server exposes:
 
 - `learnkit_status` — database, hook-journal, and MCP health;
 - `learnkit_search` — typed memory search;
@@ -176,9 +180,13 @@ MCP server exposes:
 Install the plugin extra first:
 
 ```bash
-pip install "learnkit-ai[coding-agents]"
+pipx install "learnkit-ai[coding-agents]"
 learnkit plugin doctor
 ```
+
+Until `v1.0.0` is published, PyPI's latest historical upload is `0.0.3` and
+does not contain this plugin runtime. Use the current-branch command in the
+[developer guide](DEVELOPERS.md#choose-an-installation-mode) during preview.
 
 Claude Code:
 
@@ -193,9 +201,32 @@ GitHub Copilot CLI:
 copilot plugin install siddhu1716/LearnKit:plugins/learnkit
 ```
 
-For local development, use `copilot --plugin-dir ./plugins/learnkit` or point
-Claude Code at the same bundle directory. Set `LEARNKIT_DB_PATH` to isolate a
-test database and `LEARNKIT_PLUGIN_DIR` to isolate hook journals.
+Codex CLI:
+
+```bash
+codex plugin marketplace add siddhu1716/LearnKit
+codex plugin add learnkit@learnkit
+```
+
+Gemini CLI installs the repository as an extension after the first tagged
+release:
+
+```bash
+gemini extensions install https://github.com/siddhu1716/LearnKit --ref v1.0.0
+```
+
+Antigravity CLI:
+
+```bash
+agy plugin install https://github.com/siddhu1716/LearnKit/tree/v1.0.0/plugins/learnkit-antigravity
+```
+
+Antigravity IDE is MCP-only, and VS Code Copilot has partial hook capture. See
+the [developer guide](DEVELOPERS.md#host-integrations) for exact configuration,
+capability boundaries, local development commands, and dashboard setup.
+
+Set `LEARNKIT_DB_PATH` to isolate a test database and
+`LEARNKIT_PLUGIN_DIR` to isolate hook journals.
 
 The preview captures and retrieves procedures but does not directly execute
 native host tools. Exact zero-planning replay remains available through

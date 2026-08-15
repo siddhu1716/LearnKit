@@ -1,0 +1,12 @@
+{
+  "name": "learnkit",
+  "version": "1.0.0",
+  "description": "Procedural memory for coding agents: capture successful tool workflows and reuse them as bounded guidance.",
+  "mcpServers": {
+    "learnkit": {
+      "command": "learnkit",
+      "args": ["mcp"]
+    }
+  },
+  "contextFileName": "GEMINI.md"
+}

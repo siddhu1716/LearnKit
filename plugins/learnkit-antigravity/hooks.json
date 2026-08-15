@@ -1,0 +1,37 @@
+{
+  "hooks": {
+    "PreInvocation": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "learnkit plugin hook PreInvocation --host antigravity-cli"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "learnkit plugin hook PostToolUse --host antigravity-cli"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "learnkit plugin hook Stop --host antigravity-cli"
+          }
+        ]
+      }
+    ]
+  }
+}
