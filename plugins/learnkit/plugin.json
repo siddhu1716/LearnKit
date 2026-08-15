@@ -1,6 +1,6 @@
 {
   "name": "learnkit",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Procedural memory for coding agents. Captures successful tool workflows and exposes learned procedures through MCP.",
   "author": {
     "name": "LIA Labs"

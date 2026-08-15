@@ -12,7 +12,7 @@ LearnKit has two layers:
 A Git clone is not required for the engine. Install it from PyPI:
 
 ```bash
-pipx install "learnkit-ai[coding-agents]==1.0.0"
+pipx install "learnkit-ai[coding-agents]==2.0.0"
 # Alternative: uv tool install "learnkit-ai[coding-agents]"
 # Project environment: python -m pip install "learnkit-ai[coding-agents]"
 
@@ -21,14 +21,12 @@ learnkit plugin doctor
 
 The `learnkit` executable must be on the PATH inherited by the coding agent.
 
-> Release status: PyPI currently contains historical `0.0.1`-`0.0.3` uploads.
-> Until `1.0.0` is published, install the current branch directly without cloning:
+> GitHub tag `v2.0` corresponds to canonical PyPI version `2.0.0`. To test
+> changes that have not been published yet, install the current branch directly:
 >
 > ```bash
 > pipx install "learnkit-ai[coding-agents] @ git+https://github.com/siddhu1716/LearnKit.git@lia/agent_mvp"
 > ```
->
-> After `v1.0.0`, use the normal PyPI command above.
 
 ### SDK only
 
@@ -98,7 +96,7 @@ The Codex bundle uses `SessionStart`, `UserPromptSubmit`, `PostToolUse`, `PreCom
 The repository root is a Gemini extension (`gemini-extension.json`, `hooks/hooks.json`, and `GEMINI.md`). After the first GitHub release:
 
 ```bash
-gemini extensions install https://github.com/siddhu1716/LearnKit --ref v1.0.0
+gemini extensions install https://github.com/siddhu1716/LearnKit --ref v2.0
 ```
 
 For local development from a clone:
@@ -112,7 +110,7 @@ Gemini uses `BeforeAgent` for prompt capture, `AfterTool` for tool outcomes, `Af
 ### Antigravity CLI
 
 ```bash
-agy plugin install https://github.com/siddhu1716/LearnKit/tree/v1.0.0/plugins/learnkit-antigravity
+agy plugin install https://github.com/siddhu1716/LearnKit/tree/v2.0/plugins/learnkit-antigravity
 ```
 
 Antigravity CLI provides prompt, tool, and stop hooks through this bundle. For local development, pass the local `plugins/learnkit-antigravity` directory to `agy plugin install`.

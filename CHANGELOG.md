@@ -4,6 +4,8 @@ All notable changes to LearnKit are documented here.
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-08-15
+
 ### Added
 
 - Coding-agent integration bundles for Claude Code, GitHub Copilot CLI, Codex CLI, Gemini CLI, Antigravity CLI, Antigravity IDE, and VS Code Copilot.
@@ -17,9 +19,7 @@ All notable changes to LearnKit are documented here.
 - Exact procedure matching preserves token order and repetition.
 - Replay no longer marks a run successful when a tool is missing or failed.
 
-## [1.0.0] - TBD
-
-First formal GitHub release. Before publishing, move the Unreleased entries into this section and replace `TBD` with the release date.
+First formal GitHub release, published under the short tag `v2.0`.
 
 ## [0.0.3]
 

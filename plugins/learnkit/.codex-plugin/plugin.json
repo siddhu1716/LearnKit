@@ -1,6 +1,6 @@
 {
   "name": "learnkit",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Procedural memory for coding agents: capture successful tool workflows and reuse them as bounded guidance.",
   "author": {
     "name": "LIA Labs"

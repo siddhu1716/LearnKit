@@ -184,9 +184,8 @@ pipx install "learnkit-ai[coding-agents]"
 learnkit plugin doctor
 ```
 
-Until `v1.0.0` is published, PyPI's latest historical upload is `0.0.3` and
-does not contain this plugin runtime. Use the current-branch command in the
-[developer guide](DEVELOPERS.md#choose-an-installation-mode) during preview.
+The GitHub release tag `v2.0` corresponds to canonical Python package version
+`2.0.0`. PyPI normalizes the release to that three-component version.
 
 Claude Code:
 
@@ -212,13 +211,13 @@ Gemini CLI installs the repository as an extension after the first tagged
 release:
 
 ```bash
-gemini extensions install https://github.com/siddhu1716/LearnKit --ref v1.0.0
+gemini extensions install https://github.com/siddhu1716/LearnKit --ref v2.0
 ```
 
 Antigravity CLI:
 
 ```bash
-agy plugin install https://github.com/siddhu1716/LearnKit/tree/v1.0.0/plugins/learnkit-antigravity
+agy plugin install https://github.com/siddhu1716/LearnKit/tree/v2.0/plugins/learnkit-antigravity
 ```
 
 Antigravity IDE is MCP-only, and VS Code Copilot has partial hook capture. See

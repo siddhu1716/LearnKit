@@ -3,6 +3,15 @@ name: Release
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing GitHub Release tag to publish
+        required: true
+        default: v2.0
+
+env:
+  RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
 
 permissions:
   contents: read
@@ -13,10 +22,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Checkout release tag
+      - name: Checkout release source
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.sha }}
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -25,8 +34,6 @@ jobs:
           cache: pip
 
       - name: Verify tag matches package version
-        env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           python - <<'PY'
           import os
@@ -35,10 +42,13 @@ jobs:
 
           version = tomllib.loads(pathlib.Path("pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
           tag = os.environ["RELEASE_TAG"]
-          expected = f"v{version}"
-          if tag != expected:
-              raise SystemExit(f"release tag {tag!r} must equal {expected!r}")
-          print(f"Release version: {version}")
+          accepted_tags = {f"v{version}"}
+          if version.endswith(".0"):
+              accepted_tags.add(f"v{version.removesuffix('.0')}")
+          if tag not in accepted_tags:
+              expected = " or ".join(repr(value) for value in sorted(accepted_tags))
+              raise SystemExit(f"release tag {tag!r} must equal {expected}")
+          print(f"Release version: {version} ({tag})")
           PY
 
       - name: Install project and release tooling
@@ -83,7 +93,6 @@ jobs:
       - name: Upload assets to GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: gh release upload "$RELEASE_TAG" dist/* --clobber
 
   pypi:

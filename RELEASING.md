@@ -1,6 +1,6 @@
 # Releasing LearnKit
 
-LearnKit has existing PyPI uploads `0.0.1`, `0.0.2`, and `0.0.3`, but no GitHub Releases. The current project version is `1.0.0`, which is available on PyPI and is intended to be the first formal GitHub release.
+LearnKit has historical PyPI uploads `0.0.1`, `0.0.2`, and `0.0.3`. The first formal GitHub prerelease uses tag `v2.0`; its canonical Python package version is `2.0.0`.
 
 ## One-time setup
 
@@ -40,7 +40,7 @@ Before the first stable release:
    ```
 
 4. Commit and push the release changes.
-5. Create a GitHub Release with tag `v<version>`, for example `v1.0.0`.
+5. Create a GitHub Release with tag `v<version>`. A trailing patch zero may be omitted, so package `2.0.0` may use tag `v2.0` or `v2.0.0`.
 6. Publish the release.
 
 The `Release` GitHub Actions workflow then:
@@ -57,7 +57,7 @@ The `Release` GitHub Actions workflow then:
 Use a clean environment:
 
 ```bash
-pipx install "learnkit-ai[coding-agents]==1.0.0"
+pipx install "learnkit-ai[coding-agents]==2.0.0"
 learnkit --version
 learnkit plugin doctor
 ```
@@ -70,6 +70,12 @@ Verify the GitHub Release contains both `.whl` and `.tar.gz` distribution files.
 - Do not delete and recreate a Git tag after users may have fetched it.
 - If PyPI publishing fails before upload, fix Trusted Publisher/environment configuration and rerun the failed workflow job.
 - If GitHub assets fail but PyPI succeeds, rerun only the release-assets job.
+
+### Recover an already-published release
+
+If a GitHub Release was published before its package metadata was corrected, commit and push the corrected metadata, then run the `Release` workflow manually from that branch with the existing tag in `release_tag`. For the current release, use `v2.0`. This preserves the published tag while building and publishing the corrected branch commit.
+
+The existing `v2.0` tag points to the pre-correction commit. If strict tag-to-artifact source provenance is required, do not use manual recovery; publish a new release tag from the corrected commit instead.
 
 ## License
 

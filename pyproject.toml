@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "learnkit-ai"
-version = "1.0.0"
+version = "2.0.0"
 description = "Procedural memory for tool-using AI agents — capture, replay, and guide tool procedures to cut planning cost at equal success."
 readme = "README.md"
 requires-python = ">=3.11"
